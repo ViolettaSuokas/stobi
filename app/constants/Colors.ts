@@ -1,0 +1,17 @@
+export const Colors = {
+  bg: '#FAFAF8',
+  surface: '#FFFFFF',
+  surface2: '#F2F0EC',
+  accent: '#5B4FF0',
+  accent2: '#7C6AF5',
+  accentLight: '#EEF2FF',
+  green: '#16A34A',
+  greenLight: '#DCFCE7',
+  orange: '#EA580C',
+  orangeLight: '#FFF7ED',
+  pink: '#DB2777',
+  text: '#1A1A2E',
+  text2: '#6B6880',
+  border: '#E4E2EE',
+  shadow: 'rgba(91,79,240,0.12)',
+};
