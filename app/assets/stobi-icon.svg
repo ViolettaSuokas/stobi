@@ -1,0 +1,94 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bodyGrad" x1="0.2" y1="0.05" x2="0.85" y2="0.95">
+      <stop offset="0" stop-color="#E0E7FF" />
+      <stop offset="0.5" stop-color="#C4B5FD" />
+      <stop offset="1" stop-color="#A78BFA" />
+    </linearGradient>
+    <radialGradient id="softGlow" cx="0.5" cy="0.55" r="0.5">
+      <stop offset="0" stop-color="#A78BFA" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#A78BFA" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Light background — matches app bg (#FAFAF8) -->
+  <rect width="1024" height="1024" fill="#FAFAF8" />
+
+  <!-- Subtle purple glow behind the mascot -->
+  <circle cx="512" cy="560" r="500" fill="url(#softGlow)" />
+
+  <!-- ────────────────────────────────────────────
+       Stobi mascot — exact geometry from StoneMascot.tsx pebble shape,
+       scaled up so it fills more of the icon. SIZE = 760 (vs 600 before).
+       Body width = 654, height = 487. Asymmetric corners:
+         TL=243  TR=304  BL=167  BR=137
+       Body rotation: -2deg, face counter-rotated +2deg.
+       ──────────────────────────────────────────── -->
+  <g transform="rotate(-2 512 512)">
+    <!-- Body — asymmetric pebble path -->
+    <path
+      d="M 428 269
+         L 535 269
+         A 304 304 0 0 1 839 573
+         L 839 619
+         A 137 137 0 0 1 702 756
+         L 352 756
+         A 167 167 0 0 1 185 589
+         L 185 512
+         A 243 243 0 0 1 428 269
+         Z"
+      fill="url(#bodyGrad)"
+    />
+
+    <!-- Highlight blob — top-left of body, slight rotation -->
+    <ellipse
+      cx="345"
+      cy="370"
+      rx="101"
+      ry="35"
+      fill="#FFFFFF"
+      fill-opacity="0.55"
+      transform="rotate(-12 345 370)"
+    />
+
+    <!-- Face — counter-rotated to stay upright -->
+    <g transform="rotate(2 512 512)">
+      <!-- Eyes — vertical ovals -->
+      <ellipse cx="431" cy="497" rx="33" ry="43" fill="#1A1A2E" />
+      <ellipse cx="593" cy="497" rx="33" ry="43" fill="#1A1A2E" />
+
+      <!-- Smile — U arc curving DOWN -->
+      <path
+        d="M 459 575 A 53 30 0 0 0 565 575"
+        stroke="#1A1A2E"
+        stroke-width="18"
+        stroke-linecap="round"
+        fill="none"
+      />
+
+      <!-- Cheeks — pink blush ovals -->
+      <ellipse cx="368" cy="646" rx="35" ry="20" fill="#FCA5A5" fill-opacity="0.8" />
+      <ellipse cx="656" cy="646" rx="35" ry="20" fill="#FCA5A5" fill-opacity="0.8" />
+    </g>
+  </g>
+
+  <!-- Sparkles around the mascot — yellow stars matching profile mascot -->
+  <!-- Big sparkle top-left -->
+  <g transform="translate(140 200)" fill="#FACC15">
+    <path d="M 0 -55 L 14 -14 L 55 0 L 14 14 L 0 55 L -14 14 L -55 0 L -14 -14 Z" />
+  </g>
+
+  <!-- Medium sparkle top-right -->
+  <g transform="translate(870 270)" fill="#FACC15">
+    <path d="M 0 -38 L 10 -10 L 38 0 L 10 10 L 0 38 L -10 10 L -38 0 L -10 -10 Z" />
+  </g>
+
+  <!-- Small sparkle bottom-right -->
+  <g transform="translate(900 800)" fill="#FACC15">
+    <path d="M 0 -28 L 7 -7 L 28 0 L 7 7 L 0 28 L -7 7 L -28 0 L -7 -7 Z" />
+  </g>
+
+  <!-- Accent dots -->
+  <circle cx="120" cy="780" r="11" fill="#FACC15" />
+  <circle cx="710" cy="135" r="9" fill="#FACC15" />
+</svg>

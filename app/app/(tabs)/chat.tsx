@@ -1,0 +1,709 @@
+import { useState, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Image,
+  Dimensions,
+} from 'react-native';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const MAX_BUBBLE_W = SCREEN_W * 0.82;
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ChatsCircle,
+  CheckCircle,
+  ArrowUp,
+  Heart,
+  PencilSimple,
+} from 'phosphor-react-native';
+import { useFocusEffect } from 'expo-router';
+import { Colors } from '../../constants/Colors';
+import {
+  getMessages,
+  sendMessage,
+  editMessage,
+  deleteMessage,
+  formatChatTime,
+  getLikes,
+  toggleLike,
+  markChatRead,
+  type ChatMessage,
+} from '../../lib/chat';
+import { STONE_PHOTOS } from '../../lib/stone-photos';
+import { getCurrentUser, type User } from '../../lib/auth';
+import { requireAuth } from '../../lib/auth-gate';
+import { useI18n } from '../../lib/i18n';
+import { useModal } from '../../lib/modal';
+import { StoneMascot } from '../../components/StoneMascot';
+import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
+import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
+import { updateChallengeProgress } from '../../lib/daily-challenge';
+
+export default function ChatScreen() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [likes, setLikes] = useState<Record<string, string[]>>({});
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+  const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
+  const [memberCount, setMemberCount] = useState<number>(0);
+  const flatListRef = useRef<FlatList<ChatMessage>>(null);
+  const { t } = useI18n();
+  const modal = useModal();
+
+  const loadMessages = useCallback(async () => {
+    const [msgs, likesData] = await Promise.all([getMessages(), getLikes()]);
+    setMessages(msgs);
+    setLikes(likesData);
+    setLoading(false);
+    // Mark all messages as read when chat is open
+    markChatRead();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadMessages();
+      getCurrentUser().then((u) => {
+        if (active) setUser(u);
+      });
+      getMyStyle().then((s) => {
+        if (active) setMyStyle(s);
+      });
+      // Load real member count from Supabase
+      (async () => {
+        try {
+          const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
+          if (!isSupabaseConfigured()) return;
+          const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+          if (active && count !== null) setMemberCount(count);
+        } catch {}
+      })();
+      return () => {
+        active = false;
+      };
+    }, [loadMessages]),
+  );
+
+  const handleSend = async () => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+
+    if (!(await requireAuth('писать в чат'))) return;
+
+    setSending(true);
+    try {
+      if (editingMsg) {
+        // Edit existing message
+        await editMessage(editingMsg.id, trimmed);
+        setEditingMsg(null);
+      } else {
+        // Send new message (optionally as reply)
+        await sendMessage(trimmed, undefined, replyingTo?.id);
+        setReplyingTo(null);
+        // Track challenge + achievements for new messages
+        await updateChallengeProgress('chat');
+        const achStats = await gatherAchievementStats();
+        await checkAchievements(achStats);
+      }
+      setText('');
+      await loadMessages();
+      if (!editingMsg) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    } catch (e) {
+      // Silent for now
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleLike = async (messageId: string) => {
+    if (!(await requireAuth('ставить лайки'))) return;
+    try {
+      const result = await toggleLike(messageId);
+      setLikes((prev) => ({
+        ...prev,
+        [messageId]: result.liked
+          ? [...(prev[messageId] ?? []), user?.id ?? '']
+          : (prev[messageId] ?? []).filter((id) => id !== user?.id),
+      }));
+    } catch {
+      // Silent
+    }
+  };
+
+  const handleReply = async (message: ChatMessage) => {
+    if (!(await requireAuth('комментировать'))) return;
+    setEditingMsg(null); // cancel editing if active
+    setReplyingTo(message);
+  };
+
+  const handleEdit = (message: ChatMessage) => {
+    setReplyingTo(null);
+    setEditingMsg(message);
+    setText(message.text);
+  };
+
+  const handleDelete = (message: ChatMessage) => {
+    modal.show({
+      title: t('chat.delete_title'),
+      message: t('chat.delete_text'),
+      buttons: [
+        { label: t('common.cancel'), style: 'cancel' },
+        {
+          label: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteMessage(message.id);
+            await loadMessages();
+          },
+        },
+      ],
+    });
+  };
+
+  const showMessageMenu = async (item: ChatMessage) => {
+    if (!(await requireAuth('взаимодействовать с сообщениями'))) return;
+
+    const isMe = item.authorId === user?.id;
+
+    const options: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [
+      { text: t('chat.reply_action'), onPress: () => handleReply(item) },
+    ];
+
+    if (isMe) {
+      options.push({
+        text: t('chat.edit_action'),
+        onPress: () => handleEdit(item),
+      });
+      options.push({
+        text: t('chat.delete_action'),
+        style: 'destructive',
+        onPress: () => handleDelete(item),
+      });
+    }
+
+    options.push({ text: t('common.cancel'), style: 'cancel' });
+
+    modal.show({
+      title: t('chat.message'),
+      buttons: options.map((o) => ({
+        label: o.text ?? '',
+        style: o.style === 'destructive' ? 'destructive' : o.style === 'cancel' ? 'cancel' : 'default',
+        onPress: o.onPress,
+      })),
+    });
+  };
+
+  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+    const isMe = item.authorId === user?.id;
+    const prev = index > 0 ? messages[index - 1] : null;
+    const showAuthor = !isMe && (!prev || prev.authorId !== item.authorId);
+    const messageLikes = likes[item.id] ?? [];
+    const likeCount = messageLikes.length;
+    const isLiked = user ? messageLikes.includes(user.id) : false;
+
+    const replyParent = item.replyToId
+      ? messages.find((m) => m.id === item.replyToId)
+      : null;
+
+    return (
+      <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
+        {!isMe && (
+          <View style={styles.avatarSlot}>
+            {showAuthor ? (() => {
+              const s = (myStyle && user && item.authorId === user.id) ? myStyle : getUserStoneStyle(item.authorId);
+              return (
+                <View style={styles.avatar}>
+                  <StoneMascot
+                    size={42}
+                    color={s.color}
+                    shape={s.shape}
+                    variant={s.variant}
+                    decor={s.decor}
+                    showSparkles={false}
+                  />
+                </View>
+              );
+            })() : null}
+          </View>
+        )}
+        <View>
+          {replyParent && (
+            <View
+              style={[
+                styles.replyContext,
+                isMe ? styles.replyContextMe : styles.replyContextOther,
+              ]}
+            >
+              <View style={styles.replyBar} />
+              <Text style={styles.replyContextText} numberOfLines={1}>
+                {replyParent.authorAvatar}{' '}
+                {replyParent.text || (replyParent.photo ? t('chat.photo') : '...')}
+              </Text>
+            </View>
+          )}
+
+          {/* Long-press opens WhatsApp-style action menu */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onLongPress={() => showMessageMenu(item)}
+            delayLongPress={400}
+            style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}
+          >
+            {!isMe && showAuthor && (
+              <View style={styles.authorRow}>
+                <Text style={styles.authorName}>{item.authorName}</Text>
+                {item.isArtist && (
+                  <CheckCircle size={12} color={Colors.accent} weight="fill" />
+                )}
+              </View>
+            )}
+            {item.photo && (
+              <Image source={STONE_PHOTOS[item.photo]} style={styles.bubblePhoto} />
+            )}
+            {item.text.length > 0 && (
+              <Text style={[styles.messageText, isMe && styles.messageTextMe]}>
+                {item.text}
+              </Text>
+            )}
+
+            {/* Footer: timestamp + like button */}
+            <View style={styles.bubbleFooter}>
+              <Text
+                style={[styles.timestamp, isMe && styles.timestampMe]}
+                numberOfLines={1}
+              >
+                {formatChatTime(item.createdAt)}
+                {item.isEdited ? ` (${t('chat.edited')})` : ''}
+              </Text>
+              <TouchableOpacity
+                style={styles.likeBtn}
+                onPress={() => handleLike(item.id)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Heart
+                  size={14}
+                  color={
+                    isLiked
+                      ? '#DC2626'
+                      : isMe
+                        ? 'rgba(255,255,255,0.5)'
+                        : Colors.text2
+                  }
+                  weight={isLiked ? 'fill' : 'regular'}
+                />
+                {likeCount > 0 && (
+                  <Text
+                    style={[
+                      styles.likeCount,
+                      isMe && styles.likeCountMe,
+                      isLiked && { color: '#DC2626' },
+                    ]}
+                  >
+                    {likeCount}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerIcon}>
+          <ChatsCircle size={22} color={Colors.accent} weight="fill" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>{t('chat.title')}</Text>
+          <View style={styles.headerSubRow}>
+            <View style={styles.onlineDot} />
+            <Text style={styles.headerSub}>{`${memberCount} ${t('chat.members')}`}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Messages */}
+      <KeyboardAvoidingView
+        style={{ flex: 1, marginBottom: 110 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        {loading ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator color={Colors.accent} />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            extraData={[messages, likes, user]}
+            contentContainerStyle={styles.messagesList}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
+            onLayout={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
+          />
+        )}
+
+        {/* Editing indicator — shows which message you're editing */}
+        {editingMsg && (
+          <View style={styles.editIndicator}>
+            <PencilSimple size={16} color={Colors.accent} weight="bold" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.editIndicatorLabel}>{t('chat.editing')}</Text>
+              <Text style={styles.editIndicatorText} numberOfLines={1}>
+                {editingMsg.text}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setEditingMsg(null);
+                setText('');
+              }}
+              activeOpacity={0.7}
+              style={{ padding: 6 }}
+            >
+              <Text style={styles.replyIndicatorClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Reply indicator — shows which message you're replying to */}
+        {replyingTo && !editingMsg && (
+          <View style={styles.replyIndicator}>
+            <View style={styles.replyIndicatorBar} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.replyIndicatorName}>
+                {t('chat.reply_to')} {replyingTo.authorAvatar} {replyingTo.authorName}
+              </Text>
+              <Text style={styles.replyIndicatorText} numberOfLines={1}>
+                {replyingTo.text || (replyingTo.photo ? t('chat.photo') : '...')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setReplyingTo(null)}
+              activeOpacity={0.7}
+              style={{ padding: 6 }}
+            >
+              <Text style={styles.replyIndicatorClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Input bar */}
+        <View style={styles.inputBar}>
+          <TextInput
+            style={styles.input}
+            placeholder={t('chat.placeholder')}
+            placeholderTextColor={Colors.text2}
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+            onPress={handleSend}
+            disabled={!text.trim() || sending}
+            activeOpacity={0.85}
+          >
+            {sending ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <ArrowUp size={20} color="#FFFFFF" weight="bold" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.bg },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  headerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: Colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  headerSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: Colors.green,
+  },
+  headerSub: { fontSize: 12, color: Colors.text2 },
+
+  loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // Messages
+  messagesList: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  messageRowMe: {
+    justifyContent: 'flex-end',
+  },
+  avatarSlot: {
+    width: 38,
+    height: 38,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -4,
+  },
+  bubble: {
+    minWidth: 120,
+    maxWidth: MAX_BUBBLE_W,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+  },
+  bubblePhoto: {
+    width: MAX_BUBBLE_W - 28,
+    height: (MAX_BUBBLE_W - 28) * 0.75,
+    borderRadius: 12,
+    marginVertical: 6,
+    backgroundColor: Colors.accentLight,
+  },
+  bubbleOther: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bubbleMe: {
+    backgroundColor: Colors.accent,
+    borderTopRightRadius: 4,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 3,
+  },
+  authorName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  messageText: {
+    fontSize: 15,
+    color: Colors.text,
+    lineHeight: 21,
+  },
+  messageTextMe: {
+    color: '#fff',
+  },
+  // Footer row inside bubble (timestamp + like)
+  bubbleFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    gap: 6,
+  },
+  timestamp: {
+    fontSize: 10,
+    color: Colors.text2,
+    flex: 1,
+  },
+  timestampMe: {
+    color: 'rgba(255,255,255,0.65)',
+  },
+  likeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  likeCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.text2,
+  },
+  likeCountMe: {
+    color: 'rgba(255,255,255,0.65)',
+  },
+
+  // Reply context — small bubble above a reply message showing parent
+  replyContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 3,
+    borderRadius: 12,
+  },
+  replyContextOther: {
+    backgroundColor: 'rgba(91,79,240,0.1)',
+  },
+  replyContextMe: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'flex-end',
+  },
+  replyBar: {
+    width: 3,
+    height: '100%',
+    backgroundColor: Colors.accent,
+    borderRadius: 2,
+    marginRight: 10,
+    minHeight: 16,
+  },
+  replyContextText: {
+    fontSize: 12,
+    color: Colors.text2,
+    flex: 1,
+  },
+
+  // Reply indicator above input
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.accentLight,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  replyIndicatorBar: {
+    width: 4,
+    height: 34,
+    backgroundColor: Colors.accent,
+    borderRadius: 2,
+    marginRight: 10,
+  },
+  replyIndicatorName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  replyIndicatorText: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginTop: 1,
+  },
+  replyIndicatorClose: {
+    fontSize: 16,
+    color: Colors.text2,
+    fontWeight: '700',
+  },
+
+  // Editing indicator
+  editIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.warningBg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.warningBorder,
+  },
+  editIndicatorLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  editIndicatorText: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginTop: 1,
+  },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 14,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  input: {
+    flex: 1,
+    minHeight: 42,
+    maxHeight: 110,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: Colors.surface2,
+    borderRadius: 20,
+    fontSize: 14,
+    color: Colors.text,
+  },
+  sendBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  sendBtnDisabled: {
+    opacity: 0.4,
+  },
+});

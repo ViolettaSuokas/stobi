@@ -1,79 +1,452 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  MapPin,
+  Sparkle,
+  CheckCircle,
+  CaretRight,
+  Trophy,
+} from 'phosphor-react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import { StoneMascot } from '../../components/StoneMascot';
+import { getCurrentLocation } from '../../lib/location';
+import {
+  getActivityFeed,
+  getDayStats,
+  getRecentlyHidden,
+  getLeaderboard,
+  formatActivityTime,
+  type Activity,
+  type DayStats,
+  type LeaderEntry,
+  type LeaderboardKind,
+  type LeaderboardPeriod,
+} from '../../lib/activity';
+import { STONE_PHOTOS } from '../../lib/stone-photos';
+import { getStoneShape } from '../../lib/location';
+import { requireAuth } from '../../lib/auth-gate';
+import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
+import { useI18n } from '../../lib/i18n';
+import { getCurrentUser, type User } from '../../lib/auth';
 
-const STONES = [
-  { id: '1', emoji: '🌸', name: 'Весенняя сакура', author: 'Maija Korhonen', verified: true, location: 'Tikkurila park', distance: '320м', color1: '#DDD6FE', color2: '#7C6AF5', time: '2ч назад' },
-  { id: '2', emoji: '🌊', name: 'Морской закат', author: 'Elina V.', verified: false, location: 'Myyrmäki', distance: '480м', color1: '#BFDBFE', color2: '#3B82F6', time: 'вчера' },
-  { id: '3', emoji: '🦋', name: 'Фиолетовая бабочка', author: 'Sanna M.', verified: false, location: 'Hakunila', distance: '1.2км', color1: '#DDD6FE', color2: '#A78BFA', time: '5ч назад' },
-  { id: '4', emoji: '🌲', name: 'Лесная сова', author: 'Pekka J.', verified: false, location: 'Rekola forest', distance: '1.8км', color1: '#BBF7D0', color2: '#16A34A', time: '1д назад' },
-  { id: '5', emoji: '🔥', name: 'Огненный дракон', author: 'Kirsi L.', verified: true, location: 'Koivukylä', distance: '2.1км', color1: '#FED7AA', color2: '#EA580C', time: '3ч назад' },
-  { id: '6', emoji: '🌙', name: 'Лунная фея', author: 'Anna K.', verified: false, location: 'Tammisto', distance: '2.8км', color1: '#FDE68A', color2: '#EAB308', time: '6ч назад' },
-];
-
-const TABS = ['Рядом', 'Свежие', 'Художники', 'Популярные'];
+// Removed gold/silver/bronze — all ranks use the same neutral style
 
 export default function FeedScreen() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DayStats | null>(null);
+  const [recent, setRecent] = useState<Activity[]>([]);
+  const [feed, setFeed] = useState<Activity[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [leaderKind, setLeaderKind] = useState<LeaderboardKind>('hide');
+  const [leaderPeriod, setLeaderPeriod] = useState<LeaderboardPeriod>('today');
+  const [city, setCity] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
+  const { t } = useI18n();
+
+  // Initial load on focus — refresh timestamps when user returns to tab
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        setLoading(true);
+        const [statsRes, recentRes, feedRes, locRes, usr, style] = await Promise.all([
+          getDayStats(),
+          getRecentlyHidden(8),
+          getActivityFeed(10),
+          getCurrentLocation(),
+          getCurrentUser(),
+          getMyStyle(),
+        ]);
+        if (!active) return;
+        setStats(statsRes);
+        setRecent(recentRes);
+        setFeed(feedRes);
+        setCity(locRes?.city ?? locRes?.region ?? null);
+        setCurrentUser(usr);
+        setMyStyle(style);
+        setLoading(false);
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  // Resolve stone style: use customized style for current user, seed lookup for others
+  const resolveStyle = (userId: string): UserStoneStyle => {
+    if (myStyle && currentUser && userId === currentUser.id) return myStyle;
+    return getUserStoneStyle(userId);
+  };
+
+  // Reload leaderboard when kind or period changes
+  useEffect(() => {
+    let active = true;
+    getLeaderboard(leaderKind, leaderPeriod).then((res) => {
+      if (active) setLeaderboard(res);
+    });
+    return () => {
+      active = false;
+    };
+  }, [leaderKind, leaderPeriod]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Лента</Text>
-        <Text style={styles.location}>📍 Vantaa</Text>
-      </View>
-
-      <View style={styles.tabsRow}>
-        {TABS.map((t, i) => (
-          <TouchableOpacity key={t} style={[styles.tab, i === 0 && styles.tabActive]}>
-            <Text style={[styles.tabText, i === 0 && styles.tabTextActive]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={STONES}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.item}
-            onPress={() => router.push(`/stone/${item.id}`)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.stoneImg, { backgroundColor: item.color1 }]}>
-              <Text style={styles.stoneEmoji}>{item.emoji}</Text>
-            </View>
-            <View style={styles.stoneInfo}>
-              <Text style={styles.stoneName}>{item.name}</Text>
-              <View style={styles.authorRow}>
-                <Text style={styles.authorName}>{item.author}</Text>
-                {item.verified && (
-                  <View style={styles.verifiedBadge}>
-                    <Text style={styles.verifiedText}>✓</Text>
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t('feed.title')}</Text>
+          <View style={styles.cityChip}>
+            <MapPin size={12} color={Colors.accent} weight="fill" />
+            <Text style={styles.cityChipText}>{city ?? 'Финляндия'}</Text>
+          </View>
+        </View>
+
+        {loading ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator color={Colors.accent} />
+          </View>
+        ) : (
+          <>
+            {/* Hero stat card */}
+            <LinearGradient
+              colors={['#EEF2FF', '#F5F0FF', '#FFE4F0']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View style={styles.heroMascot}>
+                <StoneMascot size={68} color="#C4B5FD" showSparkles={false} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroTitle}>{t('feed.today')}</Text>
+                <View style={styles.heroStatsRow}>
+                  <View style={styles.heroStat}>
+                    <Text style={[styles.heroStatNum, { color: Colors.accent }]}>
+                      {stats?.hiddenToday ?? 0}
+                    </Text>
+                    <Text style={styles.heroStatLabel}>{t('feed.hidden')}</Text>
                   </View>
-                )}
+                  <View style={styles.heroStat}>
+                    <Text style={[styles.heroStatNum, { color: Colors.green }]}>
+                      {stats?.foundToday ?? 0}
+                    </Text>
+                    <Text style={styles.heroStatLabel}>{t('feed.found')}</Text>
+                  </View>
+                </View>
+                <View style={styles.heroFooter}>
+                  <Sparkle size={11} color={Colors.accent2} weight="fill" />
+                  <Text style={styles.heroFooterText}>
+                    {`+${stats?.hiddenWeek ?? 0} ${t('feed.hidden')} · +${stats?.foundWeek ?? 0} ${t('feed.found')} ${t('feed.week').toLowerCase()}`}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.locationRow}>
-                <Ionicons name="location-outline" size={11} color={Colors.accent2} />
-                <Text style={styles.locationText}>{item.location}</Text>
-                <Text style={styles.timeText}> · {item.time}</Text>
+            </LinearGradient>
+
+            {/* Свежие камни — horizontal scroll */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t('feed.fresh')}</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recentRow}
+              >
+                {recent.map((stone) => {
+                  const shape = getStoneShape(stone.stoneId, 1.4);
+                  return (
+                    <TouchableOpacity
+                      key={stone.id}
+                      style={styles.recentCard}
+                      activeOpacity={0.85}
+                      onPress={async () => {
+                        if (!(await requireAuth('открывать камни'))) return;
+                        router.push(`/stone/${stone.stoneId}`);
+                      }}
+                    >
+                      <View style={styles.recentVisual}>
+                        {stone.photoUri ? (
+                          <Image
+                            source={{ uri: stone.photoUri }}
+                            style={styles.recentPhoto}
+                          />
+                        ) : stone.photo ? (
+                          <Image
+                            source={STONE_PHOTOS[stone.photo]}
+                            style={styles.recentPhoto}
+                          />
+                        ) : (
+                          <LinearGradient
+                            colors={stone.stoneColors as unknown as [string, string]}
+                            start={{ x: 0.2, y: 0.05 }}
+                            end={{ x: 0.85, y: 0.95 }}
+                            style={[
+                              styles.recentStone,
+                              {
+                                width: shape.width,
+                                height: shape.height,
+                                borderTopLeftRadius: shape.borderTopLeftRadius,
+                                borderTopRightRadius: shape.borderTopRightRadius,
+                                borderBottomLeftRadius: shape.borderBottomLeftRadius,
+                                borderBottomRightRadius: shape.borderBottomRightRadius,
+                                transform: [{ rotate: `${shape.rotation}deg` }],
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.recentEmoji,
+                                { transform: [{ rotate: `${-shape.rotation}deg` }] },
+                              ]}
+                            >
+                              {stone.stoneEmoji}
+                            </Text>
+                          </LinearGradient>
+                        )}
+                      </View>
+                      <Text style={styles.recentName} numberOfLines={1}>
+                        {stone.stoneName}
+                      </Text>
+                      <View style={styles.recentAuthorRow}>
+                        {(() => {
+                          const s = resolveStyle(stone.userId);
+                          return (
+                            <StoneMascot
+                              size={22}
+                              color={s.color}
+                              shape={s.shape}
+                              variant={s.variant}
+                              showSparkles={false}
+                            />
+                          );
+                        })()}
+                        <Text style={styles.recentAuthor} numberOfLines={1}>
+                          {stone.userName}
+                        </Text>
+                      </View>
+                      <Text style={styles.recentMeta} numberOfLines={1}>
+                        {stone.city} · {formatActivityTime(stone.createdAt)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Лучшие — leaderboard */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Trophy size={14} color={Colors.accent} weight="fill" />
+                <Text style={styles.sectionTitle}>{t('feed.best')}</Text>
+              </View>
+
+              {/* Kind switch */}
+              <View style={styles.tabRow}>
+                {(['hide', 'find'] as const).map((k) => {
+                  const active = k === leaderKind;
+                  return (
+                    <TouchableOpacity
+                      key={k}
+                      onPress={() => setLeaderKind(k)}
+                      style={[styles.kindTab, active && styles.kindTabActive]}
+                      activeOpacity={0.85}
+                    >
+                      <Text
+                        style={[
+                          styles.kindTabText,
+                          active && styles.kindTabTextActive,
+                        ]}
+                      >
+                        {k === 'hide' ? t('feed.hiders') : t('feed.finders')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Period switch */}
+              <View style={styles.periodRow}>
+                {(['today', 'week', 'all'] as const).map((p) => {
+                  const active = p === leaderPeriod;
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      onPress={() => setLeaderPeriod(p)}
+                      style={[styles.periodChip, active && styles.periodChipActive]}
+                      activeOpacity={0.85}
+                    >
+                      <Text
+                        style={[
+                          styles.periodChipText,
+                          active && styles.periodChipTextActive,
+                        ]}
+                      >
+                        {p === 'today' ? t('feed.today_period') : p === 'week' ? t('feed.week') : t('feed.alltime')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Leaderboard list */}
+              {leaderboard.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <StoneMascot size={56} variant="sleeping" showSparkles={false} />
+                  <Text style={styles.emptyText}>{t('feed.nobody_yet')}</Text>
+                </View>
+              ) : (
+                <View style={styles.leaderCard}>
+                  {leaderboard.map((entry, i) => {
+                    return (
+                      <View
+                        key={entry.userId}
+                        style={[
+                          styles.leaderRow,
+                          i < leaderboard.length - 1 && styles.leaderRowBorder,
+                        ]}
+                      >
+                        <View style={styles.rankBadge}>
+                          <Text style={styles.rankBadgeText}>
+                            {entry.rank}
+                          </Text>
+                        </View>
+                        <View style={styles.leaderAvatar}>
+                          {(() => {
+                            const s = resolveStyle(entry.userId);
+                            return (
+                              <StoneMascot
+                                size={40}
+                                color={s.color}
+                                shape={s.shape}
+                                variant={s.variant}
+                                decor={s.decor}
+                                showSparkles={false}
+                              />
+                            );
+                          })()}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={styles.leaderNameRow}>
+                            <Text style={styles.leaderName}>{entry.userName}</Text>
+                            {entry.isArtist && (
+                              <CheckCircle
+                                size={12}
+                                color={Colors.accent}
+                                weight="fill"
+                              />
+                            )}
+                          </View>
+                          <Text style={styles.leaderSub}>
+                            {entry.count}{' '}
+                            {pluralize(entry.count, 'камень', 'камня', 'камней')}
+                          </Text>
+                        </View>
+                        <Text style={styles.leaderCount}>
+                          {entry.count}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* Активность — live timeline */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t('feed.activity')}</Text>
+              </View>
+              <View style={styles.timelineCard}>
+                {feed.map((item, i) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.timelineRow,
+                      i < feed.length - 1 && styles.timelineRowBorder,
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={async () => {
+                      if (!(await requireAuth('открывать камни'))) return;
+                      router.push(`/stone/${item.stoneId}`);
+                    }}
+                  >
+                    <View style={styles.timelineAvatar}>
+                      {(() => {
+                        const s = resolveStyle(item.userId);
+                        return (
+                          <StoneMascot
+                            size={40}
+                            color={s.color}
+                            shape={s.shape}
+                            variant={s.variant}
+                            decor={s.decor}
+                            showSparkles={false}
+                          />
+                        );
+                      })()}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.timelineText} numberOfLines={2}>
+                        <Text style={styles.timelineName}>{item.userName}</Text>
+                        {item.type === 'find' ? ' нашёл ' : ' спрятал '}
+                        <Text>{item.stoneEmoji} </Text>
+                        <Text style={styles.timelineStone}>{item.stoneName}</Text>
+                      </Text>
+                      <Text style={styles.timelineMeta}>
+                        {item.city} · {formatActivityTime(item.createdAt)}
+                      </Text>
+                    </View>
+                    {(item.photoUri || item.photo) && (
+                      <Image
+                        source={
+                          item.photoUri
+                            ? { uri: item.photoUri }
+                            : STONE_PHOTOS[item.photo!]
+                        }
+                        style={styles.timelineThumb}
+                      />
+                    )}
+                    <CaretRight size={14} color={Colors.text2} weight="bold" />
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
-            <View style={styles.distanceBadge}>
-              <Text style={styles.distanceText}>{item.distance}</Text>
-            </View>
-          </TouchableOpacity>
+          </>
         )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+function pluralize(n: number, one: string, few: string, many: string) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+  scrollContent: { paddingBottom: 120 },
+  loaderWrap: { padding: 60, alignItems: 'center' },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -82,54 +455,344 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 14,
   },
-  title: { fontSize: 24, fontWeight: '800', color: Colors.text },
-  location: { fontSize: 13, color: Colors.text2, fontWeight: '500' },
-
-  tabsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 14 },
-  tab: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.surface2,
-    borderWidth: 1, borderColor: Colors.border,
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: Colors.text,
   },
-  tabActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  tabText: { fontSize: 13, fontWeight: '600', color: Colors.text2 },
-  tabTextActive: { color: '#fff' },
+  cityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cityChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text,
+  },
 
-  list: { paddingBottom: 20 },
-
-  item: {
+  // Hero
+  hero: {
+    marginHorizontal: 20,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+    paddingVertical: 16,
+    paddingLeft: 8,
+    paddingRight: 18,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  heroMascot: {
+    width: 76,
+    height: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text2,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    gap: 18,
+    alignItems: 'flex-end',
+  },
+  heroStat: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+  },
+  heroStatNum: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  heroStatLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text2,
+  },
+  heroFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+  },
+  heroFooterText: {
+    fontSize: 11,
+    color: Colors.text2,
+    flex: 1,
+  },
+
+  // Section
+  section: {
+    marginTop: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text2,
+    letterSpacing: 1,
+  },
+
+  // Recently hidden — horizontal scroll
+  recentRow: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  recentCard: {
+    width: 130,
+    padding: 12,
+    borderRadius: 18,
     backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
   },
-  stoneImg: {
-    width: 58, height: 58,
-    borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
+  recentVisual: {
+    height: 86,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  stoneEmoji: { fontSize: 28 },
-  stoneInfo: { flex: 1 },
-  stoneName: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  authorName: { fontSize: 13, color: Colors.text2 },
-  verifiedBadge: {
+  recentStone: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1A1A2E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  recentPhoto: {
+    width: 100,
+    height: 78,
+    borderRadius: 14,
+    backgroundColor: Colors.accentLight,
+  },
+  recentEmoji: { fontSize: 28 },
+  recentName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 3,
+  },
+  recentAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  recentAuthor: {
+    fontSize: 11,
+    color: Colors.text2,
+  },
+  recentMeta: {
+    fontSize: 10,
+    color: Colors.text2,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+
+  // Leaderboard
+  tabRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  kindTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  kindTabActive: {
     backgroundColor: Colors.accent,
-    borderRadius: 4,
-    paddingHorizontal: 5, paddingVertical: 1,
+    borderColor: Colors.accent,
   },
-  verifiedText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  locationText: { fontSize: 12, color: Colors.accent2 },
-  timeText: { fontSize: 12, color: Colors.text2 },
-  distanceBadge: {
-    backgroundColor: Colors.greenLight,
-    borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 4,
+  kindTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text2,
   },
-  distanceText: { fontSize: 12, fontWeight: '700', color: Colors.green },
-  separator: { height: 1, backgroundColor: Colors.border, marginLeft: 92 },
+  kindTabTextActive: {
+    color: '#FFFFFF',
+  },
+  periodRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  periodChip: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+  },
+  periodChipActive: {
+    backgroundColor: Colors.accentLight,
+  },
+  periodChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text2,
+  },
+  periodChipTextActive: {
+    color: Colors.accent,
+    fontWeight: '700',
+  },
+  leaderCard: {
+    marginHorizontal: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  leaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  leaderRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text2,
+  },
+  leaderAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
+    backgroundColor: Colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  leaderName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  leaderSub: {
+    fontSize: 11,
+    color: Colors.text2,
+    marginTop: 1,
+  },
+  leaderCount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text2,
+  },
+
+  // Empty state
+  emptyCard: {
+    marginHorizontal: 20,
+    paddingVertical: 24,
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: Colors.text2,
+    fontWeight: '600',
+  },
+
+  // Timeline
+  timelineCard: {
+    marginHorizontal: 20,
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  timelineRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  timelineAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
+    backgroundColor: Colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineText: {
+    fontSize: 13,
+    color: Colors.text,
+    lineHeight: 18,
+  },
+  timelineName: {
+    fontWeight: '700',
+  },
+  timelineStone: {
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  timelineMeta: {
+    fontSize: 11,
+    color: Colors.text2,
+    marginTop: 3,
+  },
+  timelineThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.accentLight,
+  },
 });

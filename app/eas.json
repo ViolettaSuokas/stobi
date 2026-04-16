@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk",
+        "distribution": "internal"
+      },
+      "ios": {
+        "distribution": "internal",
+        "simulator": false
+      }
+    },
+    "production": {
+      "android": {},
+      "ios": {}
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {},
+      "ios": {}
+    }
+  }
+}

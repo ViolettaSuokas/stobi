@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "FinStones",
-    "slug": "finstones",
+    "name": "Stobi",
+    "slug": "stobi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "finstones",
+    "scheme": "stobi",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,14 +14,23 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.finstones.app"
+      "bundleIdentifier": "com.stobi.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FAFAF8"
       },
-      "package": "com.finstones.app"
+      "package": "com.stobi.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -33,12 +42,33 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow FinStones to use your location to show stones near you."
+          "locationAlwaysAndWhenInUsePermission": "Stobi uses your location to show painted stones near you."
+        }
+      ],
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.984920601746-3of6pe9k4klltqo6mruu8mpc73ka3n3j"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2d5fca99-5572-4e65-8127-30c934c29b79"
+      }
+    },
+    "owner": "letta",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2d5fca99-5572-4e65-8127-30c934c29b79"
     }
   }
 }
