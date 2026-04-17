@@ -49,6 +49,10 @@ export type User = {
   username: string;
   bio?: string;
   avatar: string;
+  /** Real user photo URI (camera/gallery upload) */
+  photoUrl?: string;
+  /** Custom name for the stone mascot character */
+  characterName?: string;
   isArtist?: boolean;
 };
 
@@ -122,6 +126,8 @@ export async function getCurrentUser(): Promise<User | null> {
         username: profile.username,
         bio: profile.bio,
         avatar: profile.avatar ?? '🪨',
+        photoUrl: profile.photo_url ?? undefined,
+        characterName: profile.character_name ?? undefined,
         isArtist: profile.is_artist,
       };
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(mapped));
@@ -245,6 +251,38 @@ export async function deleteAccount(): Promise<void> {
   }
   // Clear all local data
   await resetAll();
+}
+
+/** Update user's profile photo URI */
+export async function updateProfilePhoto(photoUrl: string): Promise<void> {
+  if (isSupabaseConfigured()) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles').update({ photo_url: photoUrl }).eq('id', user.id);
+    }
+  }
+  const cached = await AsyncStorage.getItem(USER_KEY);
+  if (cached) {
+    const u = JSON.parse(cached);
+    u.photoUrl = photoUrl;
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
+  }
+}
+
+/** Update stone mascot character name */
+export async function updateCharacterName(name: string): Promise<void> {
+  if (isSupabaseConfigured()) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles').update({ character_name: name }).eq('id', user.id);
+    }
+  }
+  const cached = await AsyncStorage.getItem(USER_KEY);
+  if (cached) {
+    const u = JSON.parse(cached);
+    u.characterName = name;
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
+  }
 }
 
 export async function hasSeenOnboarding(): Promise<boolean> {

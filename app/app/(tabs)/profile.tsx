@@ -13,6 +13,7 @@ import {
   CaretRight,
   SignOut,
   Plus,
+  Camera,
   Lock,
   GearSix,
   Sparkle,
@@ -65,6 +66,8 @@ import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
+import * as ImagePicker from 'expo-image-picker';
+import { updateProfilePhoto } from '../../lib/auth';
 
 const ACHIEVEMENT_CONFIGS = [
   { Icon: Sparkle, labelKey: 'achievement.find_first', earned: false, tint: '#A855F7', premium: false },
@@ -204,6 +207,20 @@ export default function ProfileScreen() {
   const handlePickDecor = (item: CosmeticItem) =>
     handlePickItem(item, (id) => { setSelectedDecorId(id); setEquippedIds({ decor: id }); });
 
+  const handleChangePhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      await updateProfilePhoto(uri);
+      const fresh = await getCurrentUser();
+      setUser(fresh);
+    }
+  };
+
   const handleLogout = () => {
     modal.show({
       title: t('profile.logout_title'),
@@ -251,6 +268,18 @@ export default function ProfileScreen() {
                 shape={selectedShape}
                 decor={selectedDecor}
               />
+              {/* Real photo badge — bottom right of mascot */}
+              <TouchableOpacity
+                style={styles.photoCircle}
+                onPress={handleChangePhoto}
+                activeOpacity={0.8}
+              >
+                {user?.photoUrl ? (
+                  <Image source={{ uri: user.photoUrl }} style={styles.photoImage} />
+                ) : (
+                  <Camera size={20} color="#FFFFFF" weight="bold" />
+                )}
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -577,6 +606,37 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <View style={styles.body}>
+            {/* Character name */}
+            <TouchableOpacity
+              style={styles.characterNameRow}
+              onPress={() => {
+                modal.show({
+                  title: t('profile.character_name_title'),
+                  input: { placeholder: t('profile.character_name_placeholder'), defaultValue: user?.characterName ?? '' },
+                  buttons: [
+                    { label: t('common.cancel'), style: 'cancel' },
+                    {
+                      label: t('common.save'),
+                      onPress: async (name) => {
+                        if (!name?.trim()) return;
+                        const { updateCharacterName } = await import('../../lib/auth');
+                        await updateCharacterName(name.trim());
+                        const fresh = await getCurrentUser();
+                        setUser(fresh);
+                      },
+                    },
+                  ],
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.characterNameLabel}>{t('profile.character_name')}</Text>
+              <Text style={styles.characterNameValue}>
+                {user?.characterName || t('profile.character_name_default')}
+              </Text>
+              <PencilSimple size={14} color={Colors.text2} weight="bold" />
+            </TouchableOpacity>
+
             {/* Earning hint card */}
             <View style={styles.hintCard}>
               <Text style={styles.hintEmoji}>💡</Text>
@@ -844,6 +904,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+  },
+  photoCircle: {
+    position: 'absolute',
+    bottom: 4,
+    right: '25%',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  characterNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 14,
+  },
+  characterNameLabel: {
+    fontSize: 13,
+    color: Colors.text2,
+    fontWeight: '600',
+  },
+  characterNameValue: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.text,
   },
 
   heroNameRow: {

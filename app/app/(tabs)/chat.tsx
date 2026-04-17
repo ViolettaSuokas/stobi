@@ -225,6 +225,13 @@ export default function ChatScreen() {
         {!isMe && (
           <View style={styles.avatarSlot}>
             {showAuthor ? (() => {
+              if (item.authorPhotoUrl) {
+                return (
+                  <View style={styles.avatar}>
+                    <Image source={{ uri: item.authorPhotoUrl }} style={styles.chatPhoto} />
+                  </View>
+                );
+              }
               const s = (myStyle && user && item.authorId === user.id) ? myStyle : getUserStoneStyle(item.authorId);
               return (
                 <View style={styles.avatar}>
@@ -502,6 +509,11 @@ const styles = StyleSheet.create({
   avatarSlot: {
     width: 38,
     height: 38,
+  },
+  chatPhoto: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   avatar: {
     width: 42,

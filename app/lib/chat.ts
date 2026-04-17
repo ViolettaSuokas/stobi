@@ -11,6 +11,8 @@ export type ChatMessage = {
   authorId: string;
   authorName: string;
   authorAvatar: string;
+  /** Real user photo URI (if available) */
+  authorPhotoUrl?: string;
   isArtist?: boolean;
   text: string;
   createdAt: number;
@@ -202,6 +204,7 @@ export async function sendMessage(
             authorId: row.author_id,
             authorName: row.profiles?.username ?? user.username,
             authorAvatar: row.profiles?.avatar ?? user.avatar,
+            authorPhotoUrl: row.profiles?.photo_url ?? undefined,
             isArtist: row.profiles?.is_artist ?? false,
             text: row.text ?? '',
             createdAt: new Date(row.created_at).getTime(),
@@ -221,6 +224,7 @@ export async function sendMessage(
     authorId: user.id,
     authorName: user.username,
     authorAvatar: user.avatar,
+    authorPhotoUrl: user.photoUrl,
     isArtist: user.isArtist,
     text: trimmed,
     createdAt: Date.now(),
