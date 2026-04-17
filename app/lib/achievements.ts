@@ -103,9 +103,9 @@ export async function checkAchievements(stats: AchievementStats): Promise<string
     if (!current.unlocked && progress >= def.target) {
       current.unlocked = true;
       current.unlockedAt = Date.now();
-      await earnPoints(def.reward);
+      await earnPoints(def.reward, `achievement:${def.id}`, def.id);
       if (def.unlockCosmeticId) {
-        await unlockCosmeticById(def.unlockCosmeticId);
+        await unlockCosmeticById(def.unlockCosmeticId, def.id);
       }
       newlyUnlocked.push(def.id);
     }

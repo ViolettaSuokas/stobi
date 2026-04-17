@@ -167,8 +167,8 @@ export default function AddScreen() {
         isArtist: user?.isArtist,
       });
 
-      // Award diamonds + track progress
-      const newBalance = await earnPoints(REWARD_HIDE);
+      // Award diamonds + track progress (server-audited via earn_points RPC)
+      const newBalance = await earnPoints(REWARD_HIDE, 'stone_hide');
       await updateChallengeProgress('hide');
       const achStats = await gatherAchievementStats();
       const unlocked = await checkAchievements(achStats);

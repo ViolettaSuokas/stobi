@@ -50,27 +50,80 @@ export async function hasFoundStone(stoneId: string): Promise<boolean> {
   return records.some((r) => r.stoneId === stoneId);
 }
 
-export async function markStoneFound(stoneId: string): Promise<void> {
+export type FindResult =
+  | { ok: true; balance: number | null; reward: number; alreadyFound: boolean }
+  | {
+      ok: false;
+      reason:
+        | 'too_far'
+        | 'cannot_find_own_stone'
+        | 'stone_too_fresh'
+        | 'author_daily_limit'
+        | 'stone_not_found'
+        | 'not_authenticated'
+        | 'unknown';
+      detail?: string;
+    };
+
+/**
+ * Records a find via server RPC `record_find` (migration 005).
+ *
+ * Server enforces atomically (cheat-proof):
+ *   - distance ≤ 30 m (haversine on stone's real coords)
+ *   - ≤ 2 finds per author per day
+ *   - stone must be ≥ 1 hour old
+ *   - cannot find own stone
+ *   - rewards finder + author in one transaction
+ *
+ * Guest mode (no Supabase user) falls back to local-only recording with
+ * no anti-fraud checks (demo / offline).
+ */
+export async function markStoneFound(
+  stoneId: string,
+  proofLat: number,
+  proofLng: number
+): Promise<FindResult> {
   if (isSupabaseConfigured()) {
     try {
       const user = await getCurrentUser();
       if (user) {
-        const { error } = await supabase
-          .from('finds')
-          .insert({ user_id: user.id, stone_id: stoneId });
-        if (!error) {
+        const { data, error } = await supabase.rpc('record_find', {
+          p_stone_id: stoneId,
+          p_proof_lat: proofLat,
+          p_proof_lng: proofLng,
+        });
+        if (!error && data) {
           await trackEvent('stone_find', { stone_id: stoneId });
-          return;
+          const parsed = data as { balance: number; reward: number; already_found: boolean };
+          return {
+            ok: true,
+            balance: parsed.balance,
+            reward: parsed.reward,
+            alreadyFound: !!parsed.already_found,
+          };
         }
+        const msg = error?.message ?? '';
+        if (msg.includes('too_far')) return { ok: false, reason: 'too_far', detail: msg };
+        if (msg.includes('cannot_find_own_stone')) return { ok: false, reason: 'cannot_find_own_stone' };
+        if (msg.includes('stone_too_fresh')) return { ok: false, reason: 'stone_too_fresh', detail: msg };
+        if (msg.includes('author_daily_limit')) return { ok: false, reason: 'author_daily_limit' };
+        if (msg.includes('stone_not_found')) return { ok: false, reason: 'stone_not_found' };
+        if (msg.includes('not_authenticated')) return { ok: false, reason: 'not_authenticated' };
+        console.warn('record_find rpc error', msg);
       }
-    } catch (e) { console.warn(e);
-      // Fall through to AsyncStorage
+    } catch (e) {
+      console.warn('record_find exception', e);
+      // Fall through to local (guest/offline)
     }
   }
+
+  // Guest / offline fallback — local only, no anti-fraud
   const records = await read();
-  if (records.some((r) => r.stoneId === stoneId)) return;
-  records.push({ stoneId, foundAt: Date.now() });
-  await write(records);
+  if (!records.some((r) => r.stoneId === stoneId)) {
+    records.push({ stoneId, foundAt: Date.now() });
+    await write(records);
+  }
+  return { ok: true, balance: null, reward: 1, alreadyFound: false };
 }
 
 export async function getFoundStoneIds(): Promise<string[]> {

@@ -33,8 +33,8 @@ import {
   type Activity,
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
-import { earnPoints, getPoints, spendPoints, REWARD_FIND, ALL_ITEMS } from '../../lib/points';
-import { hasFoundStone, markStoneFound, getFindsToday, getFindsOfAuthorToday, recordAuthorFind, isAuthorLimitReached } from '../../lib/finds';
+import { getPoints, spendPoints, ALL_ITEMS } from '../../lib/points';
+import { hasFoundStone, markStoneFound, getFindsToday, getFindsOfAuthorToday, isAuthorLimitReached } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
 import { deleteUserStone, editUserStone } from '../../lib/user-stones';
@@ -257,17 +257,36 @@ export default function StoneDetailScreen() {
 
     setClaiming(true);
     try {
-      await markStoneFound(stoneId);
-      if (stone?.authorId) await recordAuthorFind(stone.authorId);
-      const newBalance = await earnPoints(REWARD_FIND);
-      setAlreadyFound(true);
+      // Server RPC handles: insert find, reward finder + author,
+      // anti-fraud (≤2/author/day, ≥1h age, own-stone check, distance).
+      const findRes = await markStoneFound(
+        stoneId,
+        userLocation.coords.lat,
+        userLocation.coords.lng
+      );
 
-      // Check daily challenge: 5 finds → 24h premium trial
+      if (!findRes.ok) {
+        setClaiming(false);
+        const msgKey =
+          findRes.reason === 'too_far' ? t('stone.too_far_text') :
+          findRes.reason === 'cannot_find_own_stone' ? t('stone.cannot_find_own') :
+          findRes.reason === 'stone_too_fresh' ? t('stone.too_fresh') :
+          findRes.reason === 'author_daily_limit' ? t('stone.author_limit') :
+          t('common.error');
+        Alert.alert(t('common.error'), msgKey);
+        return;
+      }
+
+      setAlreadyFound(true);
+      const newBalance = findRes.balance ?? (await getPoints());
+      const reward = findRes.reward;
+
+      // Check daily challenge: 5 finds → 7-day premium trial
       const todayFinds = await getFindsToday();
       let trialActivated = false;
       if (todayFinds >= DAILY_CHALLENGE_GOAL) {
-        await activateTrial();
-        trialActivated = true;
+        const trialInfo = await activateTrial();
+        trialActivated = trialInfo.active;
       }
 
       // Track challenge + achievements
@@ -275,7 +294,7 @@ export default function StoneDetailScreen() {
       const achStats = await gatherAchievementStats();
       const unlocked = await checkAchievements(achStats);
 
-      const baseMessage = `+1 💎 · ${newBalance} 💎`;
+      const baseMessage = `+${reward} 💎 · ${newBalance} 💎`;
       const trialMessage = trialActivated
         ? `\n\n${t('trial.activated_message')}`
         : '';

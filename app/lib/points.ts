@@ -192,32 +192,34 @@ export async function isOwned(itemId: string): Promise<boolean> {
   return state.ownedItemIds.includes(itemId);
 }
 
-/** Spend points (e.g. reveal a stone). Returns false if insufficient balance. */
-export async function spendPoints(amount: number): Promise<boolean> {
+/** Spend points (e.g. reveal a stone).
+ *
+ * Uses server RPC `spend_points` (migration 003) for atomic, audited spend.
+ * Returns false if insufficient balance or RPC rejects. */
+export async function spendPoints(
+  amount: number,
+  reason: string = 'manual',
+  refId?: string
+): Promise<boolean> {
   if (amount <= 0) return true;
-  const balance = await getPoints();
-  if (balance < amount) return false;
 
   if (isSupabaseConfigured()) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', user.id)
-          .single();
-        if (profile && (profile.balance ?? 0) >= amount) {
-          await supabase
-            .from('profiles')
-            .update({ balance: (profile.balance ?? 0) - amount })
-            .eq('id', user.id);
-          return true;
-        }
-        return false;
+        const { error } = await supabase.rpc('spend_points', {
+          p_amount: amount,
+          p_reason: reason,
+          p_ref_id: refId ?? null,
+        });
+        if (!error) return true;
+        // RPC signalled insufficient / invalid. Don't fall back to local.
+        if (error.message?.includes('insufficient')) return false;
+        console.warn('spend_points rpc error', error.message);
       }
-    } catch (e) { console.warn(e);
-      // Fall through to AsyncStorage
+    } catch (e) {
+      console.warn('spend_points exception', e);
+      // Fall through to AsyncStorage (guest mode)
     }
   }
 
@@ -228,29 +230,31 @@ export async function spendPoints(amount: number): Promise<boolean> {
   return true;
 }
 
-export async function earnPoints(amount: number): Promise<number> {
+/** Grant points via server RPC `earn_points` (migration 002).
+ *
+ * Atomic, rate-limited (20 earns/min/user), audited via balance_events.
+ * Guest mode (no Supabase user) falls back to AsyncStorage. */
+export async function earnPoints(
+  amount: number,
+  reason: string = 'manual',
+  refId?: string
+): Promise<number> {
   if (amount <= 0) return getPoints();
 
   if (isSupabaseConfigured()) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const newBalance = (profile.balance ?? 0) + amount;
-          await supabase
-            .from('profiles')
-            .update({ balance: newBalance })
-            .eq('id', user.id);
-          return newBalance;
-        }
+        const { data, error } = await supabase.rpc('earn_points', {
+          p_amount: amount,
+          p_reason: reason,
+          p_ref_id: refId ?? null,
+        });
+        if (!error && typeof data === 'number') return data;
+        console.warn('earn_points rpc error', error?.message);
       }
-    } catch (e) { console.warn(e);
+    } catch (e) {
+      console.warn('earn_points exception', e);
       // Fall through to AsyncStorage
     }
   }
@@ -266,55 +270,52 @@ export type SpendResult =
   | { ok: false; reason: 'insufficient' | 'already-owned' | 'unknown-item' | 'premium_required' };
 
 /**
- * Attempts to spend points to unlock an item. Returns the new state on success
- * or a structured failure reason. Does not throw.
+ * Purchases a cosmetic item via server RPC `spend_item` (migration 003).
+ *
+ * The server is the source of truth for:
+ *   - item price
+ *   - premium-only flag
+ *   - current balance & owned_items
+ *   - premium status (from RevenueCat webhook)
+ *
+ * Client catalog ALL_ITEMS is used only for display. Server can reject
+ * with: unknown_item | already_owned | premium_required | insufficient.
  */
 export async function buyItem(itemId: string): Promise<SpendResult> {
   const item = ALL_ITEMS.find((i) => i.id === itemId);
   if (!item) return { ok: false, reason: 'unknown-item' };
 
-  // Premium-only items require an active trial or subscription
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase.rpc('spend_item', {
+          p_item_id: itemId,
+        });
+        if (!error && data) {
+          const result = data as { balance: number; owned_items: string[] };
+          const merged = new Set([...result.owned_items, ...freeItemIds()]);
+          return { ok: true, balance: result.balance, ownedItemIds: [...merged] };
+        }
+        const msg = error?.message ?? '';
+        if (msg.includes('already_owned')) return { ok: false, reason: 'already-owned' };
+        if (msg.includes('premium_required')) return { ok: false, reason: 'premium_required' };
+        if (msg.includes('insufficient')) return { ok: false, reason: 'insufficient' };
+        if (msg.includes('unknown_item')) return { ok: false, reason: 'unknown-item' };
+        console.warn('spend_item rpc error', msg);
+        // Unexpected error — fall through to local (guest fallback)
+      }
+    } catch (e) {
+      console.warn('spend_item exception', e);
+    }
+  }
+
+  // Guest / offline fallback: local wallet (client-side premium gate)
   if (item.premiumOnly) {
     const { getTrialInfo } = await import('./premium-trial');
     const trial = await getTrialInfo();
     if (!trial.active) return { ok: false, reason: 'premium_required' };
   }
-
-  if (isSupabaseConfigured()) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('balance, owned_items')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const ownedItems: string[] = profile.owned_items ?? [];
-          if (ownedItems.includes(itemId)) {
-            return { ok: false, reason: 'already-owned' };
-          }
-          if ((profile.balance ?? 0) < item.price) {
-            return { ok: false, reason: 'insufficient' };
-          }
-
-          const newBalance = (profile.balance ?? 0) - item.price;
-          const newOwned = [...ownedItems, itemId];
-          await supabase
-            .from('profiles')
-            .update({ balance: newBalance, owned_items: newOwned })
-            .eq('id', user.id);
-
-          const merged = new Set([...newOwned, ...freeItemIds()]);
-          return { ok: true, balance: newBalance, ownedItemIds: [...merged] };
-        }
-      }
-    } catch (e) { console.warn(e);
-      // Fall through to AsyncStorage
-    }
-  }
-
   const state = await readLocal();
   if (state.ownedItemIds.includes(itemId)) {
     return { ok: false, reason: 'already-owned' };
@@ -322,7 +323,6 @@ export async function buyItem(itemId: string): Promise<SpendResult> {
   if (state.balance < item.price) {
     return { ok: false, reason: 'insufficient' };
   }
-
   state.balance -= item.price;
   state.ownedItemIds.push(itemId);
   await writeLocal(state);
@@ -330,10 +330,14 @@ export async function buyItem(itemId: string): Promise<SpendResult> {
 }
 
 /**
- * Grants a cosmetic item directly — no balance spend, no premium gate.
- * Used by achievements to reward items on unlock. Idempotent: already-owned → no-op.
+ * Grants a cosmetic item via `grant_item` RPC — used by achievement unlocks.
+ * Idempotent: already-owned → no-op. The server requires reason to start
+ * with "achievement:" to prevent client from granting arbitrary items.
  */
-export async function unlockCosmeticById(itemId: string): Promise<void> {
+export async function unlockCosmeticById(
+  itemId: string,
+  achievementId: string = 'unknown'
+): Promise<void> {
   const item = ALL_ITEMS.find((i) => i.id === itemId);
   if (!item) return;
 
@@ -341,25 +345,16 @@ export async function unlockCosmeticById(itemId: string): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('owned_items')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          const ownedItems: string[] = profile.owned_items ?? [];
-          if (ownedItems.includes(itemId)) return;
-          const newOwned = [...ownedItems, itemId];
-          await supabase
-            .from('profiles')
-            .update({ owned_items: newOwned })
-            .eq('id', user.id);
-          return;
-        }
+        const { error } = await supabase.rpc('grant_item', {
+          p_item_id: itemId,
+          p_reason: `achievement:${achievementId}`,
+        });
+        if (!error) return;
+        console.warn('grant_item rpc error', error.message);
       }
-    } catch (e) { console.warn(e);
-      // Fall through to AsyncStorage
+    } catch (e) {
+      console.warn('grant_item exception', e);
+      // Fall through to AsyncStorage (guest)
     }
   }
 
