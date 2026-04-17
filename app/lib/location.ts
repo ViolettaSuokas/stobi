@@ -9,6 +9,7 @@ export type LocationInfo = {
   coords: Coords;
   city: string | null;
   region: string | null;
+  country?: string | null;
 };
 
 export type NearbyStone = {
@@ -146,6 +147,7 @@ export async function getCurrentLocation(): Promise<LocationInfo | null> {
       coords,
       city: reverse?.city ?? null,
       region: reverse?.region ?? null,
+      country: reverse?.country ?? null,
     };
   } catch {
     return null;
@@ -154,7 +156,7 @@ export async function getCurrentLocation(): Promise<LocationInfo | null> {
 
 export async function reverseGeocode(
   coords: Coords,
-): Promise<{ city: string | null; region: string | null } | null> {
+): Promise<{ city: string | null; region: string | null; country: string | null } | null> {
   try {
     const result = await Location.reverseGeocodeAsync({
       latitude: coords.lat,
@@ -165,6 +167,7 @@ export async function reverseGeocode(
     return {
       city: place.city ?? place.subregion ?? null,
       region: place.region ?? null,
+      country: place.isoCountryCode ?? null,
     };
   } catch {
     return null;

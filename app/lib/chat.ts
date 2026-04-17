@@ -141,12 +141,13 @@ async function writePersisted(messages: ChatMessage[]): Promise<void> {
   await AsyncStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
 }
 
-export async function getMessages(): Promise<ChatMessage[]> {
+export async function getMessages(channel: string = 'global'): Promise<ChatMessage[]> {
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select('*, profiles(username, avatar, is_artist)')
+        .select('*, profiles(username, avatar, is_artist, photo_url)')
+        .eq('channel', channel)
         .order('created_at');
 
       if (!error && data) {
@@ -155,6 +156,7 @@ export async function getMessages(): Promise<ChatMessage[]> {
           authorId: row.author_id,
           authorName: row.profiles?.username ?? 'Unknown',
           authorAvatar: row.profiles?.avatar ?? '🪨',
+          authorPhotoUrl: row.profiles?.photo_url ?? undefined,
           isArtist: row.profiles?.is_artist ?? false,
           text: row.text ?? '',
           createdAt: new Date(row.created_at).getTime(),
@@ -168,9 +170,10 @@ export async function getMessages(): Promise<ChatMessage[]> {
     }
   }
 
-  // Empty by default — only real user messages
   const persisted = await readPersisted();
-  return persisted.sort((a, b) => a.createdAt - b.createdAt);
+  return persisted
+    .filter((m) => (m as any).channel === channel || !(m as any).channel)
+    .sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function sendMessage(
@@ -178,6 +181,7 @@ export async function sendMessage(
   photo?: StonePhotoKey,
   replyToId?: string,
   photoUri?: string,
+  channel: string = 'global',
 ): Promise<ChatMessage> {
   const trimmed = text.trim();
   if (!trimmed && !photo && !photoUri) throw new Error('Сообщение не может быть пустым');
@@ -196,8 +200,9 @@ export async function sendMessage(
             text: trimmed,
             photo_url: photo ?? null,
             reply_to_id: replyToId ?? null,
+            channel,
           })
-          .select('*, profiles(username, avatar, is_artist)')
+          .select('*, profiles(username, avatar, is_artist, photo_url)')
           .single();
 
         if (!error && row) {

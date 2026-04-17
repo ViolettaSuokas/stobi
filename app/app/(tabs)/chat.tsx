@@ -46,6 +46,7 @@ import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
+import { getCurrentLocation } from '../../lib/location';
 import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
 import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
 import { updateChallengeProgress } from '../../lib/daily-challenge';
@@ -65,12 +66,14 @@ export default function ChatScreen() {
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [channel, setChannel] = useState<string>('global');
+  const [userCountry, setUserCountry] = useState<string>('FI');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const { t } = useI18n();
   const modal = useModal();
 
   const loadMessages = useCallback(async () => {
-    const [msgs, likesData] = await Promise.all([getMessages(), getLikes()]);
+    const [msgs, likesData] = await Promise.all([getMessages(channel), getLikes()]);
     setMessages(msgs);
     setLikes(likesData);
     setLoading(false);
@@ -82,10 +85,13 @@ export default function ChatScreen() {
     useCallback(() => {
       let active = true;
       loadMessages();
-      // Load reported message IDs
       AsyncStorage.getItem('stobi:reported_messages').then((json) => {
         if (json) setReportedIds(new Set(JSON.parse(json)));
       });
+      // Detect user's country for local chat
+      getCurrentLocation().then((loc) => {
+        if (loc?.country) setUserCountry(loc.country);
+      }).catch(() => {});
       getCurrentUser().then((u) => {
         if (active) setUser(u);
       });
@@ -120,7 +126,7 @@ export default function ChatScreen() {
       return () => {
         active = false;
       };
-    }, [loadMessages]),
+    }, [loadMessages, channel]),
   );
 
   const handleAttachPhoto = async () => {
@@ -162,7 +168,7 @@ export default function ChatScreen() {
         await editMessage(editingMsg.id, trimmed);
         setEditingMsg(null);
       } else {
-        await sendMessage(trimmed, undefined, replyingTo?.id, pendingPhoto ?? undefined);
+        await sendMessage(trimmed, undefined, replyingTo?.id, pendingPhoto ?? undefined, channel);
         setReplyingTo(null);
         setPendingPhoto(null);
         await updateChallengeProgress('chat');
@@ -428,7 +434,9 @@ export default function ChatScreen() {
           <ChatsCircle size={22} color={Colors.accent} weight="fill" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{t('chat.title')}</Text>
+          <Text style={styles.headerTitle}>
+            {channel === 'global' ? t('chat.global') : `${t('chat.local')} ${userCountry}`}
+          </Text>
           <View style={styles.headerSubRow}>
             <View style={styles.onlineDot} />
             <Text style={styles.headerSub}>
@@ -437,6 +445,25 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
+      </View>
+
+      {/* Channel switcher */}
+      <View style={styles.channelBar}>
+        {(['global', userCountry] as const).map((ch) => {
+          const active = ch === channel;
+          return (
+            <TouchableOpacity
+              key={ch}
+              style={[styles.channelChip, active && styles.channelChipActive]}
+              onPress={() => { setChannel(ch); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.channelChipText, active && styles.channelChipTextActive]}>
+                {ch === 'global' ? `🌍 ${t('chat.global')}` : `📍 ${userCountry}`}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Messages */}
@@ -566,6 +593,31 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
 
   // Header
+  channelBar: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  channelChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.surface2,
+  },
+  channelChipActive: {
+    backgroundColor: Colors.accent,
+  },
+  channelChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text2,
+  },
+  channelChipTextActive: {
+    color: '#FFFFFF',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -573,8 +625,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
   },
   headerIcon: {

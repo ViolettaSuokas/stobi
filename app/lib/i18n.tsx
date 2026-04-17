@@ -88,6 +88,8 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.report_title': 'Жалоба отправлена',
     'chat.report_sent': 'Спасибо! Мы проверим это сообщение.',
     'chat.message_hidden': 'Сообщение скрыто',
+    'chat.global': 'Глобальный',
+    'chat.local': 'Чат',
     'chat.reply': 'Ответить',
     'chat.edit': 'Редактировать',
 
@@ -414,6 +416,8 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.report_title': 'Ilmianto lähetetty',
     'chat.report_sent': 'Kiitos! Tarkistamme tämän viestin.',
     'chat.message_hidden': 'Viesti piilotettu',
+    'chat.global': 'Globaali',
+    'chat.local': 'Chat',
     'chat.reply': 'Vastaa',
     'chat.edit': 'Muokkaa',
 
@@ -739,6 +743,8 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.report_title': 'Report sent',
     'chat.report_sent': 'Thanks! We\'ll review this message.',
     'chat.message_hidden': 'Message hidden',
+    'chat.global': 'Global',
+    'chat.local': 'Chat',
     'chat.reply': 'Reply',
     'chat.edit': 'Edit',
 
