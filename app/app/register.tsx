@@ -25,7 +25,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StoneMascot } from '../components/StoneMascot';
 import { ArrowRight } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
-import { FontAwesome } from '@expo/vector-icons';
+import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 
 type Mode = 'buttons' | 'email';
 
@@ -203,7 +203,7 @@ export default function RegisterScreen() {
                     activeOpacity={0.85}
                     disabled={loading}
                   >
-                    <FontAwesome name="apple" size={20} color="#FFFFFF" />
+                    <AppleLogo size={20} color="#FFFFFF" weight="fill" />
                     <Text style={styles.socialText}>{t('auth.apple')}</Text>
                   </TouchableOpacity>
                 )}
@@ -215,7 +215,7 @@ export default function RegisterScreen() {
                   activeOpacity={0.85}
                   disabled={loading}
                 >
-                  <FontAwesome name="google" size={18} color="#FFFFFF" />
+                  <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
                   <Text style={styles.socialText}>{t('auth.google')}</Text>
                 </TouchableOpacity>
 
