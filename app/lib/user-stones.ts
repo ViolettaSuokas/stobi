@@ -74,7 +74,8 @@ export async function getUserStones(): Promise<UserStone[]> {
         authorAvatar: user.avatar,
         isArtist: user.isArtist,
       }));
-    } catch {
+    } catch (e) {
+      console.warn('getUserStones fallback to local', e);
       return read(); // offline fallback
     }
   }
@@ -116,7 +117,8 @@ export async function addUserStone(input: Omit<UserStone, 'id' | 'createdAt'>): 
         authorAvatar: input.authorAvatar,
         isArtist: input.isArtist,
       };
-    } catch {
+    } catch (e) {
+      console.warn('addUserStone fallback to local', e);
       // Fall through to AsyncStorage
     }
   }

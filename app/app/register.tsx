@@ -317,7 +317,9 @@ export default function RegisterScreen() {
                       try {
                         await login(acc.email, acc.password);
                         router.replace('/map');
-                      } catch {}
+                      } catch (e: any) {
+                        setError(e?.message ?? t('login.error'));
+                      }
                     }}
                     disabled={loading}
                     activeOpacity={0.85}
