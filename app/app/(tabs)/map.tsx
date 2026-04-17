@@ -345,18 +345,9 @@ export default function MapScreen() {
   const userLat = location?.coords.lat ?? 60.2934;
   const userLng = location?.coords.lng ?? 25.0378;
 
-  // Камень не показывается первый час после создания (анти-фрод).
-  // Автор видит свой камень сразу.
-  const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
-  const now = Date.now();
-  const allCountryStones = stones.filter((s) => {
-    if (foundIds.includes(s.id)) return false;
-    if (!s.createdAt) return true; // demo/seeded — always show
-    const age = now - new Date(s.createdAt).getTime();
-    if (age >= COOLDOWN_MS) return true; // older than 1h — show
-    if (s.authorId && s.authorId === currentUserId) return true; // own stone
-    return false;
-  });
+  // Все камни по стране (за вычетом найденных).
+  // Новые камни видны сразу, но кнопка «Я нашёл» заблокирована первый час (в stone/[id].tsx).
+  const allCountryStones = stones.filter((s) => !foundIds.includes(s.id));
 
   // Камни в моём городе (для нижней карточки)
   const myCity = location?.city ?? null;

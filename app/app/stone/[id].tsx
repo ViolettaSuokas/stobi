@@ -34,7 +34,7 @@ import {
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { earnPoints, getPoints, spendPoints, REWARD_FIND, ALL_ITEMS } from '../../lib/points';
-import { hasFoundStone, markStoneFound, getFindsToday } from '../../lib/finds';
+import { hasFoundStone, markStoneFound, getFindsToday, getFindsOfAuthorToday, recordAuthorFind, isAuthorLimitReached } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
 import { deleteUserStone, editUserStone } from '../../lib/user-stones';
@@ -209,12 +209,11 @@ export default function StoneDetailScreen() {
       return;
     }
 
-    // Anti-fraud: stone must be at least 1 hour old
-    if (stone?.createdAt) {
-      const ageMs = Date.now() - new Date(stone.createdAt).getTime();
-      if (ageMs < 60 * 60 * 1000) {
-        const minLeft = Math.ceil((60 * 60 * 1000 - ageMs) / 60000);
-        Alert.alert(t('stone.cooldown_title'), t('stone.cooldown_text').replace('{min}', String(minLeft)));
+    // Anti-fraud: max 2 stones per author per day
+    if (stone?.authorId) {
+      const authorFinds = await getFindsOfAuthorToday(stone.authorId);
+      if (isAuthorLimitReached(authorFinds)) {
+        Alert.alert(t('stone.author_limit_title'), t('stone.author_limit_text'));
         return;
       }
     }
@@ -230,10 +229,7 @@ export default function StoneDetailScreen() {
 
     if (stone?.coords) {
       const distanceM = haversineDistance(userLocation.coords, stone.coords);
-      if (distanceM > 100) {
-        const distStr = distanceM > 1000
-          ? `${(distanceM / 1000).toFixed(1)}км`
-          : `${Math.round(distanceM)}м`;
+      if (distanceM > 30) {
         const userCity = userLocation.city ?? '';
         const stoneCity = stone.city ?? '';
         const cityHint = userCity && stoneCity && userCity !== stoneCity
@@ -241,7 +237,7 @@ export default function StoneDetailScreen() {
           : '';
         Alert.alert(
           t('stone.too_far_title'),
-          `${t('stone.too_far_text')} ${distStr}${cityHint}`,
+          `${t('stone.too_far_text')}${cityHint}`,
         );
         return;
       }
@@ -262,9 +258,7 @@ export default function StoneDetailScreen() {
     setClaiming(true);
     try {
       await markStoneFound(stoneId);
-      // Awarding the finder (+REWARD_FIND) is client-side.
-      // Awarding the author (+REWARD_AUTHOR_ON_FIND) is server-side via
-      // trigger on the `finds` table — RLS blocks cross-user updates.
+      if (stone?.authorId) await recordAuthorFind(stone.authorId);
       const newBalance = await earnPoints(REWARD_FIND);
       setAlreadyFound(true);
 

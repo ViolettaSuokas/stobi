@@ -120,3 +120,51 @@ export async function getFindsToday(): Promise<number> {
 export async function clearFinds(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
+
+// ────────────────────────────────────────────
+// Anti-fraud: max finds per author per day
+// ────────────────────────────────────────────
+
+const AUTHOR_FINDS_KEY = 'stobi:finds_by_author';
+const MAX_FINDS_PER_AUTHOR_PER_DAY = 2;
+
+type AuthorFindsMap = Record<string, Record<string, number>>;
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function readAuthorFinds(): Promise<AuthorFindsMap> {
+  try {
+    const json = await AsyncStorage.getItem(AUTHOR_FINDS_KEY);
+    return json ? JSON.parse(json) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeAuthorFinds(map: AuthorFindsMap): Promise<void> {
+  await AsyncStorage.setItem(AUTHOR_FINDS_KEY, JSON.stringify(map));
+}
+
+export async function getFindsOfAuthorToday(authorId: string): Promise<number> {
+  const map = await readAuthorFinds();
+  const today = todayKey();
+  return map[today]?.[authorId] ?? 0;
+}
+
+export async function recordAuthorFind(authorId: string): Promise<void> {
+  const map = await readAuthorFinds();
+  const today = todayKey();
+  if (!map[today]) map[today] = {};
+  map[today][authorId] = (map[today][authorId] ?? 0) + 1;
+  // Clean old days to prevent storage bloat
+  for (const key of Object.keys(map)) {
+    if (key < today) delete map[key];
+  }
+  await writeAuthorFinds(map);
+}
+
+export function isAuthorLimitReached(count: number): boolean {
+  return count >= MAX_FINDS_PER_AUTHOR_PER_DAY;
+}
