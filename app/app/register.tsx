@@ -270,6 +270,17 @@ export default function RegisterScreen() {
                     </Text>
                   </TouchableOpacity>
                 </Link>
+
+                <Text style={styles.legalText}>
+                  {t('register.legal_prefix')}{' '}
+                  <Text style={styles.legalLink} onPress={() => router.push('/terms')}>
+                    {t('register.terms')}
+                  </Text>
+                  {' '}{t('register.legal_and')}{' '}
+                  <Text style={styles.legalLink} onPress={() => router.push('/privacy')}>
+                    {t('register.privacy')}
+                  </Text>
+                </Text>
               </View>
 
             {/* Dev demo accounts */}
@@ -472,6 +483,19 @@ const styles = StyleSheet.create({
   linkBtn: { alignItems: 'center', paddingVertical: 8 },
   linkText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
   linkAccent: { color: '#C4B5FD', fontWeight: '700' },
+
+  legalText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+    lineHeight: 16,
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  legalLink: {
+    textDecorationLine: 'underline',
+    color: 'rgba(255,255,255,0.6)',
+  },
 
   // Dev demo
   demoList: {

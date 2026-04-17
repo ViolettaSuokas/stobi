@@ -202,6 +202,10 @@ const T: Record<Lang, Record<string, string>> = {
     'register.password_hint': 'Пароль (минимум 6 символов)',
     'register.button': 'Создать аккаунт',
     'register.has_account': 'Уже есть аккаунт?',
+    'register.legal_prefix': 'Продолжая, ты соглашаешься с',
+    'register.terms': 'Условиями использования',
+    'register.legal_and': 'и',
+    'register.privacy': 'Политикой конфиденциальности',
     'register.error': 'Не удалось зарегистрироваться',
     'register.notice': 'Сейчас данные сохраняются только на этом устройстве. Реальная регистрация появится после подключения бэкенда.',
 
@@ -529,6 +533,10 @@ const T: Record<Lang, Record<string, string>> = {
     'register.password_hint': 'Salasana (vähintään 6 merkkiä)',
     'register.button': 'Luo tili',
     'register.has_account': 'Onko jo tili?',
+    'register.legal_prefix': 'Jatkamalla hyväksyt',
+    'register.terms': 'Käyttöehdot',
+    'register.legal_and': 'ja',
+    'register.privacy': 'Tietosuojakäytännön',
     'register.error': 'Rekisteröinti epäonnistui',
     'register.notice': 'Tiedot tallentuvat tällä hetkellä vain tähän laitteeseen. Oikea rekisteröinti tulee käyttöön backendin yhdistämisen jälkeen.',
 
@@ -856,6 +864,10 @@ const T: Record<Lang, Record<string, string>> = {
     'register.password_hint': 'Password (at least 6 characters)',
     'register.button': 'Create account',
     'register.has_account': 'Already have an account?',
+    'register.legal_prefix': 'By continuing, you agree to',
+    'register.terms': 'Terms of Service',
+    'register.legal_and': 'and',
+    'register.privacy': 'Privacy Policy',
     'register.error': 'Registration failed',
     'register.notice': 'Data is currently saved only on this device. Real registration will be available after backend integration.',
 

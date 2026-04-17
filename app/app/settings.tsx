@@ -233,13 +233,13 @@ export default function SettingsScreen() {
             <Text style={styles.rowValue}>1.0.0</Text>
           </View>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => Linking.openURL('https://stobi.app/privacy')}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/privacy')}>
             <Shield size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.privacy')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => Linking.openURL('https://stobi.app/terms')}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/terms')}>
             <Shield size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.terms')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
