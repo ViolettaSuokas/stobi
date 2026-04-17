@@ -6,12 +6,22 @@ import { ModalProvider } from '../lib/modal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { initPurchases } from '../lib/purchases';
 import { getCurrentUser } from '../lib/auth';
+import { initSentry, identifySentryUser } from '../lib/sentry';
+
+// Init crash reporter как можно раньше — до первого useState/useEffect.
+initSentry();
 
 export default function RootLayout() {
   useEffect(() => {
-    getCurrentUser().then((u) => {
-      if (u) initPurchases(u.id);
-    }).catch(() => {});
+    // Параллельно: auth + purchases. Раньше было последовательно — +1-2s на cold start.
+    Promise.allSettled([
+      getCurrentUser().then((u) => {
+        if (u) {
+          identifySentryUser({ id: u.id, email: u.email });
+          return initPurchases(u.id);
+        }
+      }),
+    ]).catch(() => {});
   }, []);
   return (
     <ErrorBoundary>

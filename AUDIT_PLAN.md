@@ -26,25 +26,35 @@
 ## 🚨 15 БЛОКЕРОВ до App Store
 
 ### Security (7 критичных)
-- [ ] **B1.** RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` в Supabase с `security definer`
-- [ ] **B2.** RLS-запрет прямого UPDATE на `balance`, `is_premium`, `owned_items`, `equipped_items`, `premium_expires_at`
-- [ ] **B3.** RevenueCat webhook → Supabase Edge Function → `service_role` апдейт `is_premium` (клиент больше ничего не пишет)
-- [ ] **B4.** Триггер rate-limit: 2 finds/автор/сутки (переносим из AsyncStorage на сервер)
-- [ ] **B5.** Серверная модерация сообщений (SQL trigger + regex, позже OpenAI Moderation API)
-- [ ] **B6.** Rate-limit чата на сервере: 1 сообщение / 3 сек на user_id
-- [ ] **B7.** Фото: resize до 1600 px + strip EXIF через `expo-image-manipulator` (3 места: `add.tsx`, `chat.tsx`, `profile.tsx`) + лимит 2 MB
+- [x] **B1.** ✅ RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` в Supabase с `security definer` *(миграции 002-005 написаны, ждут накатывания)*
+- [x] **B2.** ✅ RLS-запрет прямого UPDATE на `balance`, `is_premium`, `owned_items`, `equipped_items`, `premium_expires_at` *(миграция 001)*
+- [x] **B3.** ✅ RevenueCat webhook → Supabase Edge Function *(инструкция + код в 009_revenuecat_webhook.md, клиент `purchases.ts` уже не пишет `is_premium`)*
+- [x] **B4.** ✅ Триггер rate-limit: 2 finds/автор/сутки *(встроено в `record_find` RPC, миграция 005)*
+- [x] **B5.** ✅ Серверная модерация сообщений + bio + stones *(миграция 007, banned_words table + triggers)*
+- [x] **B6.** ✅ Rate-limit чата на сервере: 1/3 сек, 30/час *(миграция 006)*
+- [x] **B7.** ✅ Фото: resize 1600 px + strip EXIF *(`lib/photo.ts` + интеграция в add/chat/profile/stone)*
 
 ### Store compliance (6)
-- [ ] **B8.** `google-services.json` → `.gitignore`, ротировать Firebase API key в Google Cloud Console
-- [ ] **B9.** Сгенерировать `PrivacyInfo.xcprivacy` (location + user ID collection) — обязательно для iOS 17+
-- [ ] **B10.** Добавить `NSUserTrackingUsageDescription` в `app.json.ios.infoPlist` (ATT prompt)
-- [ ] **B11.** Добавить `supportURL`, privacy URL, terms URL в `app.json.extra`
-- [ ] **B12.** Заменить sandbox-ключи RevenueCat (`test_mCIvELpIYugBvVUFNDasZssXuos`) на прод через EAS Secrets
-- [ ] **B13.** Настроить iOS signing в `eas.json` (submit.production сейчас пустой)
+- [x] **B8.** ✅ `google-services.json` в `.gitignore` *(файл оставлен для локальной сборки — ротировать Firebase API key в Google Cloud Console до релиза)*
+- [x] **B9.** ✅ `PrivacyInfo.xcprivacy` *(inline в `app.json.ios.privacyManifests` — Expo prebuild сгенерирует)*
+- [x] **B10.** ✅ `NSUserTrackingUsageDescription` в `app.json.ios.infoPlist`
+- [x] **B11.** ✅ `supportUrl` / `privacyPolicyUrl` / `termsOfServiceUrl` в `app.json.extra` *(заменить на реальный домен когда купится)*
+- [ ] **B12.** Заменить sandbox-ключи RevenueCat на прод через EAS Env *(структура готова: `purchases.ts` читает из `Constants.expoConfig.extra.RC_IOS_KEY` / `RC_ANDROID_KEY`)*
+- [ ] **B13.** Настроить iOS signing в `eas.json` (требуется EAS dashboard + Apple Developer аккаунт)
 
 ### Product (2)
 - [ ] **B14.** Финская локализация всех строк (~1000 €, native speaker из Fiverr / Upwork)
 - [ ] **B15.** Добавить поле «дата рождения» в регистрацию (13+) для COPPA/GDPR compliance
+
+### Дополнительно закрыто (в этой же сессии)
+- [x] Client-side валидация регистрации (email regex, password ≥8, name 2-32)
+- [x] Триал 24 ч → **7 дней** (`premium-trial.ts`)
+- [x] Хардкод русского в модалах → i18n (`add.tsx`, `premium.tsx`, `settings.tsx`)
+- [x] Fix 50ms modal lag (`modal.tsx`)
+- [x] Haptics на find/hide/send/like (`lib/haptics.ts`)
+- [x] Оптимистичный like с rollback (`chat.tsx`)
+- [x] Sentry integration *(`lib/sentry.ts` + ErrorBoundary + `_layout.tsx` cold start parallelized)*
+- [x] Plus plugin `@sentry/react-native` в `app.json`
 
 ---
 

@@ -1,6 +1,7 @@
 import React, { Component, type ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../constants/Colors';
+import { captureException } from '../lib/sentry';
 
 type Props = { children: ReactNode; fallbackMessage?: string };
 type State = { hasError: boolean; error: Error | null };
@@ -14,6 +15,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, info.componentStack);
+    captureException(error, { componentStack: info.componentStack });
   }
 
   render() {
