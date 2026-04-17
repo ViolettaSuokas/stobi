@@ -29,6 +29,7 @@ import {
 } from '../../lib/location';
 import { getFoundStoneIds } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
+import { getCurrentUser } from '../../lib/auth';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { BlurView } from 'expo-blur';
@@ -247,6 +248,7 @@ export default function MapScreen() {
   const [filter, setFilter] = useState<'nearby' | 'country' | 'world'>('country');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [foundIds, setFoundIds] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [trialActive, setTrialActive] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const { t } = useI18n();
@@ -279,14 +281,16 @@ export default function MapScreen() {
       let cancelled = false;
       (async () => {
         try {
-          const [fIds, loc, trial] = await Promise.all([
+          const [fIds, loc, trial, user] = await Promise.all([
             getFoundStoneIds().catch(() => [] as string[]),
             getCurrentLocation().catch(() => null),
             getTrialInfo().catch(() => ({ active: false, msRemaining: 0 } as any)),
+            getCurrentUser().catch(() => null),
           ]);
           if (cancelled) return;
           setFoundIds(fIds);
           setTrialActive(trial.active);
+          if (user) setCurrentUserId(user.id);
 
           if (!loc) {
             setPermissionDenied(true);
@@ -341,8 +345,18 @@ export default function MapScreen() {
   const userLat = location?.coords.lat ?? 60.2934;
   const userLng = location?.coords.lng ?? 25.0378;
 
-  // Все камни по стране (за вычетом найденных)
-  const allCountryStones = stones.filter((s) => !foundIds.includes(s.id));
+  // Камень не показывается первый час после создания (анти-фрод).
+  // Автор видит свой камень сразу.
+  const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+  const now = Date.now();
+  const allCountryStones = stones.filter((s) => {
+    if (foundIds.includes(s.id)) return false;
+    if (!s.createdAt) return true; // demo/seeded — always show
+    const age = now - new Date(s.createdAt).getTime();
+    if (age >= COOLDOWN_MS) return true; // older than 1h — show
+    if (s.authorId && s.authorId === currentUserId) return true; // own stone
+    return false;
+  });
 
   // Камни в моём городе (для нижней карточки)
   const myCity = location?.city ?? null;

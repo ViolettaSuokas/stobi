@@ -43,6 +43,8 @@ export type NearbyStone = {
   city?: string | null;
   /** Supabase user ID of the stone's author (hider). Null for demo/seeded stones. */
   authorId?: string | null;
+  /** When the stone was hidden (ISO string or epoch). Null for demo/seeded stones. */
+  createdAt?: string | null;
 };
 
 /** Free users see stones within this radius. Beyond = Premium only */
@@ -518,6 +520,7 @@ export async function getNearbyStones(
             isPremium: realMeters > FREE_RADIUS_M,
             city: s.city ?? null,
             authorId: s.author_id ?? null,
+            createdAt: s.created_at ?? null,
           };
         });
         return supabaseStones;

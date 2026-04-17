@@ -208,6 +208,17 @@ export default function StoneDetailScreen() {
       Alert.alert(t('stone.own_stone'), t('stone.cant_find_own'));
       return;
     }
+
+    // Anti-fraud: stone must be at least 1 hour old
+    if (stone?.createdAt) {
+      const ageMs = Date.now() - new Date(stone.createdAt).getTime();
+      if (ageMs < 60 * 60 * 1000) {
+        const minLeft = Math.ceil((60 * 60 * 1000 - ageMs) / 60000);
+        Alert.alert(t('stone.cooldown_title'), t('stone.cooldown_text').replace('{min}', String(minLeft)));
+        return;
+      }
+    }
+
     if (!(await requireAuth('отметить находку'))) return;
 
     // ── GPS verification: must be within 100m of the stone ──

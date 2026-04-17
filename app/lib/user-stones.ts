@@ -247,6 +247,7 @@ export function toNearbyStone(
     rotation: (hash(stone.id) % 20) - 10,
     isPremium: false, // user's own stones are never premium-locked
     authorId: stone.authorUserId,
+    createdAt: new Date(stone.createdAt).toISOString(),
   };
 }
 
