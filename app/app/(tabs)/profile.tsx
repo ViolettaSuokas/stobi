@@ -274,18 +274,16 @@ export default function ProfileScreen() {
               style={styles.heroNameRow}
               onPress={user ? () => {
                 modal.show({
-                  title: t('profile.edit_name'),
-                  input: { placeholder: t('profile.name_placeholder'), defaultValue: user.username },
+                  title: t('profile.character_name_title'),
+                  input: { placeholder: t('profile.character_name_placeholder'), defaultValue: user.characterName ?? '' },
                   buttons: [
                     { label: t('common.cancel'), style: 'cancel' },
                     {
                       label: t('common.save'),
-                      onPress: async (newName) => {
-                        if (!newName?.trim()) return;
-                        const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
-                        if (isSupabaseConfigured()) {
-                          await supabase.from('profiles').update({ username: newName.trim() }).eq('id', user.id);
-                        }
+                      onPress: async (name) => {
+                        if (!name?.trim()) return;
+                        const { updateCharacterName } = await import('../../lib/auth');
+                        await updateCharacterName(name.trim());
                         const fresh = await getCurrentUser();
                         setUser(fresh);
                       },
@@ -295,7 +293,7 @@ export default function ProfileScreen() {
               } : undefined}
               activeOpacity={user ? 0.7 : 1}
             >
-              <Text style={styles.heroName}>{user?.username ?? t('profile.guest')}</Text>
+              <Text style={styles.heroName}>{user?.characterName || t('profile.character_name_default')}</Text>
               {user && (
                 <PencilSimple size={16} color="rgba(255,255,255,0.6)" weight="bold" />
               )}
@@ -392,21 +390,50 @@ export default function ProfileScreen() {
         {mainTab === 'overview' ? (
           <View style={styles.body}>
             {/* Profile photo + name card */}
-            <TouchableOpacity style={styles.profilePhotoCard} onPress={handleChangePhoto} activeOpacity={0.8}>
-              <View style={styles.profilePhotoCircle}>
-                {user?.photoUrl ? (
-                  <Image source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} />
-                ) : (
-                  <Camera size={28} color={Colors.text2} weight="regular" />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.profilePhotoName}>{user?.username ?? t('profile.guest')}</Text>
+            <View style={styles.profilePhotoCard}>
+              <TouchableOpacity onPress={handleChangePhoto} activeOpacity={0.8}>
+                <View style={styles.profilePhotoCircle}>
+                  {user?.photoUrl ? (
+                    <Image source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} />
+                  ) : (
+                    <Camera size={28} color={Colors.text2} weight="regular" />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={user ? () => {
+                  modal.show({
+                    title: t('profile.edit_name'),
+                    input: { placeholder: t('profile.name_placeholder'), defaultValue: user.username },
+                    buttons: [
+                      { label: t('common.cancel'), style: 'cancel' },
+                      {
+                        label: t('common.save'),
+                        onPress: async (newName) => {
+                          if (!newName?.trim()) return;
+                          const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
+                          if (isSupabaseConfigured()) {
+                            await supabase.from('profiles').update({ username: newName.trim() }).eq('id', user.id);
+                          }
+                          const fresh = await getCurrentUser();
+                          setUser(fresh);
+                        },
+                      },
+                    ],
+                  });
+                } : undefined}
+                activeOpacity={0.7}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.profilePhotoName}>{user?.username ?? t('profile.guest')}</Text>
+                  {user && <PencilSimple size={14} color={Colors.text2} weight="bold" />}
+                </View>
                 <Text style={styles.profilePhotoHint}>
                   {user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
                 </Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
 
             {/* Stats */}
             <View style={styles.statsRow}>

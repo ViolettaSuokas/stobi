@@ -45,6 +45,7 @@ export type LeaderEntry = {
   userId: string;
   userName: string;
   userAvatar: string;
+  userPhotoUrl?: string;
   isArtist?: boolean;
   count: number;
 };

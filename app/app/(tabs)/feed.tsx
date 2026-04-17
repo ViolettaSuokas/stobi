@@ -326,7 +326,9 @@ export default function FeedScreen() {
                           </Text>
                         </View>
                         <View style={styles.leaderAvatar}>
-                          {(() => {
+                          {entry.userPhotoUrl ? (
+                            <Image source={{ uri: entry.userPhotoUrl }} style={styles.leaderPhoto} />
+                          ) : (() => {
                             const s = resolveStyle(entry.userId);
                             return (
                               <StoneMascot
@@ -705,6 +707,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  leaderPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
   },
   leaderNameRow: {
     flexDirection: 'row',
