@@ -60,6 +60,7 @@ export default function ChatScreen() {
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const { t } = useI18n();
   const modal = useModal();
@@ -83,13 +84,29 @@ export default function ChatScreen() {
       getMyStyle().then((s) => {
         if (active) setMyStyle(s);
       });
-      // Load real member count from Supabase
+      // Load member count + online count + mark self active
       (async () => {
         try {
           const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
           if (!isSupabaseConfigured()) return;
+
+          // Mark current user as active
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            await supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', authUser.id);
+          }
+
+          // Total members
           const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
           if (active && count !== null) setMemberCount(count);
+
+          // Online = active in last 5 min
+          const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const { count: online } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .gte('last_active_at', fiveMinAgo);
+          if (active && online !== null) setOnlineCount(online);
         } catch {}
       })();
       return () => {
@@ -359,7 +376,10 @@ export default function ChatScreen() {
           <Text style={styles.headerTitle}>{t('chat.title')}</Text>
           <View style={styles.headerSubRow}>
             <View style={styles.onlineDot} />
-            <Text style={styles.headerSub}>{`${memberCount} ${t('chat.members')}`}</Text>
+            <Text style={styles.headerSub}>
+              {`${memberCount} ${t('chat.members')}`}
+              {onlineCount > 0 ? ` · ${onlineCount} ${t('chat.online')}` : ''}
+            </Text>
           </View>
         </View>
       </View>
