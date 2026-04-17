@@ -26,13 +26,15 @@
 ## 🚨 15 БЛОКЕРОВ до App Store
 
 ### Security (7 критичных)
-- [x] **B1.** ✅ RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` в Supabase с `security definer` *(миграции 002-005 написаны, ждут накатывания)*
-- [x] **B2.** ✅ RLS-запрет прямого UPDATE на `balance`, `is_premium`, `owned_items`, `equipped_items`, `premium_expires_at` *(миграция 001)*
-- [x] **B3.** ✅ RevenueCat webhook → Supabase Edge Function *(инструкция + код в 009_revenuecat_webhook.md, клиент `purchases.ts` уже не пишет `is_premium`)*
-- [x] **B4.** ✅ Триггер rate-limit: 2 finds/автор/сутки *(встроено в `record_find` RPC, миграция 005)*
-- [x] **B5.** ✅ Серверная модерация сообщений + bio + stones *(миграция 007, banned_words table + triggers)*
-- [x] **B6.** ✅ Rate-limit чата на сервере: 1/3 сек, 30/час *(миграция 006)*
+- [x] **B1.** ✅ RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` в Supabase с `security definer` — **НАКАТАНЫ на прод** (миграции 002-005)
+- [x] **B2.** ✅ RLS-запрет прямого UPDATE на `balance`, `is_premium`, `owned_items`, `equipped_items`, `premium_expires_at` — **НАКАТАНО** (миграция 001)
+- [ ] **B3.** RevenueCat webhook — код готов в `009_revenuecat_webhook.md`, ждёт деплоя Edge Function и настройки webhook в RC dashboard. Клиент `purchases.ts` уже не пишет `is_premium`.
+- [x] **B4.** ✅ Триггер rate-limit: 2 finds/автор/сутки — **НАКАТАНО** (встроено в `record_find` RPC)
+- [x] **B5.** ✅ Серверная модерация сообщений + bio + stones — **НАКАТАНО** (banned_words table + 3 triggers)
+- [x] **B6.** ✅ Rate-limit чата на сервере: 1/3 сек, 30/час — **НАКАТАНО**
 - [x] **B7.** ✅ Фото: resize 1600 px + strip EXIF *(`lib/photo.ts` + интеграция в add/chat/profile/stone)*
+
+Проверено на живой БД: все 7 RPC созданы (SECURITY DEFINER), 4 таблицы, 4 триггера, 29 items в каталоге, 20 banned words, старый `on_find_reward_author` снят, haversine проверен на Хельсинки→Турку (150.3 км), модерация детектит мат, RLS на balance_events включён.
 
 ### Store compliance (6)
 - [x] **B8.** ✅ `google-services.json` в `.gitignore` *(файл оставлен для локальной сборки — ротировать Firebase API key в Google Cloud Console до релиза)*
