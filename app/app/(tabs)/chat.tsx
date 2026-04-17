@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -47,6 +48,7 @@ import { StoneMascot } from '../../components/StoneMascot';
 import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
 import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
 import { updateChallengeProgress } from '../../lib/daily-challenge';
+import { moderateMessage } from '../../lib/moderation';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -130,6 +132,22 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed && !pendingPhoto || sending) return;
 
+    // Content moderation
+    if (trimmed) {
+      const check = moderateMessage(trimmed);
+      if (!check.ok) {
+        const msgs: Record<string, string> = {
+          profanity: t('chat.mod_profanity'),
+          link: t('chat.mod_link'),
+          too_short: '',
+        };
+        if (msgs[check.reason!]) {
+          Alert.alert(t('chat.mod_title'), msgs[check.reason!]);
+        }
+        return;
+      }
+    }
+
     if (!(await requireAuth('писать в чат'))) return;
 
     setSending(true);
@@ -204,6 +222,14 @@ export default function ChatScreen() {
     });
   };
 
+  const handleReport = async (item: ChatMessage) => {
+    try {
+      const { trackEvent } = await import('../../lib/analytics');
+      await trackEvent('report_message', { message_id: item.id, author_id: item.authorId });
+    } catch {}
+    Alert.alert(t('chat.report_title'), t('chat.report_sent'));
+  };
+
   const showMessageMenu = async (item: ChatMessage) => {
     if (!(await requireAuth('взаимодействовать с сообщениями'))) return;
 
@@ -222,6 +248,12 @@ export default function ChatScreen() {
         text: t('chat.delete_action'),
         style: 'destructive',
         onPress: () => handleDelete(item),
+      });
+    } else {
+      options.push({
+        text: t('chat.report'),
+        style: 'destructive',
+        onPress: () => handleReport(item),
       });
     }
 

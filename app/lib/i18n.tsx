@@ -81,6 +81,12 @@ const T: Record<Lang, Record<string, string>> = {
     // Chat
     'chat.title': 'Сообщество Stobi',
     'chat.placeholder': 'Написать в чат...',
+    'chat.mod_title': 'Нельзя отправить',
+    'chat.mod_profanity': 'Сообщение содержит запрещённые слова. Давай будем вежливыми!',
+    'chat.mod_link': 'Ссылки в чате запрещены.',
+    'chat.report': 'Пожаловаться',
+    'chat.report_title': 'Жалоба отправлена',
+    'chat.report_sent': 'Спасибо! Мы проверим это сообщение.',
     'chat.reply': 'Ответить',
     'chat.edit': 'Редактировать',
 
@@ -400,6 +406,12 @@ const T: Record<Lang, Record<string, string>> = {
 
     'chat.title': 'Stobi-yhteisö',
     'chat.placeholder': 'Kirjoita viesti...',
+    'chat.mod_title': 'Ei voi lähettää',
+    'chat.mod_profanity': 'Viesti sisältää kiellettyjä sanoja. Olkaamme kohteliaita!',
+    'chat.mod_link': 'Linkit chatissa on kielletty.',
+    'chat.report': 'Ilmianna',
+    'chat.report_title': 'Ilmianto lähetetty',
+    'chat.report_sent': 'Kiitos! Tarkistamme tämän viestin.',
     'chat.reply': 'Vastaa',
     'chat.edit': 'Muokkaa',
 
@@ -718,6 +730,12 @@ const T: Record<Lang, Record<string, string>> = {
 
     'chat.title': 'Stobi Community',
     'chat.placeholder': 'Write a message...',
+    'chat.mod_title': 'Cannot send',
+    'chat.mod_profanity': 'Message contains prohibited words. Let\'s be kind!',
+    'chat.mod_link': 'Links are not allowed in chat.',
+    'chat.report': 'Report',
+    'chat.report_title': 'Report sent',
+    'chat.report_sent': 'Thanks! We\'ll review this message.',
     'chat.reply': 'Reply',
     'chat.edit': 'Edit',
 
