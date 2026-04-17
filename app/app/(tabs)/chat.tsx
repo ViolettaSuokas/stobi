@@ -24,6 +24,8 @@ import {
   Heart,
   PencilSimple,
   Paperclip,
+  Globe,
+  MapPin,
 } from 'phosphor-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
@@ -461,9 +463,15 @@ export default function ChatScreen() {
               onPress={() => { setMessages([]); setChannel(ch); }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.channelChipText, active && styles.channelChipTextActive]}>
-                {ch === 'global' ? `🌍 ${t('chat.global')}` : `📍 ${userCountry}`}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                {ch === 'global'
+                  ? <Globe size={15} color={active ? '#FFFFFF' : Colors.text2} weight={active ? 'fill' : 'regular'} />
+                  : <MapPin size={15} color={active ? '#FFFFFF' : Colors.text2} weight={active ? 'fill' : 'regular'} />
+                }
+                <Text style={[styles.channelChipText, active && styles.channelChipTextActive]}>
+                  {ch === 'global' ? t('chat.global') : userCountry}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
