@@ -5,8 +5,8 @@ import { supabase, isSupabaseConfigured } from './supabase';
 // ⚠️  ВСТАВЬ КЛЮЧИ ИЗ REVENUECAT DASHBOARD:
 //     app.revenuecat.com → Project → API Keys
 // ─────────────────────────────────────────────────
-const RC_IOS_KEY = 'YOUR_REVENUECAT_IOS_KEY';
-const RC_ANDROID_KEY = 'YOUR_REVENUECAT_ANDROID_KEY';
+const RC_IOS_KEY = 'test_mCIvELpIYugBvVUFNDasZssXuos';
+const RC_ANDROID_KEY = 'test_mCIvELpIYugBvVUFNDasZssXuos';
 
 let Purchases: any = null;
 let isInitialized = false;
@@ -50,13 +50,13 @@ export async function purchaseSubscription(pkg: any): Promise<boolean> {
 
   try {
     const { customerInfo } = await Purchases.purchasePackage(pkg);
-    const isPremium = customerInfo.entitlements.active['premium'] !== undefined;
+    const isPremium = customerInfo.entitlements.active['Stobi Pro'] !== undefined;
 
     // Sync premium status to Supabase
     if (isPremium && isSupabaseConfigured()) {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
-        const expiry = customerInfo.entitlements.active['premium']?.expirationDate;
+        const expiry = customerInfo.entitlements.active['Stobi Pro']?.expirationDate;
         await supabase.from('profiles').update({
           is_premium: true,
           premium_expires_at: expiry,
@@ -98,7 +98,7 @@ export async function checkPremiumStatus(): Promise<boolean> {
 
   try {
     const customerInfo = await Purchases.getCustomerInfo();
-    return customerInfo.entitlements.active['premium'] !== undefined;
+    return customerInfo.entitlements.active['Stobi Pro'] !== undefined;
   } catch {
     return false;
   }
@@ -110,7 +110,7 @@ export async function restorePurchases(): Promise<boolean> {
 
   try {
     const { customerInfo } = await Purchases.restorePurchases();
-    return customerInfo.entitlements.active['premium'] !== undefined;
+    return customerInfo.entitlements.active['Stobi Pro'] !== undefined;
   } catch {
     return false;
   }

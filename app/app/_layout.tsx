@@ -1,10 +1,18 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { I18nProvider } from '../lib/i18n';
 import { ModalProvider } from '../lib/modal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { initPurchases } from '../lib/purchases';
+import { getCurrentUser } from '../lib/auth';
 
 export default function RootLayout() {
+  useEffect(() => {
+    getCurrentUser().then((u) => {
+      if (u) initPurchases(u.id);
+    }).catch(() => {});
+  }, []);
   return (
     <ErrorBoundary>
     <I18nProvider>
