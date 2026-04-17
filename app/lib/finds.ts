@@ -82,7 +82,7 @@ export async function getFoundStoneIds(): Promise<string[]> {
         .from('finds')
         .select('stone_id')
         .eq('user_id', user.id);
-      if (!error && data) return data.map((row: any) => row.stone_id as string);
+      if (!error && data) return data.map((row: { stone_id: string }) => row.stone_id);
     } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }

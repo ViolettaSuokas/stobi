@@ -332,7 +332,7 @@ export default function MapScreen() {
     webViewRef.current?.injectJavaScript('window.recenterMap(); true;');
   };
 
-  const handleWebViewMessage = async (event: any) => {
+  const handleWebViewMessage = async (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'stoneTap') {

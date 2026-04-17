@@ -59,7 +59,7 @@ export async function getUserStones(): Promise<UserStone[]> {
         .select('*')
         .eq('author_id', user.id);
       if (error || !data) return read();
-      return data.map((row: any) => ({
+      return data.map((row: Record<string, any>) => ({
         id: row.id,
         name: row.name,
         emoji: row.emoji,

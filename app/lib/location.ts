@@ -514,7 +514,7 @@ export async function getNearbyStones(
         .select('*');
 
       if (dbStones && dbStones.length > 0) {
-        const supabaseStones: NearbyStone[] = dbStones.map((s: any) => {
+        const supabaseStones: NearbyStone[] = dbStones.map((s: Record<string, any>) => {
           const stoneCoords = { lat: s.lat, lng: s.lng };
           const realMeters = haversineDistance(userCoords, stoneCoords);
           const shape = getStoneShape(s.id, 1);

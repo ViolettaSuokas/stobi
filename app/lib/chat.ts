@@ -151,7 +151,7 @@ export async function getMessages(channel: string = 'global'): Promise<ChatMessa
         .order('created_at');
 
       if (!error && data) {
-        return data.map((row: any) => ({
+        return data.map((row: Record<string, any>) => ({
           id: row.id,
           authorId: row.author_id,
           authorName: row.profiles?.username ?? 'Unknown',

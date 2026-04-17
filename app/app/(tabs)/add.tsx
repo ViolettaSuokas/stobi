@@ -26,7 +26,7 @@ import { Colors } from '../../constants/Colors';
 import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
 import { addUserStone } from '../../lib/user-stones';
-import { getCurrentUser } from '../../lib/auth';
+import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import { StoneMascot } from '../../components/StoneMascot';
 import { useModal } from '../../lib/modal';
@@ -45,7 +45,7 @@ export default function AddScreen() {
   const { t } = useI18n();
 
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Check auth on focus — show placeholder for guests instead of redirecting
