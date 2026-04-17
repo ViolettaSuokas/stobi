@@ -4,6 +4,7 @@ Numbered SQL migrations. Apply in order in Supabase SQL Editor (supabase.com →
 
 ## Apply order
 
+0. `000_baseline_schema.sql` — таблицы profiles/stones/finds/messages/likes/achievements/analytics_events + базовые RLS-policies + handle_new_user trigger + delete_user RPC. Накатывается **один раз** на новый проект. Прод уже имеет это накатанным.
 1. `001_lock_profile_columns.sql` — запрещает клиенту писать `balance`, `is_premium`, `premium_expires_at`, `owned_items`, `equipped_items`
 2. `002_earn_points_rpc.sql` — серверная функция начисления алмазиков (идемпотентная, с event-log)
 3. `003_spend_item_rpc.sql` — серверная функция покупки косметики (проверка владения, премиум-гейт, списание)

@@ -1,6 +1,11 @@
 -- ═══════════════════════════════════════════════
--- Stobi Database Schema
--- Run this in Supabase SQL Editor (supabase.com → SQL Editor → New Query)
+-- Stobi — BASELINE schema (накатывается один раз на новый проект)
+--
+-- После этого — миграции 001-008 в порядке (см. README.md).
+--
+-- Замечание: часть правил из этого файла (UPDATE policy на profiles,
+-- reward_stone_author trigger) позже изменяется миграцией 001 и 005.
+-- НЕ редактируй их здесь — вместо этого пиши новую миграцию 010+.
 -- ═══════════════════════════════════════════════
 
 -- 1. Profiles (extends auth.users)
