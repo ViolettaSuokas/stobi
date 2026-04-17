@@ -71,6 +71,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                   onPress={onPress}
                   activeOpacity={0.85}
                   style={styles.addBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('tab.add_stone')}
+                  accessibilityHint={t('tab.add_stone_hint')}
                 >
                   <View style={styles.addStone}>
                     <Plus size={16} color={Colors.accent} weight="bold" />
@@ -91,6 +94,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               onPress={onPress}
               activeOpacity={0.7}
               style={styles.tabItem}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={`${t(config.labelKey)}${badge > 0 ? `, ${badge} ${t('tab.unread')}` : ''}`}
             >
               <View
                 style={[

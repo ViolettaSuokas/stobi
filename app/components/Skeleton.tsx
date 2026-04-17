@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, type ViewStyle } from 'react-native';
+import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
 
 type Props = {
@@ -9,36 +10,61 @@ type Props = {
   style?: ViewStyle;
 };
 
+/**
+ * Skeleton placeholder с shimmer-эффектом — скользящий градиент слева
+ * направо по базовой плашке. Ощущается активнее, чем просто opacity fade.
+ *
+ * Реализация: base-плашка (серый прямоугольник) + абсолютный
+ * LinearGradient который ездит по translateX от -1.5× до +1.5× ширины.
+ */
 export function Skeleton({ width, height, borderRadius = 8, style }: Props) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const translate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(translate, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: true,
+      }),
     );
     loop.start();
     return () => loop.stop();
-  }, [opacity]);
+  }, [translate]);
+
+  // Если width числовой — двигаем в пределах [-2*width, +2*width]
+  const parsedWidth = typeof width === 'number' ? width : 200;
+  const translateX = translate.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-parsedWidth * 1.5, parsedWidth * 1.5],
+  });
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.base,
-        { width: width as any, height, borderRadius, opacity },
+        { width: width as any, height, borderRadius, overflow: 'hidden' },
         style,
       ]}
-    />
+    >
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { transform: [{ translateX }] },
+        ]}
+      >
+        <LinearGradient
+          colors={[
+            'rgba(255,255,255,0)',
+            'rgba(255,255,255,0.6)',
+            'rgba(255,255,255,0)',
+          ]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -46,13 +72,13 @@ export function SkeletonRow({ count = 3 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <Animated.View key={i} style={styles.row}>
+        <View key={i} style={styles.row}>
           <Skeleton width={40} height={40} borderRadius={20} />
-          <Animated.View style={{ flex: 1, gap: 6 }}>
+          <View style={{ flex: 1, gap: 6 }}>
             <Skeleton width="60%" height={14} />
             <Skeleton width="90%" height={12} />
-          </Animated.View>
-        </Animated.View>
+          </View>
+        </View>
       ))}
     </>
   );

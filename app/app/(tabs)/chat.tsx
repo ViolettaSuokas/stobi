@@ -51,6 +51,7 @@ import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { SkeletonRow } from '../../components/Skeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { getCurrentLocation } from '../../lib/location';
 import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
 import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
@@ -547,13 +548,23 @@ export default function ChatScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
             extraData={messages.length + Object.keys(likes).length}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={[
+              styles.messagesList,
+              messages.length === 0 && { flexGrow: 1, justifyContent: 'center' },
+            ]}
             showsVerticalScrollIndicator={false}
             windowSize={10}
             maxToRenderPerBatch={15}
             removeClippedSubviews
             onRefresh={loadMessages}
             refreshing={false}
+            ListEmptyComponent={
+              <EmptyState
+                title={t('chat.empty_title')}
+                subtitle={t('chat.empty_subtitle')}
+                mascotVariant="happy"
+              />
+            }
             ListHeaderComponent={
               canLoadOlder && messages.length >= 50 ? (
                 <TouchableOpacity
