@@ -32,7 +32,7 @@ import {
   type Activity,
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
-import { earnPoints, getPoints, REWARD_FIND, ALL_ITEMS } from '../../lib/points';
+import { earnPoints, getPoints, spendPoints, REWARD_FIND, ALL_ITEMS } from '../../lib/points';
 import { hasFoundStone, markStoneFound, getFindsToday } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
@@ -46,6 +46,8 @@ import { useI18n } from '../../lib/i18n';
 import { StoneMascot } from '../../components/StoneMascot';
 import { gatherAchievementStats, checkAchievements, ACHIEVEMENT_DEFS } from '../../lib/achievements';
 import { updateChallengeProgress } from '../../lib/daily-challenge';
+import { isStoneRevealed, revealStone } from '../../lib/reveals';
+import { getTrialInfo } from '../../lib/premium-trial';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 0.95;
@@ -60,6 +62,8 @@ export default function StoneDetailScreen() {
   const [alreadyFound, setAlreadyFound] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [isOwnStone, setIsOwnStone] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const [revealLoading, setRevealLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,17 +86,29 @@ export default function StoneDetailScreen() {
       if (stoneId) {
         const claimed = await hasFoundStone(stoneId);
         setAlreadyFound(claimed);
+        // Already found or already revealed → show details
+        if (claimed) {
+          setRevealed(true);
+        } else {
+          const wasRevealed = await isStoneRevealed(stoneId);
+          if (wasRevealed) setRevealed(true);
+        }
       }
 
-      // Check if this is the current user's own stone
+      // Own stones are always revealed
       const user = await getCurrentUser();
       if (user && stoneHistory.length > 0) {
         const seedId = DEMO_SEED_USER_MAP[user.email] ?? user.id;
         const hideEvent = [...stoneHistory].reverse().find((a) => a.type === 'hide');
         if (hideEvent && (hideEvent.userId === seedId || hideEvent.userId === user.id)) {
           setIsOwnStone(true);
+          setRevealed(true);
         }
       }
+
+      // Premium users see all details
+      const trial = await getTrialInfo();
+      if (trial.active) setRevealed(true);
 
       setLoading(false);
     })();
@@ -104,6 +120,34 @@ export default function StoneDetailScreen() {
 
   const modal = useModal();
   const { t } = useI18n();
+
+  const REVEAL_COST = 5;
+
+  const handleReveal = async () => {
+    if (!stoneId) return;
+    setRevealLoading(true);
+    try {
+      const success = await spendPoints(REVEAL_COST);
+      if (!success) {
+        modal.show({
+          title: t('stone.reveal_title'),
+          message: t('stone.reveal_not_enough'),
+          buttons: [{ label: t('common.understood'), style: 'cancel' }],
+        });
+        return;
+      }
+      await revealStone(stoneId);
+      setRevealed(true);
+    } catch {
+      modal.show({
+        title: t('common.error'),
+        message: t('stone.reveal_error'),
+        buttons: [{ label: t('common.understood'), style: 'cancel' }],
+      });
+    } finally {
+      setRevealLoading(false);
+    }
+  };
 
   const handleEditName = () => {
     modal.show({
@@ -211,6 +255,9 @@ export default function StoneDetailScreen() {
     setClaiming(true);
     try {
       await markStoneFound(stoneId);
+      // Awarding the finder (+REWARD_FIND) is client-side.
+      // Awarding the author (+REWARD_AUTHOR_ON_FIND) is server-side via
+      // trigger on the `finds` table — RLS blocks cross-user updates.
       const newBalance = await earnPoints(REWARD_FIND);
       setAlreadyFound(true);
 
@@ -306,9 +353,9 @@ export default function StoneDetailScreen() {
       >
         {/* Hero — large photo or gradient blob */}
         <View style={styles.heroArea}>
-          {heroPhotoUri ? (
+          {revealed && heroPhotoUri ? (
             <Image source={{ uri: heroPhotoUri }} style={styles.heroImage} />
-          ) : heroPhoto ? (
+          ) : revealed && heroPhoto ? (
             <Image source={STONE_PHOTOS[heroPhoto]} style={styles.heroImage} />
           ) : (
             <LinearGradient
@@ -317,7 +364,11 @@ export default function StoneDetailScreen() {
               end={{ x: 0.85, y: 0.95 }}
               style={[styles.heroImage, styles.heroFallback]}
             >
-              <Text style={styles.heroFallbackEmoji}>{stone.emoji}</Text>
+              {revealed ? (
+                <Text style={styles.heroFallbackEmoji}>{stone.emoji}</Text>
+              ) : (
+                <Text style={styles.heroFallbackEmoji}>🔒</Text>
+              )}
             </LinearGradient>
           )}
 
@@ -332,6 +383,41 @@ export default function StoneDetailScreen() {
           </SafeAreaView>
         </View>
 
+        {!revealed ? (
+          <View style={styles.body}>
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: Colors.text, marginBottom: 8, textAlign: 'center' }}>
+                {t('stone.reveal_title')}
+              </Text>
+              <Text style={{ fontSize: 14, color: Colors.text2, textAlign: 'center', lineHeight: 20, marginBottom: 24, paddingHorizontal: 20 }}>
+                {t('stone.reveal_desc')}
+              </Text>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: Colors.accent,
+                  borderRadius: 16,
+                  paddingVertical: 16,
+                  paddingHorizontal: 32,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  opacity: revealLoading ? 0.6 : 1,
+                }}
+                onPress={handleReveal}
+                disabled={revealLoading}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFFFFF' }}>
+                  {t('stone.reveal_cta')} · {REVEAL_COST} 💎
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 12, color: Colors.text2, marginTop: 12 }}>
+                {t('stone.reveal_or_premium')}
+              </Text>
+            </View>
+          </View>
+        ) : (
         <View style={styles.body}>
           {/* Title + meta */}
           <View style={styles.titleRow}>
@@ -445,6 +531,7 @@ export default function StoneDetailScreen() {
             </View>
           )}
         </View>
+        )}
       </ScrollView>
 
       {/* Sticky bottom CTA */}

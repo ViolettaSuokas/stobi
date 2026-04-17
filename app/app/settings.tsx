@@ -115,13 +115,26 @@ export default function SettingsScreen() {
         {
           text: t('common.delete'),
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAccount();
-              router.replace('/onboarding');
-            } catch (e: any) {
-              Alert.alert(t('common.error'), e?.message ?? t('settings.delete_account'));
-            }
+          onPress: () => {
+            Alert.alert(
+              t('settings.delete_final_title'),
+              t('settings.delete_final_text'),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('settings.delete_final_confirm'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                      router.replace('/onboarding');
+                    } catch (e: any) {
+                      Alert.alert(t('common.error'), e?.message ?? t('settings.delete_account'));
+                    }
+                  },
+                },
+              ],
+            );
           },
         },
       ],

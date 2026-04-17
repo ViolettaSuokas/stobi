@@ -159,3 +159,30 @@ begin
   delete from auth.users where id = auth.uid();
 end;
 $$;
+
+-- ═══════════════════════════════════════════════
+-- Reward stone author when someone else finds their stone
+-- ═══════════════════════════════════════════════
+
+create or replace function reward_stone_author()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_author uuid;
+begin
+  select author_id into v_author from stones where id = new.stone_id;
+  -- Don't reward self-finds (e.g. seeded stones the user technically 'owns')
+  if v_author is not null and v_author <> new.user_id then
+    update profiles set balance = coalesce(balance, 0) + 2 where id = v_author;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_find_reward_author on finds;
+create trigger on_find_reward_author
+  after insert on finds
+  for each row execute function reward_stone_author();

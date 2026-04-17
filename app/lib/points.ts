@@ -10,6 +10,8 @@ const STORAGE_KEY = 'stobi:points';
 export const REWARD_FIND = 1;
 /** Reward for hiding a stone */
 export const REWARD_HIDE = 3;
+/** Bonus for the author when their hidden stone is found by someone else */
+export const REWARD_AUTHOR_ON_FIND = 2;
 const STARTING_BALANCE = 0;
 
 export type ItemCategory = 'color' | 'eye' | 'smile' | 'shape' | 'decor' | 'boost';
@@ -188,6 +190,42 @@ export async function getState(): Promise<StoredState> {
 export async function isOwned(itemId: string): Promise<boolean> {
   const state = await read();
   return state.ownedItemIds.includes(itemId);
+}
+
+/** Spend points (e.g. reveal a stone). Returns false if insufficient balance. */
+export async function spendPoints(amount: number): Promise<boolean> {
+  if (amount <= 0) return true;
+  const balance = await getPoints();
+  if (balance < amount) return false;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('balance')
+          .eq('id', user.id)
+          .single();
+        if (profile && (profile.balance ?? 0) >= amount) {
+          await supabase
+            .from('profiles')
+            .update({ balance: (profile.balance ?? 0) - amount })
+            .eq('id', user.id);
+          return true;
+        }
+        return false;
+      }
+    } catch {
+      // Fall through to AsyncStorage
+    }
+  }
+
+  const state = await readLocal();
+  if (state.balance < amount) return false;
+  state.balance -= amount;
+  await writeLocal(state);
+  return true;
 }
 
 export async function earnPoints(amount: number): Promise<number> {
