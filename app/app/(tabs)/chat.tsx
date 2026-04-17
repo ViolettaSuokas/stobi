@@ -27,6 +27,7 @@ import {
 } from 'phosphor-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/Colors';
 import {
   getMessages,
@@ -60,6 +61,7 @@ export default function ChatScreen() {
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
@@ -80,6 +82,10 @@ export default function ChatScreen() {
     useCallback(() => {
       let active = true;
       loadMessages();
+      // Load reported message IDs
+      AsyncStorage.getItem('stobi:reported_messages').then((json) => {
+        if (json) setReportedIds(new Set(JSON.parse(json)));
+      });
       getCurrentUser().then((u) => {
         if (active) setUser(u);
       });
@@ -227,6 +233,11 @@ export default function ChatScreen() {
       const { trackEvent } = await import('../../lib/analytics');
       await trackEvent('report_message', { message_id: item.id, author_id: item.authorId });
     } catch {}
+    // Hide message locally
+    const updated = new Set(reportedIds);
+    updated.add(item.id);
+    setReportedIds(updated);
+    await AsyncStorage.setItem('stobi:reported_messages', JSON.stringify([...updated]));
     Alert.alert(t('chat.report_title'), t('chat.report_sent'));
   };
 
@@ -276,10 +287,22 @@ export default function ChatScreen() {
     const messageLikes = likes[item.id] ?? [];
     const likeCount = messageLikes.length;
     const isLiked = user ? messageLikes.includes(user.id) : false;
+    const isReported = reportedIds.has(item.id);
 
     const replyParent = item.replyToId
       ? messages.find((m) => m.id === item.replyToId)
       : null;
+
+    if (isReported) {
+      return (
+        <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
+          {!isMe && <View style={styles.avatarSlot} />}
+          <View style={styles.hiddenBubble}>
+            <Text style={styles.hiddenBubbleText}>{t('chat.message_hidden')}</Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View style={[styles.messageRow, isMe && styles.messageRowMe]}>
@@ -602,6 +625,18 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+  },
+  hiddenBubble: {
+    backgroundColor: Colors.surface2,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    opacity: 0.6,
+  },
+  hiddenBubbleText: {
+    fontSize: 13,
+    color: Colors.text2,
+    fontStyle: 'italic',
   },
   avatar: {
     width: 42,
