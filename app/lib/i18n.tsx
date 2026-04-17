@@ -86,6 +86,8 @@ const T: Record<Lang, Record<string, string>> = {
 
     // Profile
     'profile.guest': 'Гость',
+    'profile.add_photo': 'Добавить фото',
+    'profile.change_photo': 'Изменить фото',
     'profile.overview': 'Общее',
     'profile.customize': 'Кастомизация',
     'profile.hidden_count': 'Спрятано',
@@ -402,6 +404,8 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.edit': 'Muokkaa',
 
     'profile.guest': 'Vieras',
+    'profile.add_photo': 'Lisää kuva',
+    'profile.change_photo': 'Vaihda kuva',
     'profile.overview': 'Yleistä',
     'profile.customize': 'Muokkaa',
     'profile.hidden_count': 'Piilotettu',
@@ -718,6 +722,8 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.edit': 'Edit',
 
     'profile.guest': 'Guest',
+    'profile.add_photo': 'Add photo',
+    'profile.change_photo': 'Change photo',
     'profile.overview': 'Overview',
     'profile.customize': 'Customize',
     'profile.hidden_count': 'Hidden',

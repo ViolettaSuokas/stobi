@@ -268,18 +268,6 @@ export default function ProfileScreen() {
                 shape={selectedShape}
                 decor={selectedDecor}
               />
-              {/* Real photo badge — bottom right of mascot */}
-              <TouchableOpacity
-                style={styles.photoCircle}
-                onPress={handleChangePhoto}
-                activeOpacity={0.8}
-              >
-                {user?.photoUrl ? (
-                  <Image source={{ uri: user.photoUrl }} style={styles.photoImage} />
-                ) : (
-                  <Camera size={20} color="#FFFFFF" weight="bold" />
-                )}
-              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -403,6 +391,23 @@ export default function ProfileScreen() {
 
         {mainTab === 'overview' ? (
           <View style={styles.body}>
+            {/* Profile photo + name card */}
+            <TouchableOpacity style={styles.profilePhotoCard} onPress={handleChangePhoto} activeOpacity={0.8}>
+              <View style={styles.profilePhotoCircle}>
+                {user?.photoUrl ? (
+                  <Image source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} />
+                ) : (
+                  <Camera size={28} color={Colors.text2} weight="regular" />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profilePhotoName}>{user?.username ?? t('profile.guest')}</Text>
+                <Text style={styles.profilePhotoHint}>
+                  {user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
             {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
@@ -905,24 +910,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 6,
   },
-  photoCircle: {
-    position: 'absolute',
-    bottom: 4,
-    right: '25%',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
+  profilePhotoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 14,
+  },
+  profilePhotoCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.surface2,
+    borderWidth: 2,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  photoImage: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  profilePhotoImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  profilePhotoName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  profilePhotoHint: {
+    fontSize: 13,
+    color: Colors.accent,
+    marginTop: 2,
   },
   characterNameRow: {
     flexDirection: 'row',
