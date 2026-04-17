@@ -85,28 +85,18 @@ function buildMapHTML(
     .map((s) => {
       const fuzz = fuzzCoords(s.coords, s.id);
       return `
-      // Approximate area circle (showing search zone, not exact spot)
-      L.circle([${fuzz.lat}, ${fuzz.lng}], {
-        radius: ${fuzz.radius.toFixed(0)},
-        fillColor: '${s.colors[0]}',
-        color: '${s.colors[1]}',
-        weight: 1.5,
-        opacity: 0.4,
-        fillOpacity: 0.15,
-      }).addTo(map);
-
       L.circleMarker([${fuzz.lat}, ${fuzz.lng}], {
-        radius: 10,
+        radius: 12,
         fillColor: '${s.colors[0]}',
         color: '${s.colors[1]}',
         weight: 2.5,
         opacity: 0.9,
-        fillOpacity: 0.8,
+        fillOpacity: 0.85,
       })
       .addTo(map)
       .bindTooltip('${s.emoji} ${s.name.replace(/'/g, "\\'")}', {
         direction: 'top',
-        offset: [0, -10],
+        offset: [0, -12],
         className: 'stone-tooltip',
       })
       .on('click', function() {
@@ -208,13 +198,17 @@ function buildMapHTML(
     var map = L.map('map', {
       zoomControl: false,
       attributionControl: true,
+      preferCanvas: true,
     }).setView([${userLat}, ${userLng}], 14);
 
-    // CartoDB Voyager — clean modern tiles, works globally
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap contributors, © CARTO',
-      maxZoom: 19,
+    // CartoDB Voyager — clean modern tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+      attribution: '© OSM, © CARTO',
+      maxZoom: 17,
       subdomains: 'abcd',
+      updateWhenIdle: true,
+      updateWhenZooming: false,
+      keepBuffer: 4,
     }).addTo(map);
 
     // User position marker — styled like Stobi
@@ -413,6 +407,9 @@ export default function MapScreen() {
           overScrollMode="never"
           javaScriptEnabled
           domStorageEnabled
+          cacheEnabled
+          cacheMode="LOAD_CACHE_ELSE_NETWORK"
+          androidLayerType="hardware"
           startInLoadingState
           renderLoading={() => (
             <View style={styles.loader}>
