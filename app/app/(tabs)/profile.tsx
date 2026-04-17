@@ -170,14 +170,14 @@ export default function ProfileScreen() {
     if (balance < item.price) {
       modal.show({
         title: t('profile.not_enough'),
-        message: `"${item.label}" стоит ${item.price} 💎, у тебя ${balance}.\n\nЗарабатывай алмазики за находки и закладки!`,
+        message: t('profile.cost_info').replace('{label}', item.label).replace('{price}', String(item.price)).replace('{balance}', String(balance)),
         buttons: [{ label: t('common.understood'), style: 'cancel' }],
       });
       return;
     }
     modal.show({
-      title: `Купить "${item.label}"?`,
-      message: `Стоит ${item.price} 💎. У тебя ${balance} 💎.`,
+      title: t('profile.buy_title').replace('{label}', item.label),
+      message: t('profile.buy_message').replace('{price}', String(item.price)).replace('{balance}', String(balance)),
       buttons: [
         { label: t('common.cancel'), style: 'cancel' },
         {
@@ -673,14 +673,13 @@ export default function ProfileScreen() {
             <View style={styles.hintCard}>
               <Text style={styles.hintEmoji}>💡</Text>
               <Text style={styles.hintText}>
-                Зарабатывай алмазики за находки и закладки. Трать на цвет,
-                выражение и форму своего камня.
+                {t('profile.earn_hint_text')}
               </Text>
             </View>
 
             {/* Color picker */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎨 ЦВЕТ</Text>
+              <Text style={styles.sectionTitle}>🎨 {t('profile.section_color')}</Text>
               <View style={styles.colorGrid}>
                 {COLOR_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -721,7 +720,7 @@ export default function ProfileScreen() {
 
             {/* Eye / expression picker */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>😊 ВЫРАЖЕНИЕ ЛИЦА</Text>
+              <Text style={styles.sectionTitle}>😊 {t('profile.section_face')}</Text>
               <View style={styles.eyeGrid}>
                 {EYE_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -770,7 +769,7 @@ export default function ProfileScreen() {
 
             {/* Shape picker */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🪨 ФОРМА КАМНЯ</Text>
+              <Text style={styles.sectionTitle}>🪨 {t('profile.section_shape')}</Text>
               <View style={styles.eyeGrid}>
                 {SHAPE_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -819,7 +818,7 @@ export default function ProfileScreen() {
 
             {/* Decor picker */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>✨ УКРАШЕНИЯ</Text>
+              <Text style={styles.sectionTitle}>✨ {t('profile.section_decor')}</Text>
               <View style={styles.eyeGrid}>
                 {DECOR_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);

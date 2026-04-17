@@ -49,13 +49,13 @@ export default function LoginScreen() {
     setError(null);
     try {
       const GoogleSignin = getGoogleSignin();
-      if (!GoogleSignin) throw new Error('Google Sign-in недоступен в этой версии приложения');
+      if (!GoogleSignin) throw new Error(t('stone.error_google'));
 
       configureGoogleSignIn();
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo?.data?.idToken ?? userInfo?.idToken;
-      if (!idToken) throw new Error('Не удалось получить токен Google');
+      if (!idToken) throw new Error(t('stone.error_google_token'));
 
       const { error: signInError } = await supabase.auth.signInWithIdToken({
         provider: 'google',

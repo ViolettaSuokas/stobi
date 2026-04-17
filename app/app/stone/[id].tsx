@@ -185,7 +185,7 @@ export default function StoneDetailScreen() {
   const handleDeleteStone = () => {
     Alert.alert(
       t('stone.delete_title'),
-      `"${stone?.name}" будет удалён с карты и из профиля.`,
+      t('stone.delete_confirm').replace('{name}', stone?.name ?? ''),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -426,7 +426,7 @@ export default function StoneDetailScreen() {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <MapPin size={13} color={Colors.accent} weight="fill" />
-              <Text style={styles.metaText}>{stone.distance} от тебя</Text>
+              <Text style={styles.metaText}>{stone.distance} {t('stone.distance_from')}</Text>
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
