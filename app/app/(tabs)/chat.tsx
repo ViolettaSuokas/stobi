@@ -79,9 +79,8 @@ export default function ChatScreen() {
     setMessages(msgs);
     setLikes(likesData);
     setLoading(false);
-    // Mark all messages as read when chat is open
     markChatRead();
-  }, []);
+  }, [channel]);
 
   useFocusEffect(
     useCallback(() => {
