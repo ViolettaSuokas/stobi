@@ -86,7 +86,7 @@ create table analytics_events (
 
 -- Profiles
 alter table profiles enable row level security;
-create policy "Users can read own profile" on profiles for select using (auth.uid() = id);
+create policy "Profiles are visible to authenticated users" on profiles for select to authenticated using (true);
 create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
 create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
 
