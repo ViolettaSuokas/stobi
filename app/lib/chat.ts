@@ -20,6 +20,8 @@ export type ChatMessage = {
   photo?: StonePhotoKey;
   /** If this message is a reply to another message */
   replyToId?: string;
+  /** User-sent photo URI (camera/gallery) */
+  photoUri?: string;
   /** Set to true after the message has been edited */
   isEdited?: boolean;
 };
@@ -175,9 +177,10 @@ export async function sendMessage(
   text: string,
   photo?: StonePhotoKey,
   replyToId?: string,
+  photoUri?: string,
 ): Promise<ChatMessage> {
   const trimmed = text.trim();
-  if (!trimmed && !photo) throw new Error('Сообщение не может быть пустым');
+  if (!trimmed && !photo && !photoUri) throw new Error('Сообщение не может быть пустым');
 
   const user = await getCurrentUser();
   if (!user) throw new Error('Войди в аккаунт чтобы писать в чат');
@@ -229,6 +232,7 @@ export async function sendMessage(
     text: trimmed,
     createdAt: Date.now(),
     photo,
+    photoUri,
     replyToId,
   };
 

@@ -22,7 +22,9 @@ import {
   ArrowUp,
   Heart,
   PencilSimple,
+  Paperclip,
 } from 'phosphor-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import {
@@ -55,6 +57,7 @@ export default function ChatScreen() {
   const [likes, setLikes] = useState<Record<string, string[]>>({});
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
@@ -95,23 +98,32 @@ export default function ChatScreen() {
     }, [loadMessages]),
   );
 
+  const handleAttachPhoto = async () => {
+    if (!(await requireAuth('прикрепить фото'))) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.7,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPendingPhoto(result.assets[0].uri);
+    }
+  };
+
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!trimmed || sending) return;
+    if (!trimmed && !pendingPhoto || sending) return;
 
     if (!(await requireAuth('писать в чат'))) return;
 
     setSending(true);
     try {
       if (editingMsg) {
-        // Edit existing message
         await editMessage(editingMsg.id, trimmed);
         setEditingMsg(null);
       } else {
-        // Send new message (optionally as reply)
-        await sendMessage(trimmed, undefined, replyingTo?.id);
+        await sendMessage(trimmed, undefined, replyingTo?.id, pendingPhoto ?? undefined);
         setReplyingTo(null);
-        // Track challenge + achievements for new messages
+        setPendingPhoto(null);
         await updateChallengeProgress('chat');
         const achStats = await gatherAchievementStats();
         await checkAchievements(achStats);
@@ -279,7 +291,10 @@ export default function ChatScreen() {
                 )}
               </View>
             )}
-            {item.photo && (
+            {item.photoUri && (
+              <Image source={{ uri: item.photoUri }} style={styles.bubblePhoto} />
+            )}
+            {!item.photoUri && item.photo && (
               <Image source={STONE_PHOTOS[item.photo]} style={styles.bubblePhoto} />
             )}
             {item.text.length > 0 && (
@@ -422,8 +437,29 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Pending photo preview */}
+        {pendingPhoto && (
+          <View style={styles.pendingPhotoWrap}>
+            <Image source={{ uri: pendingPhoto }} style={styles.pendingPhotoImg} />
+            <TouchableOpacity
+              style={styles.pendingPhotoClose}
+              onPress={() => setPendingPhoto(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Input bar */}
         <View style={styles.inputBar}>
+          <TouchableOpacity
+            style={styles.attachBtn}
+            onPress={handleAttachPhoto}
+            activeOpacity={0.7}
+          >
+            <Paperclip size={22} color={Colors.text2} weight="regular" />
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             placeholder={t('chat.placeholder')}
@@ -434,9 +470,9 @@ export default function ChatScreen() {
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!text.trim() && !pendingPhoto) && styles.sendBtnDisabled]}
             onPress={handleSend}
-            disabled={!text.trim() || sending}
+            disabled={(!text.trim() && !pendingPhoto) || sending}
             activeOpacity={0.85}
           >
             {sending ? (
@@ -680,11 +716,41 @@ const styles = StyleSheet.create({
   },
 
   // Input bar
+  pendingPhotoWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  pendingPhotoImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  pendingPhotoClose: {
+    position: 'absolute',
+    top: 4,
+    left: 68,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 10 : 14,
     backgroundColor: Colors.surface,
