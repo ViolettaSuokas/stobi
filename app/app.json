@@ -17,7 +17,57 @@
       "bundleIdentifier": "com.stobi.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserTrackingUsageDescription": "Stobi uses an anonymous identifier to measure app performance and improve stone discovery. We never sell your data.",
+        "NSLocationWhenInUseUsageDescription": "Stobi uses your location to show painted stones near you and verify finds.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Stobi uses your location to show painted stones near you and verify finds.",
+        "NSCameraUsageDescription": "Take a photo of the stone you found or want to hide.",
+        "NSPhotoLibraryUsageDescription": "Attach a photo from your library to a stone or chat message.",
+        "NSPhotoLibraryAddUsageDescription": "Save found stones to your photo library."
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
       }
     },
     "android": {
@@ -62,7 +112,10 @@
       "router": {},
       "eas": {
         "projectId": "2d5fca99-5572-4e65-8127-30c934c29b79"
-      }
+      },
+      "supportUrl": "https://stobi.app/support",
+      "privacyPolicyUrl": "https://stobi.app/privacy",
+      "termsOfServiceUrl": "https://stobi.app/terms"
     },
     "owner": "letta",
     "runtimeVersion": {

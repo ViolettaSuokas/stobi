@@ -68,7 +68,9 @@ export default function PremiumScreen() {
     const plan = plans.find((p) => p.id === selectedPlan)!;
     modal.show({
       title: t('premium.success'),
-      message: `Premium будет доступен после подключения оплаты.\n\nПлан: ${plan.label} (${plan.price})`,
+      message: t('premium.demo_message')
+        .replace('{plan}', plan.label)
+        .replace('{price}', plan.price),
       buttons: [{ label: t('premium.nice'), onPress: () => router.back() }],
     });
   };
@@ -214,8 +216,8 @@ export default function PremiumScreen() {
             const restored = await restorePurchases();
             modal.show({
               title: restored ? t('premium.success') : t('premium.restore'),
-              message: restored ? 'Premium восстановлен!' : 'Покупки не найдены',
-              buttons: [{ label: 'OK' }],
+              message: restored ? t('premium.restored_message') : t('premium.no_purchases'),
+              buttons: [{ label: t('common.ok') }],
             });
           }}>
             <Text style={styles.restoreLink}>{t('premium.restore')}</Text>

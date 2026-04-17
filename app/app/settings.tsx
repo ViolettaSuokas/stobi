@@ -83,8 +83,8 @@ export default function SettingsScreen() {
   const handlePaymentHistory = () => {
     modal.show({
       title: t('settings.payment_history'),
-      message: 'У тебя пока нет платежей.\n\nЗдесь будут отображаться все подписки и покупки.',
-      buttons: [{ label: 'Понятно', style: 'cancel' }],
+      message: t('settings.payment_history_empty'),
+      buttons: [{ label: t('common.ok'), style: 'cancel' }],
     });
   };
 

@@ -190,7 +190,9 @@ export default function AddScreen() {
           <StoneMascot size={140} color="#86EFAC" variant="happy" decor="flower" showSparkles />
         ),
         title: t('add.success_title'),
-        message: `"${name.trim()}" теперь на карте.\n\n+3 💎 · Теперь у тебя ${newBalance} 💎${achSuffix}`,
+        message: `${t('add.success_message')
+          .replace('{name}', name.trim())
+          .replace('{balance}', String(newBalance))}${achSuffix}`,
         buttons: [{ label: t('common.nice'), onPress: () => router.back() }],
       });
     } catch (e: any) {

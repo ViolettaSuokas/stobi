@@ -40,9 +40,31 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError(null);
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (trimmedName.length < 2) {
+      setError(t('register.name_too_short'));
+      return;
+    }
+    if (trimmedName.length > 32) {
+      setError(t('register.name_too_long'));
+      return;
+    }
+    // Простой email-regex: something@something.tld
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError(t('register.email_invalid'));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t('register.password_too_short'));
+      return;
+    }
+
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(trimmedEmail, password, trimmedName);
       router.replace('/map');
     } catch (e: any) {
       setError(e?.message ?? t('register.error'));

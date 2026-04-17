@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# Firebase / Google services — никогда не коммитим
+google-services.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
