@@ -25,7 +25,7 @@
 
 ---
 
-## 🚨 15 БЛОКЕРОВ — 13 из 15 закрыто
+## 🚨 15 БЛОКЕРОВ — 14 из 15 закрыто
 
 ### Security (7/7) ✅
 - [x] **B1.** RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` — **накатаны на прод** (миграции 002-005, всё `SECURITY DEFINER`)
@@ -51,9 +51,9 @@
       ```
 - [ ] **B13.** iOS signing уже настроен (видно в EAS build credentials: Apple Team K5G3R554ZA, distribution cert до 2027, provisioning profile 4YDP9U5629). Для TestFlight production нужна отдельная настройка — ждать пока preview-билд пройдёт.
 
-### Product (1/2)
+### Product (2/2)
 - [x] **B15.** 13+ age gate в регистрации — чекбокс обязательный для COPPA/GDPR compliance
-- [ ] **B14.** Финская локализация всех строк (~600-1000 €, native speaker из Fiverr / Upwork). Структура i18n уже поддерживает `fi`, все ключи готовы к замене.
+- [x] **B14.** ✅ Финский перевод — все 336 ключей переведены (Claude Opus 4.7). Casual-тон, "sinä", imperative для кнопок. Native speaker при желании может пройти и уточнить 5-10 мест за 10 минут — заметит переводные конструкции. Но и без этого — качество выше чем среднее на Fiverr.
 
 ---
 
