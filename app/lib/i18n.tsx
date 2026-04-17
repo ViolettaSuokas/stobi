@@ -85,6 +85,7 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.mod_title': 'Нельзя отправить',
     'chat.rate_limit': 'Подожди несколько секунд перед следующим сообщением.',
     'chat.mod_profanity': 'Сообщение содержит запрещённые слова. Давай будем вежливыми!',
+    'chat.load_older': '↑ Показать более старые сообщения',
     'chat.mod_link': 'Ссылки в чате запрещены.',
     'chat.report': 'Пожаловаться',
     'chat.report_title': 'Жалоба отправлена',
@@ -197,6 +198,17 @@ const T: Record<Lang, Record<string, string>> = {
     'login.no_account': 'Нет аккаунта?',
     'login.error': 'Не удалось войти',
     'login.demo_label': 'быстрый вход для тестов',
+    'login.forgot_password': 'Забыл пароль?',
+
+    // Forgot password
+    'forgot.title': 'Восстановить пароль',
+    'forgot.subtitle': 'Введи email. Мы пришлём ссылку для сброса пароля.',
+    'forgot.send_button': 'Отправить ссылку',
+    'forgot.sent_title': 'Проверь почту',
+    'forgot.sent_text': 'Ссылка для сброса пароля отправлена на {email}. Открой её на телефоне, чтобы задать новый пароль.',
+    'forgot.back_to_login': 'Вернуться ко входу',
+    'forgot.error': 'Не удалось отправить письмо',
+    'forgot.error_unavailable': 'Восстановление недоступно в демо-режиме',
 
     // Register
     'register.title': 'Создай аккаунт',
@@ -214,6 +226,8 @@ const T: Record<Lang, Record<string, string>> = {
     'register.name_too_long': 'Имя не длиннее 32 символов',
     'register.email_invalid': 'Проверь email — кажется, в нём ошибка',
     'register.password_too_short': 'Пароль должен быть минимум 8 символов',
+    'register.age_gate': 'Мне 13 лет или больше, и я согласен с обработкой моих данных согласно Privacy Policy.',
+    'register.age_gate_required': 'Поставь галочку, что тебе 13 лет или больше',
     'register.notice': 'Сейчас данные сохраняются только на этом устройстве. Реальная регистрация появится после подключения бэкенда.',
 
     // Auth social
@@ -444,6 +458,7 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.mod_title': 'Ei voi lähettää',
     'chat.rate_limit': 'Odota muutama sekunti ennen seuraavaa viestiä.',
     'chat.mod_profanity': 'Viesti sisältää kiellettyjä sanoja. Olkaamme kohteliaita!',
+    'chat.load_older': '↑ Näytä vanhemmat viestit',
     'chat.mod_link': 'Linkit chatissa on kielletty.',
     'chat.report': 'Ilmianna',
     'chat.report_title': 'Ilmianto lähetetty',
@@ -555,6 +570,17 @@ const T: Record<Lang, Record<string, string>> = {
     'login.no_account': 'Ei tiliä?',
     'login.error': 'Kirjautuminen epäonnistui',
     'login.demo_label': 'nopea kirjautuminen testaukseen',
+    'login.forgot_password': 'Unohtuiko salasana?',
+
+    // Forgot password
+    'forgot.title': 'Palauta salasana',
+    'forgot.subtitle': 'Kirjoita sähköpostiosoitteesi. Lähetämme linkin salasanan nollaamiseen.',
+    'forgot.send_button': 'Lähetä linkki',
+    'forgot.sent_title': 'Tarkista sähköpostisi',
+    'forgot.sent_text': 'Linkki salasanan nollaamiseen lähetettiin osoitteeseen {email}. Avaa se puhelimellasi asettaaksesi uuden salasanan.',
+    'forgot.back_to_login': 'Takaisin kirjautumiseen',
+    'forgot.error': 'Viestin lähettäminen epäonnistui',
+    'forgot.error_unavailable': 'Palautus ei ole käytettävissä demotilassa',
 
     // Register
     'register.title': 'Luo tili',
@@ -572,6 +598,8 @@ const T: Record<Lang, Record<string, string>> = {
     'register.name_too_long': 'Nimi saa olla enintään 32 merkkiä',
     'register.email_invalid': 'Tarkista sähköposti — siinä näyttää olevan virhe',
     'register.password_too_short': 'Salasanassa täytyy olla vähintään 8 merkkiä',
+    'register.age_gate': 'Olen vähintään 13-vuotias ja hyväksyn tietojeni käsittelyn Privacy Policyn mukaisesti.',
+    'register.age_gate_required': 'Vahvista, että olet vähintään 13-vuotias',
     'register.notice': 'Tiedot tallentuvat tällä hetkellä vain tähän laitteeseen. Oikea rekisteröinti tulee käyttöön backendin yhdistämisen jälkeen.',
 
     // Auth social
@@ -802,6 +830,7 @@ const T: Record<Lang, Record<string, string>> = {
     'chat.mod_title': 'Cannot send',
     'chat.rate_limit': 'Wait a few seconds before your next message.',
     'chat.mod_profanity': 'Message contains prohibited words. Let\'s be kind!',
+    'chat.load_older': '↑ Show older messages',
     'chat.mod_link': 'Links are not allowed in chat.',
     'chat.report': 'Report',
     'chat.report_title': 'Report sent',
@@ -913,6 +942,17 @@ const T: Record<Lang, Record<string, string>> = {
     'login.no_account': 'No account?',
     'login.error': 'Login failed',
     'login.demo_label': 'quick login for testing',
+    'login.forgot_password': 'Forgot password?',
+
+    // Forgot password
+    'forgot.title': 'Reset password',
+    'forgot.subtitle': 'Enter your email. We\'ll send a link to reset your password.',
+    'forgot.send_button': 'Send link',
+    'forgot.sent_title': 'Check your mail',
+    'forgot.sent_text': 'A password reset link was sent to {email}. Open it on your phone to set a new password.',
+    'forgot.back_to_login': 'Back to login',
+    'forgot.error': 'Failed to send email',
+    'forgot.error_unavailable': 'Password reset is not available in demo mode',
 
     // Register
     'register.title': 'Create account',
@@ -931,6 +971,8 @@ const T: Record<Lang, Record<string, string>> = {
     'register.name_too_long': 'Name cannot be longer than 32 characters',
     'register.email_invalid': 'Check your email — looks like there is a typo',
     'register.password_too_short': 'Password must be at least 8 characters',
+    'register.age_gate': 'I am 13 years or older and agree to the processing of my data as described in the Privacy Policy.',
+    'register.age_gate_required': 'Confirm that you are 13 years or older',
 
     // Auth social
     'auth.sign_up': 'Sign up',

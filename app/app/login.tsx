@@ -184,6 +184,12 @@ export default function LoginScreen() {
                 {loading ? <ActivityIndicator color="#5B4FF0" /> : <Text style={styles.ctaText}>{t('login.button')}</Text>}
               </TouchableOpacity>
 
+              <Link href={'/forgot-password' as any} asChild>
+                <TouchableOpacity style={styles.linkBtn} activeOpacity={0.7}>
+                  <Text style={[styles.linkText, styles.linkAccent]}>{t('login.forgot_password')}</Text>
+                </TouchableOpacity>
+              </Link>
+
               <Link href="/register" asChild>
                 <TouchableOpacity style={styles.linkBtn} activeOpacity={0.7}>
                   <Text style={styles.linkText}>{t('login.no_account')} <Text style={styles.linkAccent}>{t('common.register')}</Text></Text>

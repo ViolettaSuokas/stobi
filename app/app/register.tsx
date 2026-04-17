@@ -35,6 +35,7 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -55,6 +56,11 @@ export default function RegisterScreen() {
     // Простой email-regex: something@something.tld
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError(t('register.email_invalid'));
+      return;
+    }
+    // COPPA / GDPR — нужно подтверждение возраста 13+
+    if (!ageConfirmed) {
+      setError(t('register.age_gate_required'));
       return;
     }
     if (password.length < 8) {
@@ -263,6 +269,20 @@ export default function RegisterScreen() {
                     autoCapitalize="none"
                   />
                 </View>
+
+                {/* Age gate — COPPA / GDPR 13+ confirmation */}
+                <TouchableOpacity
+                  style={styles.ageGate}
+                  activeOpacity={0.8}
+                  onPress={() => setAgeConfirmed(!ageConfirmed)}
+                >
+                  <View style={[styles.checkbox, ageConfirmed && styles.checkboxActive]}>
+                    {ageConfirmed && <Text style={styles.checkboxTick}>✓</Text>}
+                  </View>
+                  <Text style={styles.ageGateText}>
+                    {t('register.age_gate')}
+                  </Text>
+                </TouchableOpacity>
 
                 {error && (
                   <View style={styles.errorBox}>
@@ -474,6 +494,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#FFFFFF',
     padding: 0,
+  },
+
+  ageGate: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  checkboxTick: { color: '#5B4FF0', fontSize: 14, fontWeight: '900' },
+  ageGateText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(255,255,255,0.85)',
   },
 
   ctaBtn: {

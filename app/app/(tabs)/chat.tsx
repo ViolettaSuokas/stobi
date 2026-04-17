@@ -78,13 +78,40 @@ export default function ChatScreen() {
   const { t } = useI18n();
   const modal = useModal();
 
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [canLoadOlder, setCanLoadOlder] = useState(true);
+
   const loadMessages = useCallback(async () => {
     const [msgs, likesData] = await Promise.all([getMessages(channel), getLikes()]);
     setMessages(msgs);
     setLikes(likesData);
     setLoading(false);
+    // Меньше полной страницы = истории больше нет
+    setCanLoadOlder(msgs.length >= 50);
     markChatRead();
   }, [channel]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlder || !canLoadOlder || messages.length === 0) return;
+    setLoadingOlder(true);
+    try {
+      const oldest = messages[0];
+      const older = await getMessages(channel, 50, oldest.createdAt);
+      if (older.length === 0) {
+        setCanLoadOlder(false);
+      } else {
+        // Merge — старые перед текущими, дедуп по id
+        setMessages((prev) => {
+          const ids = new Set(prev.map((m) => m.id));
+          const merged = [...older.filter((m) => !ids.has(m.id)), ...prev];
+          return merged;
+        });
+        if (older.length < 50) setCanLoadOlder(false);
+      }
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [channel, messages, loadingOlder, canLoadOlder]);
 
   useFocusEffect(
     useCallback(() => {
@@ -527,7 +554,26 @@ export default function ChatScreen() {
             removeClippedSubviews
             onRefresh={loadMessages}
             refreshing={false}
+            ListHeaderComponent={
+              canLoadOlder && messages.length >= 50 ? (
+                <TouchableOpacity
+                  style={styles.loadOlderBtn}
+                  onPress={loadOlderMessages}
+                  disabled={loadingOlder}
+                  activeOpacity={0.7}
+                >
+                  {loadingOlder ? (
+                    <ActivityIndicator color={Colors.text2} size="small" />
+                  ) : (
+                    <Text style={styles.loadOlderText}>{t('chat.load_older')}</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null
+            }
             onContentSizeChange={() =>
+              // Автоскролл только когда в самом низу — иначе сбросит
+              // позицию при загрузке older messages
+              !loadingOlder &&
               flatListRef.current?.scrollToEnd({ animated: false })
             }
             onLayout={() =>
@@ -698,6 +744,19 @@ const styles = StyleSheet.create({
   messagesList: {
     paddingHorizontal: 12,
     paddingVertical: 14,
+  },
+  loadOlderBtn: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 999,
+    backgroundColor: Colors.surface2,
+  },
+  loadOlderText: {
+    fontSize: 13,
+    color: Colors.text2,
+    fontWeight: '600',
   },
   messageRow: {
     flexDirection: 'row',

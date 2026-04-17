@@ -142,20 +142,51 @@ async function writePersisted(messages: ChatMessage[]): Promise<void> {
   await AsyncStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
 }
 
-export async function getMessages(channel: string = 'global'): Promise<ChatMessage[]> {
-  const cacheKey = `messages:${channel}`;
-  const cached = getCached<ChatMessage[]>(cacheKey);
-  if (cached) return cached;
+/** Default page size for chat history. Tuned so initial render stays
+ * snappy even when the room has thousands of messages. */
+export const MESSAGES_PAGE_SIZE = 50;
+
+/**
+ * Загружает последние N сообщений канала.
+ *
+ * @param channel — имя канала (default: 'global')
+ * @param limit   — сколько взять с сервера за один вызов (default: 50)
+ * @param beforeMs — epoch ms; взять только сообщения ДО этого момента
+ *                   (для "load older"). Без него = последние.
+ *
+ * Возвращает всегда в хронологическом порядке (старые → новые).
+ */
+export async function getMessages(
+  channel: string = 'global',
+  limit: number = MESSAGES_PAGE_SIZE,
+  beforeMs?: number,
+): Promise<ChatMessage[]> {
+  // Кэш только для первой страницы (последних limit). Older-pages не кэшим —
+  // их редко листают, и инвалидация по курсору была бы геморройной.
+  const isFirstPage = beforeMs === undefined;
+  const cacheKey = `messages:${channel}:${limit}`;
+  if (isFirstPage) {
+    const cached = getCached<ChatMessage[]>(cacheKey);
+    if (cached) return cached;
+  }
 
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('messages')
         .select('*, profiles(username, avatar, is_artist, photo_url)')
         .eq('channel', channel)
-        .order('created_at');
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (beforeMs) {
+        query = query.lt('created_at', new Date(beforeMs).toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
+        // descending → ascending для нормального chat-flow
         const msgs = data.map((row: Record<string, any>) => ({
           id: row.id,
           authorId: row.author_id,
@@ -168,19 +199,30 @@ export async function getMessages(channel: string = 'global'): Promise<ChatMessa
           photo: row.photo_url ?? undefined,
           replyToId: row.reply_to_id ?? undefined,
           isEdited: row.is_edited ?? false,
-        }));
-        setCached(cacheKey, msgs, 10_000);
+        })).reverse();
+        if (isFirstPage) setCached(cacheKey, msgs, 10_000);
         return msgs;
       }
-    } catch (e) { console.warn(e);
+    } catch (e) {
+      console.warn('getMessages fallback to local', e);
       // Fall through to local
     }
   }
 
+  // Local fallback — применяем те же параметры пагинации
   const persisted = await readPersisted();
-  return persisted
+  let filtered = persisted
     .filter((m) => (m as any).channel === channel || !(m as any).channel)
     .sort((a, b) => a.createdAt - b.createdAt);
+
+  if (beforeMs) {
+    filtered = filtered.filter((m) => m.createdAt < beforeMs);
+  }
+  // Вернуть последние `limit` (с конца)
+  if (filtered.length > limit) {
+    filtered = filtered.slice(filtered.length - limit);
+  }
+  return filtered;
 }
 
 export async function sendMessage(
