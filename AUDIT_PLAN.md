@@ -28,7 +28,7 @@
 ### Security (7 критичных)
 - [x] **B1.** ✅ RPC `earn_points` / `spend_item` / `record_find` / `activate_trial` в Supabase с `security definer` — **НАКАТАНЫ на прод** (миграции 002-005)
 - [x] **B2.** ✅ RLS-запрет прямого UPDATE на `balance`, `is_premium`, `owned_items`, `equipped_items`, `premium_expires_at` — **НАКАТАНО** (миграция 001)
-- [ ] **B3.** RevenueCat webhook — код готов в `009_revenuecat_webhook.md`, ждёт деплоя Edge Function и настройки webhook в RC dashboard. Клиент `purchases.ts` уже не пишет `is_premium`.
+- [x] **B3.** ✅ RevenueCat webhook Edge Function **задеплоена и активна** (version 4) — `https://zlnkzyvtxaksvilujdwu.supabase.co/functions/v1/rc-webhook`. E2E протестирована (INITIAL_PURCHASE → is_premium=true + expires_at, EXPIRATION → сбрасывает). Осталось только **зарегистрировать webhook в RC Dashboard** (Integrations → Webhooks → URL выше + Authorization header `Bearer <RC_WEBHOOK_SECRET>` — секрет уже в Supabase Secrets).
 - [x] **B4.** ✅ Триггер rate-limit: 2 finds/автор/сутки — **НАКАТАНО** (встроено в `record_find` RPC)
 - [x] **B5.** ✅ Серверная модерация сообщений + bio + stones — **НАКАТАНО** (banned_words table + 3 triggers)
 - [x] **B6.** ✅ Rate-limit чата на сервере: 1/3 сек, 30/час — **НАКАТАНО**
