@@ -68,6 +68,26 @@ export default function StoneDetailScreen() {
   const [revealed, setRevealed] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
 
+  // 1-hour lock on freshly-hidden stones (anti-self-find farming).
+  // Server enforces this in record_find RPC, but UI shouldn't even offer
+  // the button. Tick every 15s to update the remaining countdown.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+  const lockRemainingMs = (() => {
+    if (!stone?.createdAt) return 0;
+    const createdMs = typeof stone.createdAt === 'string'
+      ? new Date(stone.createdAt).getTime()
+      : Number(stone.createdAt);
+    if (!Number.isFinite(createdMs)) return 0;
+    const unlockAt = createdMs + 60 * 60 * 1000;
+    return Math.max(0, unlockAt - now);
+  })();
+  const isFresh = lockRemainingMs > 0;
+  const lockMinutes = Math.ceil(lockRemainingMs / 60000);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -98,12 +118,19 @@ export default function StoneDetailScreen() {
         }
       }
 
-      // Own stones are always revealed
+      // Own stones are always revealed. Three ways to detect ownership:
+      //   1. stone.authorId matches current user (most reliable for DB stones)
+      //   2. activity feed hide event's userId matches (for demo seed users)
+      //   3. local user-stone flag (fallback)
       const user = await getCurrentUser();
-      if (user && stoneHistory.length > 0) {
+      if (user) {
         const seedId = DEMO_SEED_USER_MAP[user.email] ?? user.id;
-        const hideEvent = [...stoneHistory].reverse().find((a) => a.type === 'hide');
-        if (hideEvent && (hideEvent.userId === seedId || hideEvent.userId === user.id)) {
+        const matchByAuthor = !!(found?.authorId && (found.authorId === user.id || found.authorId === seedId));
+        const matchByHideEvent = stoneHistory.length > 0
+          && [...stoneHistory].reverse().find((a) => a.type === 'hide')
+          && ([...stoneHistory].reverse().find((a) => a.type === 'hide')!.userId === seedId
+              || [...stoneHistory].reverse().find((a) => a.type === 'hide')!.userId === user.id);
+        if (matchByAuthor || matchByHideEvent) {
           setIsOwnStone(true);
           setRevealed(true);
         }
@@ -595,6 +622,12 @@ export default function StoneDetailScreen() {
               {t('stone.already_found')}
             </Text>
           </View>
+        ) : isFresh ? (
+          <View style={[styles.findBtn, styles.findBtnLocked]}>
+            <Text style={[styles.findBtnText, { color: Colors.text2 }]}>
+              {t('stone.lock_countdown').replace('{min}', String(lockMinutes))}
+            </Text>
+          </View>
         ) : (
           <TouchableOpacity
             style={styles.findBtn}
@@ -880,6 +913,10 @@ const styles = StyleSheet.create({
   },
   findBtnDone: {
     backgroundColor: Colors.greenLight,
+    shadowOpacity: 0,
+  },
+  findBtnLocked: {
+    backgroundColor: Colors.surface2,
     shadowOpacity: 0,
   },
   findBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
