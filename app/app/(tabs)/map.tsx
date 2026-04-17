@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -76,6 +76,17 @@ function fuzzCoords(coords: { lat: number; lng: number }, stoneId: string) {
   };
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;')
+    .replace(/\\/g, '\\\\');
+}
+
 function buildMapHTML(
   userLat: number,
   userLng: number,
@@ -94,7 +105,7 @@ function buildMapHTML(
         fillOpacity: 0.85,
       })
       .addTo(map)
-      .bindTooltip('${s.emoji} ${s.name.replace(/'/g, "\\'")}', {
+      .bindTooltip('${escapeHtml(s.emoji)} ${escapeHtml(s.name)}', {
         direction: 'top',
         offset: [0, -12],
         className: 'stone-tooltip',
@@ -349,8 +360,12 @@ export default function MapScreen() {
     ? allCountryStones.filter((s) => s.city === myCity)
     : allCountryStones;
 
-  // На карте показываем все камни (free и premium одинаково на старте)
   const visibleStones = [...allCountryStones].sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+  const mapHtml = useMemo(
+    () => buildMapHTML(userLat, userLng, visibleStones),
+    [userLat, userLng, visibleStones.length, mapKey],
+  );
 
   const totalStones = allCountryStones.length;       // top chip: вся Финляндия
   const cityStonesCount = myCityStones.length;       // bottom card: твой город
@@ -399,7 +414,7 @@ export default function MapScreen() {
         <WebView
           key={mapKey}
           ref={webViewRef}
-          source={{ html: buildMapHTML(userLat, userLng, visibleStones) }}
+          source={{ html: mapHtml }}
           style={styles.webview}
           onMessage={handleWebViewMessage}
           scrollEnabled={false}

@@ -129,7 +129,14 @@ export async function requestLocationPermission(): Promise<boolean> {
   }
 }
 
+let cachedLocation: { info: LocationInfo; timestamp: number } | null = null;
+const LOCATION_CACHE_MS = 5 * 60 * 1000;
+
 export async function getCurrentLocation(): Promise<LocationInfo | null> {
+  if (cachedLocation && Date.now() - cachedLocation.timestamp < LOCATION_CACHE_MS) {
+    return cachedLocation.info;
+  }
+
   const granted = await requestLocationPermission();
   if (!granted) return null;
 
@@ -143,12 +150,14 @@ export async function getCurrentLocation(): Promise<LocationInfo | null> {
     };
 
     const reverse = await reverseGeocode(coords);
-    return {
+    const info: LocationInfo = {
       coords,
       city: reverse?.city ?? null,
       region: reverse?.region ?? null,
       country: reverse?.country ?? null,
     };
+    cachedLocation = { info, timestamp: Date.now() };
+    return info;
   } catch {
     return null;
   }

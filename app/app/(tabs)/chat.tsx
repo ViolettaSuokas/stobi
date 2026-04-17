@@ -492,7 +492,7 @@ export default function ChatScreen() {
             data={messages}
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
-            extraData={[messages, likes, user]}
+            extraData={messages.length + Object.keys(likes).length}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() =>
