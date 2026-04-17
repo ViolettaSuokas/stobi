@@ -21,7 +21,7 @@ async function read(): Promise<TrialState | null> {
   if (!json) return null;
   try {
     return JSON.parse(json) as TrialState;
-  } catch {
+  } catch (e) { console.warn(e);
     return null;
   }
 }

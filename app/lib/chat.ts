@@ -165,7 +165,7 @@ export async function getMessages(channel: string = 'global'): Promise<ChatMessa
           isEdited: row.is_edited ?? false,
         }));
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }
@@ -222,7 +222,7 @@ export async function sendMessage(
           };
         }
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }
@@ -255,7 +255,7 @@ export async function deleteMessage(messageId: string): Promise<void> {
         .delete()
         .eq('id', messageId);
       if (!error) return;
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }
@@ -279,7 +279,7 @@ export async function editMessage(
         .update({ text: trimmed, is_edited: true })
         .eq('id', messageId);
       if (!error) return;
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }
@@ -353,7 +353,7 @@ export async function getLikes(): Promise<Record<string, string[]>> {
         }
         return grouped;
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }
@@ -407,7 +407,7 @@ export async function toggleLike(messageId: string): Promise<{
 
         return { count: count ?? 0, liked };
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to local
     }
   }

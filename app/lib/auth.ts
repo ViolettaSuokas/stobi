@@ -26,7 +26,7 @@ export function getGoogleSignin(): any {
     const mod = require('@react-native-google-signin/google-signin');
     if (!mod) return null;
     return mod.GoogleSignin ?? mod.default?.GoogleSignin ?? mod.default ?? null;
-  } catch {
+  } catch (e) { console.warn(e);
     return null;
   }
 }
@@ -132,7 +132,7 @@ export async function getCurrentUser(): Promise<User | null> {
       };
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(mapped));
       return mapped;
-    } catch {
+    } catch (e) { console.warn(e);
       // Fallback to cached user if offline
       const cached = await AsyncStorage.getItem(USER_KEY);
       return cached ? JSON.parse(cached) : null;

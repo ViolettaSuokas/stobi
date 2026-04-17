@@ -21,7 +21,7 @@ async function read(): Promise<FindRecord[]> {
   if (!json) return [];
   try {
     return JSON.parse(json) as FindRecord[];
-  } catch {
+  } catch (e) { console.warn(e);
     return [];
   }
 }
@@ -42,7 +42,7 @@ export async function hasFoundStone(stoneId: string): Promise<boolean> {
         .eq('stone_id', stoneId)
         .maybeSingle();
       return !!data;
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -63,7 +63,7 @@ export async function markStoneFound(stoneId: string): Promise<void> {
           return;
         }
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -83,7 +83,7 @@ export async function getFoundStoneIds(): Promise<string[]> {
         .select('stone_id')
         .eq('user_id', user.id);
       if (!error && data) return data.map((row: any) => row.stone_id as string);
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -108,7 +108,7 @@ export async function getFindsToday(): Promise<number> {
         .eq('user_id', user.id)
         .gte('found_at', todayStart);
       if (!error && data) return data.length;
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -138,7 +138,7 @@ async function readAuthorFinds(): Promise<AuthorFindsMap> {
   try {
     const json = await AsyncStorage.getItem(AUTHOR_FINDS_KEY);
     return json ? JSON.parse(json) : {};
-  } catch {
+  } catch (e) { console.warn(e);
     return {};
   }
 }

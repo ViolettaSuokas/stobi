@@ -85,7 +85,7 @@ export async function getAchievements(): Promise<AchievementState> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch {
+  } catch (e) { console.warn(e);
     return {};
   }
 }

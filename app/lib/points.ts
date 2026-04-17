@@ -126,7 +126,7 @@ async function readFromSupabase(): Promise<StoredState | null> {
       ownedItemIds: [...merged],
       equippedIds: profile.equipped_items ?? undefined,
     };
-  } catch {
+  } catch (e) { console.warn(e);
     return null;
   }
 }
@@ -139,7 +139,7 @@ async function readLocal(): Promise<StoredState> {
       // Always include free-by-default items in case catalog grew since last save
       const merged = new Set([...parsed.ownedItemIds, ...freeItemIds()]);
       return { balance: parsed.balance, ownedItemIds: [...merged] };
-    } catch {
+    } catch (e) { console.warn(e);
       // fall through to defaults
     }
   }
@@ -216,7 +216,7 @@ export async function spendPoints(amount: number): Promise<boolean> {
         }
         return false;
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -250,7 +250,7 @@ export async function earnPoints(amount: number): Promise<number> {
           return newBalance;
         }
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -310,7 +310,7 @@ export async function buyItem(itemId: string): Promise<SpendResult> {
           return { ok: true, balance: newBalance, ownedItemIds: [...merged] };
         }
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -358,7 +358,7 @@ export async function unlockCosmeticById(itemId: string): Promise<void> {
           return;
         }
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }
@@ -395,7 +395,7 @@ export async function setEquippedIds(equipped: NonNullable<StoredState['equipped
           .eq('id', user.id);
         return;
       }
-    } catch {
+    } catch (e) { console.warn(e);
       // Fall through to AsyncStorage
     }
   }

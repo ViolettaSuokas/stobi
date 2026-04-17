@@ -293,6 +293,8 @@ export default function MapScreen() {
             getCurrentUser().catch(() => null),
           ]);
           if (cancelled) return;
+
+          const prevStoneCount = stones.length;
           setFoundIds(fIds);
           setTrialActive(trial.active);
           if (user) setCurrentUserId(user.id);
@@ -303,7 +305,7 @@ export default function MapScreen() {
             if (!cancelled) {
               setStones(fallback);
               setLoading(false);
-              setMapKey((k) => k + 1);
+              if (fallback.length !== prevStoneCount) setMapKey((k) => k + 1);
             }
             return;
           }
@@ -313,7 +315,7 @@ export default function MapScreen() {
           if (!cancelled) {
             setStones(nearby);
             setLoading(false);
-            setMapKey((k) => k + 1);
+            if (nearby.length !== prevStoneCount) setMapKey((k) => k + 1);
           }
         } catch (e) {
           console.warn('map load error', e);
