@@ -41,6 +41,8 @@ import { deleteUserStone, editUserStone } from '../../lib/user-stones';
 import { activateTrial, DAILY_CHALLENGE_GOAL } from '../../lib/premium-trial';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import * as ImagePicker from 'expo-image-picker';
+import { processPhoto } from '../../lib/photo';
+import * as haptics from '../../lib/haptics';
 import { PencilSimple, Trash } from 'phosphor-react-native';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
@@ -171,12 +173,13 @@ export default function StoneDetailScreen() {
 
   const handleEditPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.8,
+      quality: 1,
       allowsEditing: true,
       aspect: [4, 3],
     });
     if (!result.canceled && result.assets[0] && stoneId) {
-      await editUserStone(stoneId, { photoUri: result.assets[0].uri });
+      const processed = await processPhoto(result.assets[0].uri);
+      await editUserStone(stoneId, { photoUri: processed.uri });
       router.dismiss();
       router.replace('/(tabs)/map');
     }
@@ -245,7 +248,7 @@ export default function StoneDetailScreen() {
 
     // ── Photo required as proof ──
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
+      quality: 1,
       allowsEditing: true,
       aspect: [4, 3],
     });
@@ -254,6 +257,9 @@ export default function StoneDetailScreen() {
       Alert.alert(t('stone.photo_required_title'), t('stone.photo_required_text'));
       return;
     }
+
+    // Proof-фото тоже ресайзим + стираем EXIF перед отправкой на сервер
+    await processPhoto(result.assets[0].uri);
 
     setClaiming(true);
     try {
@@ -267,6 +273,7 @@ export default function StoneDetailScreen() {
 
       if (!findRes.ok) {
         setClaiming(false);
+        void haptics.warn();
         const msgKey =
           findRes.reason === 'too_far' ? t('stone.too_far_text') :
           findRes.reason === 'cannot_find_own_stone' ? t('stone.cannot_find_own') :
@@ -277,6 +284,7 @@ export default function StoneDetailScreen() {
         return;
       }
 
+      void haptics.success();
       setAlreadyFound(true);
       const newBalance = findRes.balance ?? (await getPoints());
       const reward = findRes.reward;

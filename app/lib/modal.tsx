@@ -67,16 +67,19 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const close = () => setConfig(null);
 
   const handlePress = (btn: ModalButton) => {
-    // Close modal first so onPress can navigate freely
+    // Snapshot inputValue before we close — close() schedules a state
+    // reset and closures on `inputValue` could read stale state.
+    const value = inputValue;
     close();
-    // Fire onPress without awaiting (modal is gone, navigation works)
-    setTimeout(() => {
+    // Use microtask (requestAnimationFrame via Promise.resolve) instead of
+    // a 50ms timer. The 50ms felt like UI lag on every modal dismiss.
+    Promise.resolve().then(() => {
       try {
-        btn.onPress?.(inputValue);
+        btn.onPress?.(value);
       } catch (e) {
         console.error('modal button onPress error', e);
       }
-    }, 50);
+    });
   };
 
   return (

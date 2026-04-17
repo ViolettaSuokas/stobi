@@ -28,6 +28,8 @@ import {
   MapPin,
 } from 'phosphor-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { processPhoto } from '../../lib/photo';
+import * as haptics from '../../lib/haptics';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/Colors';
@@ -138,11 +140,12 @@ export default function ChatScreen() {
   const handleAttachPhoto = async () => {
     if (!(await requireAuth('прикрепить фото'))) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.7,
+      quality: 1,
       allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setPendingPhoto(result.assets[0].uri);
+      const processed = await processPhoto(result.assets[0].uri);
+      setPendingPhoto(processed.uri);
     }
   };
 
@@ -183,6 +186,7 @@ export default function ChatScreen() {
         setEditingMsg(null);
       } else {
         await sendMessage(trimmed, undefined, replyingTo?.id, pendingPhoto ?? undefined, channel);
+        void haptics.tap();
         setReplyingTo(null);
         setPendingPhoto(null);
         await updateChallengeProgress('chat');
@@ -205,16 +209,29 @@ export default function ChatScreen() {
 
   const handleLike = async (messageId: string) => {
     if (!(await requireAuth('ставить лайки'))) return;
+    // Optimistic flip для моментального отклика
+    const prevLikes = likes[messageId] ?? [];
+    const liked = prevLikes.includes(user?.id ?? '');
+    setLikes((prev) => ({
+      ...prev,
+      [messageId]: liked
+        ? prevLikes.filter((id) => id !== user?.id)
+        : [...prevLikes, user?.id ?? ''],
+    }));
+    void haptics.selection();
     try {
       const result = await toggleLike(messageId);
+      // Sync с сервером (на случай рассинхрона)
       setLikes((prev) => ({
         ...prev,
         [messageId]: result.liked
-          ? [...(prev[messageId] ?? []), user?.id ?? '']
+          ? [...(prev[messageId] ?? []).filter((id) => id !== user?.id), user?.id ?? '']
           : (prev[messageId] ?? []).filter((id) => id !== user?.id),
       }));
-    } catch {
-      // Silent
+    } catch (e) {
+      // Откат оптимистичного UI
+      console.warn('toggleLike failed', e);
+      setLikes((prev) => ({ ...prev, [messageId]: prevLikes }));
     }
   };
 

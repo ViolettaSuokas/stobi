@@ -67,6 +67,7 @@ import { StoneMascot } from '../../components/StoneMascot';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
+import { processPhoto } from '../../lib/photo';
 import { updateProfilePhoto, updateCharacterName } from '../../lib/auth';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
@@ -204,13 +205,13 @@ export default function ProfileScreen() {
 
   const handleChangePhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.8,
+      quality: 1,
       allowsEditing: true,
       aspect: [1, 1],
     });
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      await updateProfilePhoto(uri);
+      const processed = await processPhoto(result.assets[0].uri);
+      await updateProfilePhoto(processed.uri);
       const fresh = await getCurrentUser();
       setUser(fresh);
     }

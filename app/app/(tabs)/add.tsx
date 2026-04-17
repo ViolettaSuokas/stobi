@@ -22,6 +22,8 @@ import {
 } from 'phosphor-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { processPhoto } from '../../lib/photo';
+import * as haptics from '../../lib/haptics';
 import { Colors } from '../../constants/Colors';
 import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
@@ -77,12 +79,13 @@ export default function AddScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
+      quality: 1,
       allowsEditing: true,
       aspect: [4, 3],
     });
     if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+      const processed = await processPhoto(result.assets[0].uri);
+      setPhotoUri(processed.uri);
     }
   };
 
@@ -93,12 +96,13 @@ export default function AddScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.8,
+      quality: 1,
       allowsEditing: true,
       aspect: [4, 3],
     });
     if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+      const processed = await processPhoto(result.assets[0].uri);
+      setPhotoUri(processed.uri);
     }
   };
 
@@ -167,6 +171,7 @@ export default function AddScreen() {
         isArtist: user?.isArtist,
       });
 
+      void haptics.success();
       // Award diamonds + track progress (server-audited via earn_points RPC)
       const newBalance = await earnPoints(REWARD_HIDE, 'stone_hide');
       await updateChallengeProgress('hide');
