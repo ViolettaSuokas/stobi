@@ -66,7 +66,7 @@ export default function ChatScreen() {
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
-  const [channel, setChannel] = useState<string>('global');
+  const [channel, setChannel] = useState<string>('FI');
   const [userCountry, setUserCountry] = useState<string>('FI');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const { t } = useI18n();
@@ -90,7 +90,10 @@ export default function ChatScreen() {
       });
       // Detect user's country for local chat
       getCurrentLocation().then((loc) => {
-        if (loc?.country) setUserCountry(loc.country);
+        if (loc?.country) {
+          setUserCountry(loc.country);
+          setChannel(loc.country);
+        }
       }).catch(() => {});
       getCurrentUser().then((u) => {
         if (active) setUser(u);
@@ -449,13 +452,13 @@ export default function ChatScreen() {
 
       {/* Channel switcher */}
       <View style={styles.channelBar}>
-        {(['global', userCountry] as const).map((ch) => {
+        {([userCountry, 'global'] as const).map((ch) => {
           const active = ch === channel;
           return (
             <TouchableOpacity
               key={ch}
               style={[styles.channelChip, active && styles.channelChipActive]}
-              onPress={() => { setChannel(ch); }}
+              onPress={() => { setMessages([]); setChannel(ch); }}
               activeOpacity={0.8}
             >
               <Text style={[styles.channelChipText, active && styles.channelChipTextActive]}>
