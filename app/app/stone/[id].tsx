@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -182,13 +183,13 @@ export default function StoneDetailScreen() {
   };
 
   const handleDeleteStone = () => {
-    modal.show({
-      title: t('stone.delete_title'),
-      message: `"${stone?.name}" будет удалён с карты и из профиля.`,
-      buttons: [
-        { label: t('common.cancel'), style: 'cancel' },
+    Alert.alert(
+      t('stone.delete_title'),
+      `"${stone?.name}" будет удалён с карты и из профиля.`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          label: t('common.delete'),
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             if (!stoneId) return;
@@ -198,17 +199,13 @@ export default function StoneDetailScreen() {
           },
         },
       ],
-    });
+    );
   };
 
   const handleFound = async () => {
     if (!stoneId || alreadyFound || claiming) return;
     if (isOwnStone) {
-      modal.show({
-        title: t('stone.own_stone'),
-        message: t('stone.cant_find_own'),
-        buttons: [{ label: t('common.understood'), style: 'cancel' }],
-      });
+      Alert.alert(t('stone.own_stone'), t('stone.cant_find_own'));
       return;
     }
     if (!(await requireAuth('отметить находку'))) return;
@@ -216,22 +213,25 @@ export default function StoneDetailScreen() {
     // ── GPS verification: must be within 100m of the stone ──
     const userLocation = await getCurrentLocation();
     if (!userLocation) {
-      modal.show({
-        title: t('common.no_gps'),
-        message: t('add.no_gps'),
-        buttons: [{ label: t('common.understood'), style: 'cancel' }],
-      });
+      Alert.alert(t('common.no_gps'), t('add.no_gps'));
       return;
     }
 
     if (stone?.coords) {
       const distanceM = haversineDistance(userLocation.coords, stone.coords);
       if (distanceM > 100) {
-        modal.show({
-          title: t('stone.too_far_title'),
-          message: `${t('stone.too_far_text')} ${Math.round(distanceM)}м`,
-          buttons: [{ label: t('common.understood'), style: 'cancel' }],
-        });
+        const distStr = distanceM > 1000
+          ? `${(distanceM / 1000).toFixed(1)}км`
+          : `${Math.round(distanceM)}м`;
+        const userCity = userLocation.city ?? '';
+        const stoneCity = stone.city ?? '';
+        const cityHint = userCity && stoneCity && userCity !== stoneCity
+          ? `\n\n${t('stone.too_far_city').replace('{userCity}', userCity).replace('{stoneCity}', stoneCity)}`
+          : '';
+        Alert.alert(
+          t('stone.too_far_title'),
+          `${t('stone.too_far_text')} ${distStr}${cityHint}`,
+        );
         return;
       }
     }
@@ -244,11 +244,7 @@ export default function StoneDetailScreen() {
     });
 
     if (result.canceled || !result.assets?.[0]) {
-      modal.show({
-        title: t('stone.photo_required_title'),
-        message: t('stone.photo_required_text'),
-        buttons: [{ label: t('common.understood'), style: 'cancel' }],
-      });
+      Alert.alert(t('stone.photo_required_title'), t('stone.photo_required_text'));
       return;
     }
 
@@ -290,22 +286,19 @@ export default function StoneDetailScreen() {
         ? `\n\n🏆 ${t('achievement.unlocked')}${cosmeticSuffix}`
         : '';
 
-      modal.show({
-        illustration: (
-          <StoneMascot size={140} color="#FCD34D" variant="sparkle" decor="crown" showSparkles />
-        ),
-        title: trialActivated ? t('trial.activated_title') : t('stone.congrats'),
-        message: `${baseMessage}${trialMessage}${achMessage}`,
-        buttons: [{
-          label: t('common.nice'),
+      Alert.alert(
+        trialActivated ? t('trial.activated_title') : `🎉 ${t('stone.congrats')}`,
+        `${baseMessage}${trialMessage}${achMessage}`,
+        [{
+          text: t('common.nice'),
           onPress: () => {
             router.dismiss();
             router.replace('/(tabs)/map');
           },
         }],
-      });
+      );
     } catch (e: any) {
-      modal.show({ title: t('common.error'), message: e?.message ?? '', buttons: [{ label: t('common.understood'), style: 'cancel' }] });
+      Alert.alert(t('common.error'), e?.message ?? '');
     } finally {
       setClaiming(false);
     }
