@@ -16,7 +16,23 @@ const BANNED_WORDS_EN = [
 
 const ALL_BANNED = [...BANNED_WORDS_RU, ...BANNED_WORDS_FI, ...BANNED_WORDS_EN];
 
-const URL_PATTERN = /https?:\/\/|www\./i;
+const URL_PATTERN = /https?:\/\/|www\.|\.com|\.ru|\.fi|\.net|\.org|t\.me\//i;
+
+const TRANSLIT_MAP: Record<string, string> = {
+  'а': 'a', 'о': 'o', 'е': 'e', 'с': 'c', 'р': 'p', 'у': 'y',
+  'х': 'x', 'к': 'k', 'н': 'h', 'в': 'b', 'м': 'm', 'т': 't',
+};
+
+function normalize(text: string): string {
+  let result = text.toLowerCase();
+  result = result.replace(/[^a-zа-яёА-ЯЁ0-9]/g, '');
+  result = result.replace(/(.)\1{2,}/g, '$1$1');
+  let normalized = '';
+  for (const ch of result) {
+    normalized += TRANSLIT_MAP[ch] ?? ch;
+  }
+  return normalized;
+}
 
 export type ModerationResult = {
   ok: boolean;
@@ -24,18 +40,21 @@ export type ModerationResult = {
 };
 
 export function moderateMessage(text: string): ModerationResult {
-  const lower = text.toLowerCase().trim();
+  const trimmed = text.trim();
 
-  if (!lower && !text.trim()) {
+  if (!trimmed) {
     return { ok: false, reason: 'too_short' };
   }
 
-  if (URL_PATTERN.test(lower)) {
+  if (URL_PATTERN.test(trimmed)) {
     return { ok: false, reason: 'link' };
   }
 
+  const normalized = normalize(trimmed);
+  const original = trimmed.toLowerCase().replace(/\s+/g, '');
+
   for (const word of ALL_BANNED) {
-    if (lower.includes(word)) {
+    if (original.includes(word) || normalized.includes(word)) {
       return { ok: false, reason: 'profanity' };
     }
   }

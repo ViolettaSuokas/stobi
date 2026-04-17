@@ -2,9 +2,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { I18nProvider } from '../lib/i18n';
 import { ModalProvider } from '../lib/modal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function RootLayout() {
   return (
+    <ErrorBoundary>
     <I18nProvider>
     <ModalProvider>
       <StatusBar style="dark" />
@@ -52,5 +54,6 @@ export default function RootLayout() {
       </Stack>
     </ModalProvider>
     </I18nProvider>
+    </ErrorBoundary>
   );
 }

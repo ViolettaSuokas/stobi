@@ -69,6 +69,7 @@ export default function ChatScreen() {
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const [channel, setChannel] = useState<string>('FI');
+  const lastSendTime = useRef<number>(0);
   const [userCountry, setUserCountry] = useState<string>('FI');
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const { t } = useI18n();
@@ -147,6 +148,14 @@ export default function ChatScreen() {
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed && !pendingPhoto || sending) return;
+
+    // Rate limit: 1 message per 3 seconds
+    const now = Date.now();
+    if (now - lastSendTime.current < 3000) {
+      Alert.alert(t('chat.mod_title'), t('chat.rate_limit'));
+      return;
+    }
+    lastSendTime.current = now;
 
     // Content moderation
     if (trimmed) {
