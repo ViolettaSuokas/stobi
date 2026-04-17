@@ -67,7 +67,8 @@ import { StoneMascot } from '../../components/StoneMascot';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
-import { updateProfilePhoto } from '../../lib/auth';
+import { updateProfilePhoto, updateCharacterName } from '../../lib/auth';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 const ACHIEVEMENT_CONFIGS = [
   { Icon: Sparkle, labelKey: 'achievement.find_first', earned: false, tint: '#A855F7', premium: false },
@@ -102,8 +103,14 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      Promise.all([getCurrentUser(), getState(), getTrialInfo(), getEquippedIds()])
-        .then(([u, state, trial, equipped]) => {
+      (async () => {
+        try {
+          const [u, state, trial, equipped] = await Promise.all([
+            getCurrentUser(),
+            getState(),
+            getTrialInfo(),
+            getEquippedIds(),
+          ]);
           if (!active) return;
           setUser(u);
           setBalance(state.balance);
@@ -114,38 +121,26 @@ export default function ProfileScreen() {
           if (equipped.eye) setSelectedEyeId(equipped.eye);
           if (equipped.shape) setSelectedShapeId(equipped.shape);
           if (equipped.decor) setSelectedDecorId(equipped.decor);
-        })
-        .catch((e) => console.warn('profile load error', e));
-      return () => {
-        active = false;
-      };
-    }, []),
-  );
 
-  // Load user's own activities when user or tab changes
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      if (!user) return;
-      const seedUserId = DEMO_SEED_USER_MAP[user.email] ?? user.id;
-      // Load current tab's activities
-      getUserActivities(seedUserId, myStonesTab).then((acts) => {
-        if (active) setMyActivities(acts);
-      });
-      // Load total counts for stats
-      Promise.all([
-        getUserActivities(seedUserId, 'hide'),
-        getUserActivities(seedUserId, 'find'),
-      ]).then(([hides, finds]) => {
-        if (active) {
-          setHiddenCount(hides.length);
-          setFoundCount(finds.length);
+          // Load activities + counts in parallel (only if logged in)
+          if (u) {
+            const seedUserId = DEMO_SEED_USER_MAP[u.email] ?? u.id;
+            const [acts, hides, finds] = await Promise.all([
+              getUserActivities(seedUserId, myStonesTab),
+              getUserActivities(seedUserId, 'hide'),
+              getUserActivities(seedUserId, 'find'),
+            ]);
+            if (!active) return;
+            setMyActivities(acts);
+            setHiddenCount(hides.length);
+            setFoundCount(finds.length);
+          }
+        } catch (e) {
+          console.warn('profile load error', e);
         }
-      });
-      return () => {
-        active = false;
-      };
-    }, [user, myStonesTab]),
+      })();
+      return () => { active = false; };
+    }, [myStonesTab]),
   );
 
   const selectedColor =
@@ -282,7 +277,6 @@ export default function ProfileScreen() {
                       label: t('common.save'),
                       onPress: async (name) => {
                         if (!name?.trim()) return;
-                        const { updateCharacterName } = await import('../../lib/auth');
                         await updateCharacterName(name.trim());
                         const fresh = await getCurrentUser();
                         setUser(fresh);
@@ -314,7 +308,6 @@ export default function ProfileScreen() {
                     {
                       label: t('common.save'),
                       onPress: async (newBio) => {
-                        const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
                         if (isSupabaseConfigured()) {
                           await supabase.from('profiles').update({ bio: newBio?.trim() || null }).eq('id', user.id);
                         }
@@ -651,7 +644,6 @@ export default function ProfileScreen() {
                       label: t('common.save'),
                       onPress: async (name) => {
                         if (!name?.trim()) return;
-                        const { updateCharacterName } = await import('../../lib/auth');
                         await updateCharacterName(name.trim());
                         const fresh = await getCurrentUser();
                         setUser(fresh);
