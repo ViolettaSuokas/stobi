@@ -48,6 +48,7 @@ import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
+import { SkeletonRow } from '../../components/Skeleton';
 import { getCurrentLocation } from '../../lib/location';
 import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
 import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
@@ -493,7 +494,7 @@ export default function ChatScreen() {
       >
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator color={Colors.accent} />
+            <SkeletonRow count={6} />
           </View>
         ) : (
           <FlatList

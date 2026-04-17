@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +21,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { StoneMascot } from '../../components/StoneMascot';
+import { SkeletonRow } from '../../components/Skeleton';
 import { getCurrentLocation } from '../../lib/location';
 import {
   getActivityFeed,
@@ -44,6 +46,7 @@ import { getCurrentUser, type User } from '../../lib/auth';
 
 export default function FeedScreen() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DayStats | null>(null);
   const [recent, setRecent] = useState<Activity[]>([]);
   const [feed, setFeed] = useState<Activity[]>([]);
@@ -84,6 +87,19 @@ export default function FeedScreen() {
     }, []),
   );
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    const [statsRes, recentRes, feedRes] = await Promise.all([
+      getDayStats(),
+      getRecentlyHidden(8),
+      getActivityFeed(10),
+    ]);
+    setStats(statsRes);
+    setRecent(recentRes);
+    setFeed(feedRes);
+    setRefreshing(false);
+  }, []);
+
   // Resolve stone style: use customized style for current user, seed lookup for others
   const resolveStyle = (userId: string): UserStoneStyle => {
     if (myStyle && currentUser && userId === currentUser.id) return myStyle;
@@ -106,6 +122,9 @@ export default function FeedScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -118,7 +137,7 @@ export default function FeedScreen() {
 
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator color={Colors.accent} />
+            <SkeletonRow count={5} />
           </View>
         ) : (
           <>
