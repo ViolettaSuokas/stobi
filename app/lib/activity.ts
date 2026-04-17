@@ -3,6 +3,7 @@
 // backend calls when we ship the real API.
 
 import type { StonePhotoKey } from './stone-photos';
+import { getCached, setCached } from './cache';
 
 export type ActivityType = 'hide' | 'find';
 
@@ -182,8 +183,13 @@ async function loadAllActivities(): Promise<Activity[]> {
 
 /** Returns activities sorted newest-first, optionally limited. */
 export async function getActivityFeed(limit?: number): Promise<Activity[]> {
+  const cacheKey = `activityFeed:${limit ?? 'all'}`;
+  const cached = getCached<Activity[]>(cacheKey);
+  if (cached) return cached;
   const all = await loadAllActivities();
-  return limit ? all.slice(0, limit) : all;
+  const result = limit ? all.slice(0, limit) : all;
+  setCached(cacheKey, result, 60_000);
+  return result;
 }
 
 /** Counts of hides/finds today and this week (rolling). */

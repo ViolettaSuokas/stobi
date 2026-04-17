@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from './auth';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { trackEvent } from './analytics';
+import { getCached, setCached, invalidate } from './cache';
 import type { StonePhotoKey } from './stone-photos';
 
 const MESSAGES_KEY = 'stobi:chat_messages';
@@ -142,6 +143,10 @@ async function writePersisted(messages: ChatMessage[]): Promise<void> {
 }
 
 export async function getMessages(channel: string = 'global'): Promise<ChatMessage[]> {
+  const cacheKey = `messages:${channel}`;
+  const cached = getCached<ChatMessage[]>(cacheKey);
+  if (cached) return cached;
+
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
@@ -151,7 +156,7 @@ export async function getMessages(channel: string = 'global'): Promise<ChatMessa
         .order('created_at');
 
       if (!error && data) {
-        return data.map((row: Record<string, any>) => ({
+        const msgs = data.map((row: Record<string, any>) => ({
           id: row.id,
           authorId: row.author_id,
           authorName: row.profiles?.username ?? 'Unknown',
@@ -164,6 +169,8 @@ export async function getMessages(channel: string = 'global'): Promise<ChatMessa
           replyToId: row.reply_to_id ?? undefined,
           isEdited: row.is_edited ?? false,
         }));
+        setCached(cacheKey, msgs, 10_000);
+        return msgs;
       }
     } catch (e) { console.warn(e);
       // Fall through to local
@@ -206,6 +213,7 @@ export async function sendMessage(
           .single();
 
         if (!error && row) {
+          invalidate(`messages:${channel}`);
           trackEvent('chat_message');
           return {
             id: row.id,

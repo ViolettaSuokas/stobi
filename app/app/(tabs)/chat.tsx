@@ -504,6 +504,11 @@ export default function ChatScreen() {
             extraData={messages.length + Object.keys(likes).length}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
+            windowSize={10}
+            maxToRenderPerBatch={15}
+            removeClippedSubviews
+            onRefresh={loadMessages}
+            refreshing={false}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
             }
