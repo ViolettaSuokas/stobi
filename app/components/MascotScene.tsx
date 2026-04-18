@@ -1,7 +1,6 @@
 import { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { Animated, StyleSheet, View, Text, Easing } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
 import { StoneMascot, type MascotShape, type MascotDecor } from './StoneMascot';
 import { SpeechBubble } from './SpeechBubble';
@@ -139,14 +138,6 @@ export const MascotScene = memo(function MascotScene({
 
   return (
     <View style={styles.wrap}>
-      {/* Curved gradient background */}
-      <LinearGradient
-        colors={[Colors.accentLight, 'rgba(240,230,255,0)']}
-        style={styles.bgCurve}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       {/* Sparkle decorations — static positions around mascot */}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <View style={[styles.sparkle, { top: 20, left: 30 }]} />
@@ -206,19 +197,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     position: 'relative',
   },
-  bgCurve: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 220,
-    borderBottomLeftRadius: 180,
-    borderBottomRightRadius: 180,
-  },
   greeting: {
     fontSize: 14,
     fontWeight: '700',
-    color: Colors.accent,
+    color: 'rgba(255,255,255,0.9)',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
@@ -245,8 +227,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 4,
     height: 4,
-    backgroundColor: Colors.accent,
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
     transform: [{ rotate: '45deg' }],
+    opacity: 0.8,
   },
 });
