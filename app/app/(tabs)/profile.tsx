@@ -86,10 +86,12 @@ const ACHIEVEMENT_CONFIGS = [
 ];
 
 type MainTab = 'overview' | 'customize';
+type CustomTab = 'color' | 'face' | 'shape' | 'decor';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [mainTab, setMainTab] = useState<MainTab>('overview');
+  const [customTab, setCustomTab] = useState<CustomTab>('color');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
   const [selectedEyeId, setSelectedEyeId] = useState<string>(EYE_ITEMS[0].id);
   const [selectedShapeId, setSelectedShapeId] = useState<string>(SHAPE_ITEMS[0].id);
@@ -718,17 +720,46 @@ export default function ProfileScreen() {
               <PencilSimple size={14} color={Colors.text2} weight="bold" />
             </TouchableOpacity>
 
-            {/* Earning hint card */}
-            <View style={styles.hintCard}>
-              <Text style={styles.hintEmoji}>💡</Text>
-              <Text style={styles.hintText}>
-                {t('profile.earn_hint_text')}
+            {/* Sub-tabs: Color / Face / Shape / Decor — горизонтальные pills */}
+            <View style={styles.customTabs}>
+              {(['color', 'face', 'shape', 'decor'] as const).map((tab) => {
+                const active = customTab === tab;
+                const label =
+                  tab === 'color' ? `🎨 ${t('profile.section_color')}` :
+                  tab === 'face' ? `😊 ${t('profile.section_face')}` :
+                  tab === 'shape' ? `🪨 ${t('profile.section_shape')}` :
+                  `✨ ${t('profile.section_decor')}`;
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[styles.customTab, active && styles.customTabActive]}
+                    onPress={() => setCustomTab(tab)}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={label}
+                  >
+                    <Text
+                      style={[styles.customTabText, active && styles.customTabTextActive]}
+                      numberOfLines={1}
+                    >
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Balance hint */}
+            <View style={styles.balanceHint}>
+              <Text style={styles.balanceHintText}>
+                💎 {balance} {t('profile.earn_hint')}
               </Text>
             </View>
 
-            {/* Color picker */}
+            {/* Color picker — visible only if customTab==='color' */}
+            {customTab === 'color' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🎨 {t('profile.section_color')}</Text>
               <View style={styles.colorGrid}>
                 {COLOR_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -767,9 +798,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            )}
             {/* Eye / expression picker */}
+            {customTab === 'face' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>😊 {t('profile.section_face')}</Text>
               <View style={styles.eyeGrid}>
                 {EYE_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -816,9 +848,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            )}
             {/* Shape picker */}
+            {customTab === 'shape' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🪨 {t('profile.section_shape')}</Text>
               <View style={styles.eyeGrid}>
                 {SHAPE_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -865,9 +898,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            )}
             {/* Decor picker */}
+            {customTab === 'decor' && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>✨ {t('profile.section_decor')}</Text>
               <View style={styles.eyeGrid}>
                 {DECOR_ITEMS.map((item) => {
                   const owned = ownedIds.includes(item.id);
@@ -913,6 +947,7 @@ export default function ProfileScreen() {
                 })}
               </View>
             </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -1003,6 +1038,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+
+  // Customize sub-tabs
+  customTabs: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 4,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  customTab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customTabActive: {
+    backgroundColor: Colors.accent,
+  },
+  customTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text2,
+  },
+  customTabTextActive: {
+    color: '#FFFFFF',
+  },
+  balanceHint: {
+    backgroundColor: Colors.accentLight,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  balanceHintText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.accent,
   },
   profilePhotoCard: {
     flexDirection: 'row',
