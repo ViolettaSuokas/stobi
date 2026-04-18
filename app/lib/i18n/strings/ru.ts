@@ -360,6 +360,7 @@ export const ru: Record<string, string> = {
     'profile.add_stone': 'Спрятать новый камень',
     'profile.open_premium': 'Открыть Premium',
     'profile.premium_sub': 'Точная карта, редкие скины, 2× алмазиков',
+    'profile.preview_unlock': '👀 ПРЕВЬЮ • КУПИТЬ ЗА {price} 💎',
 
     // Achievements
     'achievement.find_first': 'Первая находка',

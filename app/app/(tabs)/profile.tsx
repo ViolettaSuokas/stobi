@@ -40,6 +40,7 @@ import {
   EYE_ITEMS,
   SHAPE_ITEMS,
   DECOR_ITEMS,
+  ALL_ITEMS,
   buyItem,
   getState,
   getEquippedIds,
@@ -157,16 +158,27 @@ export default function ProfileScreen() {
   const selectedDecor: MascotDecor =
     (DECOR_ITEMS.find((d) => d.id === selectedDecorId)?.decor as MascotDecor) ?? 'none';
 
+  // Preview-режим: тап на любой item сразу меняет mascot.
+  // Если item owned — также записываем в equipped (persist на сервер).
+  // Если нет — показываем "купить" модал, но preview остаётся до ухода
+  // со screen (useFocusEffect blur в эффекте ниже сбрасывает к owned).
   const handlePickItem = async (
     item: CosmeticItem,
-    onSelected: (id: string) => void,
+    setPreview: (id: string) => void,
+    persist: (id: string) => void,
   ) => {
-    if (!(await requireAuth('менять внешний вид камня'))) return;
+    // Сначала обновляем preview — UI мгновенно
+    setPreview(item.id);
 
     if (ownedIds.includes(item.id)) {
-      onSelected(item.id);
+      // Owned — можно сохранить на сервер и не трогать баланс
+      persist(item.id);
       return;
     }
+
+    // Не owned — показываем модал покупки (preview уже работает)
+    if (!(await requireAuth('менять внешний вид камня'))) return;
+
     if (balance < item.price) {
       modal.show({
         title: t('profile.not_enough'),
@@ -187,7 +199,7 @@ export default function ProfileScreen() {
             if (result.ok) {
               setBalance(result.balance);
               setOwnedIds(result.ownedItemIds);
-              onSelected(item.id);
+              persist(item.id);
             }
           },
         },
@@ -196,16 +208,24 @@ export default function ProfileScreen() {
   };
 
   const handlePickColor = (item: CosmeticItem) =>
-    handlePickItem(item, (id) => { setSelectedColorId(id); setEquippedIds({ color: id }); });
+    handlePickItem(item,
+      (id) => setSelectedColorId(id),
+      (id) => { setSelectedColorId(id); setEquippedIds({ color: id }); });
 
   const handlePickEye = (item: CosmeticItem) =>
-    handlePickItem(item, (id) => { setSelectedEyeId(id); setEquippedIds({ eye: id }); });
+    handlePickItem(item,
+      (id) => setSelectedEyeId(id),
+      (id) => { setSelectedEyeId(id); setEquippedIds({ eye: id }); });
 
   const handlePickShape = (item: CosmeticItem) =>
-    handlePickItem(item, (id) => { setSelectedShapeId(id); setEquippedIds({ shape: id }); });
+    handlePickItem(item,
+      (id) => setSelectedShapeId(id),
+      (id) => { setSelectedShapeId(id); setEquippedIds({ shape: id }); });
 
   const handlePickDecor = (item: CosmeticItem) =>
-    handlePickItem(item, (id) => { setSelectedDecorId(id); setEquippedIds({ decor: id }); });
+    handlePickItem(item,
+      (id) => setSelectedDecorId(id),
+      (id) => { setSelectedDecorId(id); setEquippedIds({ decor: id }); });
 
   const handleChangePhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -269,6 +289,23 @@ export default function ProfileScreen() {
                 userName={user?.username}
                 mascotName={user?.characterName}
               />
+              {/* Preview indicator — виден если юзер примеряет что не купил */}
+              {(() => {
+                const previewItemIds = [
+                  selectedColorId, selectedEyeId, selectedShapeId, selectedDecorId,
+                ].filter((id): id is string => !!id && !ownedIds.includes(id));
+                if (previewItemIds.length === 0) return null;
+                const firstId = previewItemIds[0];
+                const previewItem = ALL_ITEMS.find((i) => i.id === firstId);
+                if (!previewItem) return null;
+                return (
+                  <View style={styles.previewBadge}>
+                    <Text style={styles.previewBadgeText}>
+                      {t('profile.preview_unlock').replace('{price}', String(previewItem.price))}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
 
             <TouchableOpacity
@@ -947,6 +984,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+  },
+  previewBadge: {
+    position: 'absolute',
+    bottom: 0,
+    backgroundColor: '#FCD34D',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  previewBadgeText: {
+    color: '#78350F',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   profilePhotoCard: {
     flexDirection: 'row',

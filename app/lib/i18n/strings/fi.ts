@@ -367,6 +367,7 @@ export const fi: Record<string, string> = {
     'profile.add_stone': 'Piilota uusi kivi',
     'profile.open_premium': 'Avaa Premium',
     'profile.premium_sub': 'Tarkka kartta, harvinaiset tyylit, 2× timantit',
+    'profile.preview_unlock': '👀 ESIKATSELU • OSTA {price} 💎',
 
     // Achievements
     'achievement.find_first': 'Ensimmäinen löytö',

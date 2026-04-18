@@ -351,6 +351,7 @@ export const en: Record<string, string> = {
     'profile.add_stone': 'Hide a new stone',
     'profile.open_premium': 'Get Premium',
     'profile.premium_sub': 'Precise map, rare skins, 2× diamonds',
+    'profile.preview_unlock': '👀 PREVIEW • UNLOCK FOR {price} 💎',
 
     // Achievements
     'achievement.find_first': 'First Discovery',
