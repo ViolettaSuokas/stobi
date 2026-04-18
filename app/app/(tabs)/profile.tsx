@@ -65,6 +65,7 @@ import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { WelcomeQuest } from '../../components/WelcomeQuest';
+import { StreakBadge } from '../../components/StreakBadge';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
@@ -429,9 +430,12 @@ export default function ProfileScreen() {
                   <Text style={styles.profilePhotoName}>{user?.username ?? t('profile.guest')}</Text>
                   {user && <PencilSimple size={14} color={Colors.text2} weight="bold" />}
                 </View>
-                <Text style={styles.profilePhotoHint}>
-                  {user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <Text style={styles.profilePhotoHint}>
+                    {user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
+                  </Text>
+                  <StreakBadge />
+                </View>
               </TouchableOpacity>
             </View>
 

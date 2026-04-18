@@ -413,4 +413,9 @@ export const en: Record<string, string> = {
 
     // Celebration overlay
     'celebration.total': 'You have',
+
+    // Streak
+    'streak.day': 'day',
+    'streak.days': 'days',
+    'streak.days_label': 'day streak',
 };

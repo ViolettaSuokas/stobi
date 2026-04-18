@@ -422,4 +422,9 @@ export const ru: Record<string, string> = {
 
     // Celebration overlay
     'celebration.total': 'Всего у тебя',
+
+    // Streak
+    'streak.day': 'день',
+    'streak.days': 'дней',
+    'streak.days_label': 'дней подряд',
 };

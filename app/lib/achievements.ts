@@ -5,6 +5,7 @@ import { getUserStones } from './user-stones';
 import { getMessages } from './chat';
 import { getCurrentUser } from './auth';
 import { AchievementUnlocked } from './analytics';
+import { getTodayChallenge } from './daily-challenge';
 
 const STORAGE_KEY = 'stobi:achievements';
 
@@ -120,11 +121,12 @@ export async function checkAchievements(stats: AchievementStats): Promise<string
 }
 
 export async function gatherAchievementStats(): Promise<AchievementStats> {
-  const [foundIds, userStones, messages, user] = await Promise.all([
+  const [foundIds, userStones, messages, user, challenge] = await Promise.all([
     getFoundStoneIds(),
     getUserStones(),
     getMessages(),
     getCurrentUser(),
+    getTodayChallenge(),
   ]);
 
   const chatMessages = user
@@ -135,7 +137,7 @@ export async function gatherAchievementStats(): Promise<AchievementStats> {
     totalFinds: foundIds.length,
     totalHides: userStones.length,
     chatMessages,
-    streakDays: 0,
+    streakDays: challenge.streakCount,
     citiesCount: 0,
     foundArtistStone: false,
     maxStoneFindCount: 0,

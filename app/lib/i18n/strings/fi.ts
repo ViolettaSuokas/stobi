@@ -429,4 +429,9 @@ export const fi: Record<string, string> = {
 
     // Celebration overlay
     'celebration.total': 'Sinulla on',
+
+    // Streak
+    'streak.day': 'päivä',
+    'streak.days': 'päivää',
+    'streak.days_label': 'päivää peräkkäin',
 };
