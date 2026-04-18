@@ -24,6 +24,7 @@ import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
+import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { Colors } from '../../constants/Colors';
 import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
@@ -43,6 +44,7 @@ export default function AddScreen() {
   const [city, setCity] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
   const modal = useModal();
   const { t } = useI18n();
 
@@ -205,15 +207,22 @@ export default function AddScreen() {
         ? `\n\n🏆 ${t('achievement.unlocked')}${cosmeticSuffix}`
         : '';
 
-      modal.show({
-        illustration: (
-          <StoneMascot size={140} color="#86EFAC" variant="happy" decor="flower" showSparkles />
-        ),
+      const extras: string[] = [];
+      if (unlocked.length > 0) {
+        extras.push(`${t('achievement.unlocked')}${cosmeticSuffix}`);
+      }
+      setCelebration({
+        visible: true,
         title: t('add.success_title'),
-        message: `${t('add.success_message')
-          .replace('{name}', name.trim())
-          .replace('{balance}', String(newBalance))}${achSuffix}`,
-        buttons: [{ label: t('common.nice'), onPress: () => router.back() }],
+        reward: 3, // REWARD_HIDE
+        balance: newBalance,
+        extraLines: extras,
+        stoneName: name.trim(),
+        stoneCity: city ?? undefined,
+        onClose: () => {
+          setCelebration(null);
+          router.back();
+        },
       });
     } catch (e: any) {
       Alert.alert(t('common.error'), e?.message ?? t('add.error'));
@@ -391,6 +400,8 @@ export default function AddScreen() {
           </TouchableOpacity>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {celebration && <CelebrationOverlay {...celebration} />}
     </SafeAreaView>
   );
 }

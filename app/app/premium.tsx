@@ -27,6 +27,7 @@ import {
   BoosterPackPurchased,
   SubscriptionRestored,
 } from '../lib/analytics';
+import * as haptics from '../lib/haptics';
 
 type PlanId = 'free-trial' | 'monthly' | 'annual';
 
@@ -79,6 +80,7 @@ export default function PremiumScreen() {
         if (pkg) {
           const success = await purchasePackage(pkg);
           if (success) {
+            void haptics.success();
             // Track subscription event
             if (selectedPlan === 'monthly') void SubscriptionPurchased('monthly', 3.99);
             else if (selectedPlan === 'annual') void SubscriptionPurchased('annual', 35);
@@ -122,6 +124,7 @@ export default function PremiumScreen() {
         if (pkg) {
           const success = await purchasePackage(pkg);
           if (success) {
+            void haptics.success();
             const priceEur = parseFloat(pack.price.replace(',', '.').replace('€', ''));
             void BoosterPackPurchased(pack.productId, pack.diamonds, priceEur);
             modal.show({

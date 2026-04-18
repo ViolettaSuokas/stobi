@@ -15,6 +15,7 @@ import type { ComponentType } from 'react';
 import { Colors } from '../../constants/Colors';
 import { getUnreadCount } from '../../lib/chat';
 import { useI18n } from '../../lib/i18n';
+import * as haptics from '../../lib/haptics';
 
 type TabConfig = {
   labelKey: string;
@@ -58,6 +59,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               canPreventDefault: true,
             });
             if (!isFocused && !event.defaultPrevented) {
+              void haptics.selection();
               navigation.navigate(route.name as never);
             }
           };
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 44,
-    height: 30,
+    height: 44,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
