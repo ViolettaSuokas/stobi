@@ -491,18 +491,18 @@ export default function ProfileScreen() {
             {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Text style={[styles.statNum, { color: Colors.accent }]}>{hiddenCount}</Text>
-                <Text style={styles.statLabel}>{t('profile.hidden_count')}</Text>
+                <Text style={[styles.statNum, { color: Colors.accent }]} numberOfLines={1}>{String(hiddenCount ?? 0)}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.hidden_count')}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={[styles.statNum, { color: Colors.green }]}>{foundCount}</Text>
-                <Text style={styles.statLabel}>{t('profile.found_count')}</Text>
+                <Text style={[styles.statNum, { color: Colors.green }]} numberOfLines={1}>{String(foundCount ?? 0)}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.found_count')}</Text>
               </View>
               <View style={styles.statCard}>
-                <Text style={[styles.statNum, { color: Colors.orange }]}>
-                  {balance}
+                <Text style={[styles.statNum, { color: Colors.orange }]} numberOfLines={1}>
+                  {String(balance ?? 0)}
                 </Text>
-                <Text style={styles.statLabel}>{t('profile.diamonds')}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.diamonds')}</Text>
               </View>
             </View>
 
@@ -1263,15 +1263,19 @@ const styles = StyleSheet.create({
   // Body
   body: { padding: 20 },
 
-  statsRow: { flexDirection: 'row', gap: 10 },
+  statsRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
   statCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
     backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: 'hidden',
   },
   statNum: { fontSize: 22, fontWeight: '800' },
   statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3 },
