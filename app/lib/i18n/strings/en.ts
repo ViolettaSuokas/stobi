@@ -391,4 +391,7 @@ export const en: Record<string, string> = {
     'common.photo': '📷 Photo',
     'common.need_photo': 'Photo required',
     'common.no_gps': 'No location',
+
+    // Network
+    'network.offline': 'No connection',
 };

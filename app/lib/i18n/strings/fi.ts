@@ -407,4 +407,7 @@ export const fi: Record<string, string> = {
     'common.photo': '📷 Kuva',
     'common.need_photo': 'Kuva vaaditaan',
     'common.no_gps': 'Ei paikannusta',
+
+    // Network
+    'network.offline': 'Ei yhteyttä',
 };

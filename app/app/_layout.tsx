@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { I18nProvider } from '../lib/i18n';
 import { ModalProvider } from '../lib/modal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { initPurchases } from '../lib/purchases';
 import { getCurrentUser } from '../lib/auth';
 import { initSentry, identifySentryUser } from '../lib/sentry';
@@ -39,6 +40,7 @@ export default function RootLayout() {
     <I18nProvider>
     <ModalProvider>
       <StatusBar style="dark" />
+      <OfflineBanner />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />

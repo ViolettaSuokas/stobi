@@ -400,4 +400,7 @@ export const ru: Record<string, string> = {
     'common.photo': '📷 Фото',
     'common.need_photo': 'Нужно фото',
     'common.no_gps': 'Нет геолокации',
+
+    // Network
+    'network.offline': 'Нет соединения',
 };
