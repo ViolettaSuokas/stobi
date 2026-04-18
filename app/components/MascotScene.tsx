@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { Animated, StyleSheet, View, Text, Easing } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { StoneMascot, type MascotShape, type MascotDecor } from './StoneMascot';
+import { StoneMascot, type MascotShape, type MascotDecor, type MascotVariant } from './StoneMascot';
 import { SpeechBubble } from './SpeechBubble';
 import { useI18n } from '../lib/i18n';
 import { pickMascotMessage, getGreetingKey, type MascotContext } from '../lib/mascot-messages';
@@ -28,6 +28,10 @@ type Props = {
   color?: string;
   shape?: MascotShape;
   decor?: MascotDecor;
+  /** Опциональный override для эмоции. Если задан — маскот
+   *  использует его вместо контекстно-подобранного. Нужен в customize
+   *  где юзер выбирает эмоцию вручную. */
+  variant?: MascotVariant;
   /** User-related context (mascot loads activity stats itself) */
   userName?: string | null;
   mascotName?: string | null;
@@ -40,6 +44,7 @@ export const MascotScene = memo(function MascotScene({
   color,
   shape,
   decor,
+  variant: variantOverride,
   userName,
   mascotName,
   hideSpeech = false,
@@ -169,7 +174,7 @@ export const MascotScene = memo(function MascotScene({
           <StoneMascot
             size={size}
             color={color}
-            variant={message.variant}
+            variant={variantOverride ?? message.variant}
             shape={shape}
             decor={decor}
             showSparkles={false /* свои sparkles из scene */}

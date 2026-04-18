@@ -286,6 +286,7 @@ export default function ProfileScreen() {
               <MascotScene
                 size={180}
                 color={selectedColor}
+                variant={selectedVariant}
                 shape={selectedShape}
                 decor={selectedDecor}
                 userName={user?.username}
