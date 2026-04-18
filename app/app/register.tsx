@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -23,11 +24,11 @@ import { Colors } from '../constants/Colors';
 import { register, login, DEMO_ACCOUNTS, configureGoogleSignIn, getGoogleSignin } from '../lib/auth';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StoneMascot } from '../components/StoneMascot';
-import { ArrowRight } from 'phosphor-react-native';
+import { ArrowRight, Gift } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
 import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 import { Registered } from '../lib/analytics';
-import { applyPendingReferralCode } from '../lib/referral';
+import { applyPendingReferralCode, getPendingReferralCode, redeemReferralCode } from '../lib/referral';
 
 type Mode = 'buttons' | 'email';
 
@@ -37,9 +38,17 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Pre-fill invite code from deep-link (stobi.app/invite/XXX → AsyncStorage)
+  useEffect(() => {
+    getPendingReferralCode().then((code) => {
+      if (code) setInviteCode(code);
+    });
+  }, []);
 
   const handleRegister = async () => {
     setError(null);
@@ -74,8 +83,23 @@ export default function RegisterScreen() {
     try {
       await register(trimmedEmail, password, trimmedName);
       void Registered('email');
-      // Если есть pending ref-code от deep-link — применяем
-      void applyPendingReferralCode();
+      // Применяем invite code (из поля или pending deep-link)
+      const codeToApply = inviteCode.trim().toUpperCase();
+      if (codeToApply) {
+        const result = await redeemReferralCode(codeToApply);
+        if (result.ok) {
+          // Показываем небольшой toast о бонусе через Alert
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
+        }
+        // Если не ok — просто молча игнорируем (invalid code не блокирует регистрацию)
+      } else {
+        void applyPendingReferralCode();
+      }
       router.replace('/map');
     } catch (e: any) {
       setError(e?.message ?? t('register.error'));
@@ -272,6 +296,20 @@ export default function RegisterScreen() {
                     onChangeText={setPassword}
                     secureTextEntry
                     autoCapitalize="none"
+                  />
+                </View>
+
+                {/* Invite code (optional) — +50 💎 bonus for both */}
+                <View style={styles.inputWrap}>
+                  <Gift size={18} color="rgba(255,255,255,0.5)" weight="regular" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('register.invite_code_hint')}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    value={inviteCode}
+                    onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
                   />
                 </View>
 

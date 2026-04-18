@@ -449,4 +449,7 @@ export const en: Record<string, string> = {
     'referral.share_cta': 'Share',
     'referral.share_title': 'Stobi — painted stones hunt',
     'referral.share_message': '🎨 Join Stobi! We search and hide painted stones across Finland. Use my code {code} when signing up to get +50 💎 head start.',
+    'referral.bonus_applied_title': '🎁 Bonus received!',
+    'referral.bonus_applied_text': 'Thanks for the invite — you got +{amount} 💎 head start.',
+    'register.invite_code_hint': 'Invite code (optional)',
 };

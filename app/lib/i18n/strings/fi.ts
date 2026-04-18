@@ -465,4 +465,7 @@ export const fi: Record<string, string> = {
     'referral.share_cta': 'Jaa',
     'referral.share_title': 'Stobi — etsi maalattuja kiviä',
     'referral.share_message': '🎨 Liity Stobiin! Etsimme ja piilottelemme maalattuja kiviä ympäri Suomea. Käytä koodiani {code} rekisteröityessäsi ja saat +50 💎 alkuun.',
+    'referral.bonus_applied_title': '🎁 Bonus saatu!',
+    'referral.bonus_applied_text': 'Kiitos kutsusta — saat +{amount} 💎 alkuun.',
+    'register.invite_code_hint': 'Kutsukoodi (valinnainen)',
 };

@@ -458,4 +458,7 @@ export const ru: Record<string, string> = {
     'referral.share_cta': 'Поделиться',
     'referral.share_title': 'Stobi — поиск раскрашенных камней',
     'referral.share_message': '🎨 Присоединяйся к Stobi! Мы ищем и прячем раскрашенные камни по всей Финляндии. Введи мой код {code} при регистрации и получи +50 💎 на старте.',
+    'referral.bonus_applied_title': '🎁 Бонус получен!',
+    'referral.bonus_applied_text': 'Спасибо за приглашение — тебе начислено +{amount} 💎 на старт.',
+    'register.invite_code_hint': 'Код приглашения (необязательно)',
 };
