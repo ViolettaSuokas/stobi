@@ -12,15 +12,32 @@
           "package_name": "com.stobi.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "984920601746-dta6cvqtot5sc4u45pss0t9jik1ksnol.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAti3yBt60f8KCXxKKH_43RRud90Sv56FQ"
+          "current_key": "AIzaSyC9umUe-9DnV0ExVioM9b0SjXFTeKxBijk"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "984920601746-dta6cvqtot5sc4u45pss0t9jik1ksnol.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "984920601746-3of6pe9k4klltqo6mruu8mpc73ka3n3j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stobi.app"
+              }
+            }
+          ]
         }
       }
     }
