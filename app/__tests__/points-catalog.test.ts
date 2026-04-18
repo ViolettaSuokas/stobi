@@ -2,8 +2,8 @@ import { ALL_ITEMS, COLOR_ITEMS, EYE_ITEMS, SHAPE_ITEMS, DECOR_ITEMS } from '../
 
 describe('points — cosmetics catalog', () => {
   test('catalog has expected count (mirrors server items table)', () => {
-    // 10 colors + 5 eyes + 7 shapes + 7 decors = 29
-    expect(ALL_ITEMS.length).toBe(29);
+    // 15 colors + 8 eyes + 7 shapes + 10 decors = 40
+    expect(ALL_ITEMS.length).toBe(40);
   });
 
   test('every category has at least one free default', () => {

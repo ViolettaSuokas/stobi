@@ -3,7 +3,7 @@ import { Animated, StyleSheet, View, Text, Easing } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
-import { StoneMascot, type MascotShape } from './StoneMascot';
+import { StoneMascot, type MascotShape, type MascotDecor } from './StoneMascot';
 import { SpeechBubble } from './SpeechBubble';
 import { useI18n } from '../lib/i18n';
 import { pickMascotMessage, getGreetingKey, type MascotContext } from '../lib/mascot-messages';
@@ -28,7 +28,7 @@ type Props = {
   size?: number;
   color?: string;
   shape?: MascotShape;
-  decor?: 'none' | 'flower' | 'leaf' | 'cat-ears' | 'glasses' | 'crown';
+  decor?: MascotDecor;
   /** User-related context (mascot loads activity stats itself) */
   userName?: string | null;
   mascotName?: string | null;

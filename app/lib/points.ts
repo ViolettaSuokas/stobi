@@ -29,11 +29,11 @@ export type CosmeticItem = {
   /** Hex color (for color category) */
   color?: string;
   /** Mascot face variant the eye/smile maps to */
-  variant?: 'happy' | 'sleeping' | 'wink' | 'sparkle';
+  variant?: 'happy' | 'sleeping' | 'wink' | 'sparkle' | 'blush' | 'laughing' | 'surprised';
   /** Mascot body shape (for shape category) */
   shape?: 'pebble' | 'round' | 'egg' | 'long' | 'bumpy' | 'tall';
   /** Mascot decoration (for decor category) */
-  decor?: 'none' | 'flower' | 'leaf' | 'cat-ears' | 'glasses' | 'crown';
+  decor?: 'none' | 'flower' | 'leaf' | 'cat-ears' | 'glasses' | 'crown' | 'headband' | 'halo' | 'heart-hat';
   /** If true, only Premium subscribers can purchase */
   premiumOnly?: boolean;
 };
@@ -53,6 +53,12 @@ export const COLOR_ITEMS: CosmeticItem[] = [
   { id: 'color-peach', category: 'color', label: 'Персик', color: '#FDBA74', price: 20, freeByDefault: false },
   { id: 'color-galaxy', category: 'color', label: 'Galaxy', color: '#6D28D9', price: 45, freeByDefault: false, premiumOnly: true },
   { id: 'color-aurora', category: 'color', label: 'Aurora', color: '#059669', price: 45, freeByDefault: false, premiumOnly: true },
+  // Новая палитра (migration 013):
+  { id: 'color-ocean',    category: 'color', label: 'Океан',     color: '#06B6D4', price: 25, freeByDefault: false },
+  { id: 'color-sunset',   category: 'color', label: 'Закат',     color: '#FB7185', price: 25, freeByDefault: false },
+  { id: 'color-rose',     category: 'color', label: 'Роза',      color: '#F9A8D4', price: 30, freeByDefault: false },
+  { id: 'color-emerald',  category: 'color', label: 'Изумруд',   color: '#10B981', price: 30, freeByDefault: false },
+  { id: 'color-cream',    category: 'color', label: 'Крем',      color: '#FDE68A', price: 20, freeByDefault: false },
 ];
 
 export const EYE_ITEMS: CosmeticItem[] = [
@@ -61,6 +67,10 @@ export const EYE_ITEMS: CosmeticItem[] = [
   { id: 'eye-wink', category: 'eye', label: 'Подмигивает', variant: 'wink', price: 15, freeByDefault: false },
   { id: 'eye-sparkle', category: 'eye', label: 'Со звёздочками', variant: 'sparkle', price: 15, freeByDefault: false },
   { id: 'eye-heart', category: 'eye', label: 'Heart Eyes', variant: 'sparkle', price: 40, freeByDefault: false, premiumOnly: true },
+  // Новые эмоции:
+  { id: 'eye-blush',     category: 'eye', label: 'Смущение',  variant: 'blush',     price: 15, freeByDefault: false },
+  { id: 'eye-laughing',  category: 'eye', label: 'Смех',      variant: 'laughing',  price: 20, freeByDefault: false },
+  { id: 'eye-surprised', category: 'eye', label: 'Удивление', variant: 'surprised', price: 20, freeByDefault: false },
 ];
 
 export const SHAPE_ITEMS: CosmeticItem[] = [
@@ -81,6 +91,10 @@ export const DECOR_ITEMS: CosmeticItem[] = [
   { id: 'decor-glasses', category: 'decor', label: 'Очки', decor: 'glasses', price: 40, freeByDefault: false, premiumOnly: true },
   { id: 'decor-crown', category: 'decor', label: 'Корона 👑', decor: 'crown', price: 50, freeByDefault: false, premiumOnly: true },
   { id: 'decor-wizard', category: 'decor', label: 'Wizard Hat', decor: 'crown', price: 50, freeByDefault: false, premiumOnly: true },
+  // Новые декоры:
+  { id: 'decor-headband',  category: 'decor', label: 'Бантик 🎀',   decor: 'headband',  price: 25, freeByDefault: false },
+  { id: 'decor-halo',      category: 'decor', label: 'Нимб',         decor: 'halo',      price: 35, freeByDefault: false, premiumOnly: true },
+  { id: 'decor-heart-hat', category: 'decor', label: 'Сердечко',     decor: 'heart-hat', price: 30, freeByDefault: false },
 ];
 
 export const ALL_ITEMS: CosmeticItem[] = [

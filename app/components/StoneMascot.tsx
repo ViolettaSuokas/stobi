@@ -2,7 +2,14 @@ import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 
-export type MascotVariant = 'happy' | 'sleeping' | 'wink' | 'sparkle';
+export type MascotVariant =
+  | 'happy'       // обычный smile + круглые глаза
+  | 'sleeping'   // закрытые глаза → полосочки
+  | 'wink'       // одна полосочка, другой глаз круглый
+  | 'sparkle'    // + sparkles вокруг
+  | 'blush'      // happy + большой розовый blush
+  | 'laughing'   // закрытые arc-eyes + широкий рот
+  | 'surprised'; // круглые глаза + O-рот
 
 export type MascotShape =
   | 'pebble'
@@ -18,7 +25,10 @@ export type MascotDecor =
   | 'leaf'
   | 'cat-ears'
   | 'glasses'
-  | 'crown';
+  | 'crown'
+  | 'headband'  // розовый бант сверху
+  | 'halo'      // золотое кольцо над головой
+  | 'heart-hat'; // красное сердечко сверху
 
 type ShapeConfig = {
   bodyWidth: number;
@@ -124,8 +134,11 @@ export const StoneMascot = memo(function StoneMascot({
 }: Props) {
   const s = size / 180; // scale factor — design at 180px
   const dark = '#1A1A2E';
-  const eyeOpen = variant === 'sleeping';
+  const eyeOpen = variant === 'sleeping' || variant === 'laughing'; // закрытые arc-eyes
   const winkLeft = variant === 'wink';
+  const surprised = variant === 'surprised';
+  const laughing = variant === 'laughing';
+  const blush = variant === 'blush';
   const cfg = SHAPES[shape];
 
   return (
@@ -245,10 +258,10 @@ export const StoneMascot = memo(function StoneMascot({
             ) : (
               <View
                 style={{
-                  width: size * 0.065,
-                  height: size * 0.085,
+                  width: size * (surprised ? 0.09 : 0.065),
+                  height: size * (surprised ? 0.11 : 0.085),
                   backgroundColor: dark,
-                  borderRadius: size * 0.05,
+                  borderRadius: size * 0.06,
                 }}
               />
             )}
@@ -267,55 +280,95 @@ export const StoneMascot = memo(function StoneMascot({
             ) : (
               <View
                 style={{
-                  width: size * 0.065,
-                  height: size * 0.085,
+                  width: size * (surprised ? 0.09 : 0.065),
+                  height: size * (surprised ? 0.11 : 0.085),
                   backgroundColor: dark,
-                  borderRadius: size * 0.05,
+                  borderRadius: size * 0.06,
                 }}
               />
             )}
           </View>
 
-          {/* Smile — small U shape via a circle with only bottom border showing */}
-          <View
-            style={{
-              width: size * 0.13,
-              height: size * 0.07,
-              borderRadius: size * 0.07,
-              borderWidth: size * 0.018,
-              borderColor: 'transparent',
-              borderBottomColor: dark,
-              marginTop: size * 0.025,
-            }}
-          />
+          {/* Mouth — варианты: smile / laughing (big open U) / surprised (O) */}
+          {surprised ? (
+            // Small O-shape — круглый rotten рот
+            <View
+              style={{
+                width: size * 0.065,
+                height: size * 0.07,
+                borderRadius: size * 0.05,
+                backgroundColor: dark,
+                marginTop: size * 0.03,
+              }}
+            />
+          ) : laughing ? (
+            // Big open smile — широкий wide U
+            <View
+              style={{
+                width: size * 0.18,
+                height: size * 0.1,
+                borderRadius: size * 0.1,
+                backgroundColor: dark,
+                marginTop: size * 0.028,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Розовый язык внутри */}
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  alignSelf: 'center',
+                  width: size * 0.09,
+                  height: size * 0.05,
+                  borderRadius: size * 0.05,
+                  backgroundColor: Colors.blush,
+                }}
+              />
+            </View>
+          ) : (
+            // Default U-smile
+            <View
+              style={{
+                width: size * 0.13,
+                height: size * 0.07,
+                borderRadius: size * 0.07,
+                borderWidth: size * 0.018,
+                borderColor: 'transparent',
+                borderBottomColor: dark,
+                marginTop: size * 0.025,
+              }}
+            />
+          )}
         </View>
 
-        {/* Blush cheeks — bottom position scales with body height */}
+        {/* Blush cheeks — bottom position scales with body height.
+             Для variant='blush' щёки крупнее и ярче. */}
         <View
           style={{
             position: 'absolute',
             bottom: size * cfg.bodyHeight * 0.22,
             flexDirection: 'row',
-            gap: size * 0.34,
+            gap: blush ? size * 0.28 : size * 0.34,
             transform: [{ rotate: `${-cfg.rotation}deg` }],
           }}
         >
           <View
             style={{
-              width: size * 0.075,
-              height: size * 0.045,
-              borderRadius: size * 0.04,
+              width: size * (blush ? 0.1 : 0.075),
+              height: size * (blush ? 0.065 : 0.045),
+              borderRadius: size * 0.05,
               backgroundColor: Colors.blush,
-              opacity: 0.7,
+              opacity: blush ? 0.9 : 0.7,
             }}
           />
           <View
             style={{
-              width: size * 0.075,
-              height: size * 0.045,
-              borderRadius: size * 0.04,
+              width: size * (blush ? 0.1 : 0.075),
+              height: size * (blush ? 0.065 : 0.045),
+              borderRadius: size * 0.05,
               backgroundColor: Colors.blush,
-              opacity: 0.7,
+              opacity: blush ? 0.9 : 0.7,
             }}
           />
         </View>
@@ -482,6 +535,127 @@ export const StoneMascot = memo(function StoneMascot({
               borderWidth: size * 0.018,
               borderColor: dark,
               backgroundColor: 'rgba(255,255,255,0.25)',
+            }}
+          />
+        </View>
+      )}
+
+      {/* Headband — розовый bow сверху */}
+      {decor === 'headband' && (
+        <View
+          style={{
+            position: 'absolute',
+            top: size * 0.0,
+            alignSelf: 'center',
+            width: size * 0.35,
+            height: size * 0.15,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          pointerEvents="none"
+        >
+          {/* Left bow loop */}
+          <View
+            style={{
+              width: size * 0.12,
+              height: size * 0.1,
+              backgroundColor: '#F0ABFC',
+              borderTopLeftRadius: size * 0.08,
+              borderBottomLeftRadius: size * 0.05,
+              borderBottomRightRadius: size * 0.02,
+              transform: [{ rotate: '-15deg' }],
+            }}
+          />
+          {/* Center knot */}
+          <View
+            style={{
+              width: size * 0.05,
+              height: size * 0.08,
+              backgroundColor: '#DB2777',
+              borderRadius: size * 0.02,
+            }}
+          />
+          {/* Right bow loop */}
+          <View
+            style={{
+              width: size * 0.12,
+              height: size * 0.1,
+              backgroundColor: '#F0ABFC',
+              borderTopRightRadius: size * 0.08,
+              borderBottomRightRadius: size * 0.05,
+              borderBottomLeftRadius: size * 0.02,
+              transform: [{ rotate: '15deg' }],
+            }}
+          />
+        </View>
+      )}
+
+      {/* Halo — золотой ring над головой */}
+      {decor === 'halo' && (
+        <View
+          style={{
+            position: 'absolute',
+            top: size * -0.04,
+            alignSelf: 'center',
+            width: size * 0.45,
+            height: size * 0.1,
+            borderRadius: size * 0.05,
+            borderWidth: size * 0.024,
+            borderColor: '#FCD34D',
+            shadowColor: '#FCD34D',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.6,
+            shadowRadius: size * 0.05,
+            elevation: 6,
+          }}
+          pointerEvents="none"
+        />
+      )}
+
+      {/* Heart hat — красное сердечко сверху */}
+      {decor === 'heart-hat' && (
+        <View
+          style={{
+            position: 'absolute',
+            top: size * -0.02,
+            alignSelf: 'center',
+            width: size * 0.22,
+            height: size * 0.2,
+          }}
+          pointerEvents="none"
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: size * 0.13,
+              height: size * 0.13,
+              borderRadius: size * 0.065,
+              backgroundColor: '#EF4444',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: size * 0.13,
+              height: size * 0.13,
+              borderRadius: size * 0.065,
+              backgroundColor: '#EF4444',
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              top: size * 0.05,
+              left: size * 0.015,
+              width: size * 0.19,
+              height: size * 0.13,
+              backgroundColor: '#EF4444',
+              transform: [{ rotate: '45deg' }],
             }}
           />
         </View>
