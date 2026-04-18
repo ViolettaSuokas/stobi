@@ -452,4 +452,32 @@ export const en: Record<string, string> = {
     'referral.bonus_applied_title': '🎁 Bonus received!',
     'referral.bonus_applied_text': 'Thanks for the invite — you got +{amount} 💎 head start.',
     'register.invite_code_hint': 'Invite code (optional)',
+
+    // Greetings (time-based)
+    'greeting.morning': 'Good morning, {name}!',
+    'greeting.afternoon': 'Good afternoon, {name}!',
+    'greeting.evening': 'Good evening, {name}!',
+    'greeting.late_night': 'Not sleeping yet, {name}?',
+
+    // Mascot contextual messages
+    'mascot.morning_1': 'Morning! Shall we hunt for stones? ✨',
+    'mascot.morning_2': 'Hey! Morning is the quietest time to search 🌸',
+    'mascot.morning_3': 'Slept well? Ready for adventure!',
+    'mascot.afternoon_1': 'Lunch break stone hunt?',
+    'mascot.afternoon_2': 'I spotted cool places nearby...',
+    'mascot.afternoon_3': 'Walk + stone = perfect day 🪨',
+    'mascot.evening_1': 'One last stone before dark?',
+    'mascot.evening_2': 'Evening finds are special.',
+    'mascot.night_1': 'I\'m already sleeping... zzz',
+    'mascot.night_2': 'Rest up, new stones await tomorrow 💤',
+    'mascot.streak_fire_1': 'YOU\'RE ON FIRE! {streak} days straight! 🔥',
+    'mascot.streak_fire_2': '{streak} days — you\'re a legend!',
+    'mascot.no_activity_1': 'I miss you... when do we walk?',
+    'mascot.no_activity_2': 'I\'m guarding the stones, come by 🥺',
+    'mascot.newbie_1': 'Welcome! Tap + and hide your first stone 🎨',
+    'mascot.newbie_2': 'Your first find awaits on the map!',
+    'mascot.finds_today_1': 'Already {finds}! You\'re doing great ❤️',
+    'mascot.finds_today_2': '{finds} stones today! Keep going?',
+    'mascot.veteran_1': 'Legend! You\'ve found 100+ stones 👑',
+    'mascot.veteran_2': 'Stone master — much to learn from you.',
 };

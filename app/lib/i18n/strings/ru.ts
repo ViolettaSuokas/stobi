@@ -461,4 +461,32 @@ export const ru: Record<string, string> = {
     'referral.bonus_applied_title': '🎁 Бонус получен!',
     'referral.bonus_applied_text': 'Спасибо за приглашение — тебе начислено +{amount} 💎 на старт.',
     'register.invite_code_hint': 'Код приглашения (необязательно)',
+
+    // Greetings (time-based)
+    'greeting.morning': 'Доброе утро, {name}!',
+    'greeting.afternoon': 'Добрый день, {name}!',
+    'greeting.evening': 'Добрый вечер, {name}!',
+    'greeting.late_night': 'Ты ещё не спишь, {name}?',
+
+    // Mascot contextual messages
+    'mascot.morning_1': 'Доброе утро! Пойдём искать камни? ✨',
+    'mascot.morning_2': 'Привет! Утро — самое спокойное время для поиска 🌸',
+    'mascot.morning_3': 'Выспался? Готов к приключениям!',
+    'mascot.afternoon_1': 'Обеденный поход за камнями?',
+    'mascot.afternoon_2': 'Я заметил классные места рядом...',
+    'mascot.afternoon_3': 'Прогулка + камень = идеальный день 🪨',
+    'mascot.evening_1': 'Последний камень до темноты?',
+    'mascot.evening_2': 'Вечерние находки — особенные.',
+    'mascot.night_1': 'Я уже сплю... zzz',
+    'mascot.night_2': 'Отдохни, завтра новые камни ждут 💤',
+    'mascot.streak_fire_1': 'ТЫ В ОГНЕ! {streak} дней подряд! 🔥',
+    'mascot.streak_fire_2': '{streak} дней — ты легенда!',
+    'mascot.no_activity_1': 'Скучаю... когда погуляем?',
+    'mascot.no_activity_2': 'Я тут камни охраняю, приходи 🥺',
+    'mascot.newbie_1': 'Добро пожаловать! Нажми + и спрячь первый камень 🎨',
+    'mascot.newbie_2': 'Первая находка ждёт тебя на карте!',
+    'mascot.finds_today_1': 'Уже {finds}! Ты молодец ❤️',
+    'mascot.finds_today_2': '{finds} камня сегодня! Продолжаем?',
+    'mascot.veteran_1': 'Легенда! Ты нашёл уже 100+ камней 👑',
+    'mascot.veteran_2': 'Мастер камней — у тебя есть чему поучиться.',
 };

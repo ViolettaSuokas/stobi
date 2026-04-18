@@ -468,4 +468,32 @@ export const fi: Record<string, string> = {
     'referral.bonus_applied_title': '🎁 Bonus saatu!',
     'referral.bonus_applied_text': 'Kiitos kutsusta — saat +{amount} 💎 alkuun.',
     'register.invite_code_hint': 'Kutsukoodi (valinnainen)',
+
+    // Greetings (time-based)
+    'greeting.morning': 'Hyvää huomenta, {name}!',
+    'greeting.afternoon': 'Hyvää päivää, {name}!',
+    'greeting.evening': 'Hyvää iltaa, {name}!',
+    'greeting.late_night': 'Etkö ole vielä nukkumassa, {name}?',
+
+    // Mascot contextual messages
+    'mascot.morning_1': 'Huomenta! Lähdetäänkö etsimään kiviä? ✨',
+    'mascot.morning_2': 'Hei! Aamu on rauhallisinta etsintäaikaa 🌸',
+    'mascot.morning_3': 'Nukuitko hyvin? Valmiina seikkailuun!',
+    'mascot.afternoon_1': 'Lounasretki kivien pariin?',
+    'mascot.afternoon_2': 'Huomasin hienoja paikkoja lähellä...',
+    'mascot.afternoon_3': 'Kävely + kivi = täydellinen päivä 🪨',
+    'mascot.evening_1': 'Viimeinen kivi ennen pimeää?',
+    'mascot.evening_2': 'Ilta-aikaan löytyvät kivet ovat erityisiä.',
+    'mascot.night_1': 'Nukun jo... zzz',
+    'mascot.night_2': 'Lepää, huomenna uudet kivet odottavat 💤',
+    'mascot.streak_fire_1': 'OLET TULISTA! {streak} päivää peräkkäin! 🔥',
+    'mascot.streak_fire_2': '{streak} päivää — olet legenda!',
+    'mascot.no_activity_1': 'Ikävöin... milloin kävellään?',
+    'mascot.no_activity_2': 'Vartioin kiviä, tule käymään 🥺',
+    'mascot.newbie_1': 'Tervetuloa! Paina + ja piilota ensimmäinen kivi 🎨',
+    'mascot.newbie_2': 'Ensimmäinen löytö odottaa sinua kartalla!',
+    'mascot.finds_today_1': 'Jo {finds}! Olet mahtava ❤️',
+    'mascot.finds_today_2': '{finds} kiveä tänään! Jatketaanko?',
+    'mascot.veteran_1': 'Legenda! Olet löytänyt jo 100+ kiveä 👑',
+    'mascot.veteran_2': 'Kivien mestari — sinulta voi oppia.',
 };

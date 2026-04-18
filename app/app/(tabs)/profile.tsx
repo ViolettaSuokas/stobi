@@ -64,6 +64,7 @@ import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
+import { MascotScene } from '../../components/MascotScene';
 import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { StreakBadge } from '../../components/StreakBadge';
 import { ReferralCard } from '../../components/ReferralCard';
@@ -260,12 +261,13 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.mascotWrap}>
-              <StoneMascot
-                size={200}
+              <MascotScene
+                size={180}
                 color={selectedColor}
-                variant={selectedVariant}
                 shape={selectedShape}
                 decor={selectedDecor}
+                userName={user?.username}
+                mascotName={user?.characterName}
               />
             </View>
 
