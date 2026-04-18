@@ -64,6 +64,7 @@ import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
+import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
@@ -433,6 +434,9 @@ export default function ProfileScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Welcome quest — скрывается когда все 3 задачи выполнены */}
+            <WelcomeQuest />
 
             {/* Stats */}
             <View style={styles.statsRow}>

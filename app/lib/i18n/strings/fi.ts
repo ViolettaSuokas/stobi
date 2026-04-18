@@ -416,4 +416,14 @@ export const fi: Record<string, string> = {
 
     // Network
     'network.offline': 'Ei yhteyttä',
+
+    // Welcome quest (first-time user retention)
+    'welcome.title': 'ALOITA TÄSTÄ',
+    'welcome.subtitle': 'Tee 3 ensimmäistä askelta ja saat +20 💎 bonuksena',
+    'welcome.hide_first': 'Piilota ensimmäinen kivi',
+    'welcome.hide_first_reward': '+5 💎 piilotetusta kivestä',
+    'welcome.find_first': 'Löydä ensimmäinen kivi',
+    'welcome.find_first_reward': '+5 💎 löydöstä',
+    'welcome.chat_first': 'Kirjoita chattiin',
+    'welcome.chat_first_reward': '+5 💎 ensimmäisestä viestistä',
 };

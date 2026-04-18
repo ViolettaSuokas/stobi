@@ -409,4 +409,14 @@ export const ru: Record<string, string> = {
 
     // Network
     'network.offline': 'Нет соединения',
+
+    // Welcome quest (first-time user retention)
+    'welcome.title': 'С ЧЕГО НАЧАТЬ',
+    'welcome.subtitle': 'Сделай 3 первых шага и получи +20 💎 бонусом',
+    'welcome.hide_first': 'Спрячь первый камень',
+    'welcome.hide_first_reward': '+5 💎 за спрятанный камень',
+    'welcome.find_first': 'Найди первый камень',
+    'welcome.find_first_reward': '+5 💎 за находку',
+    'welcome.chat_first': 'Напиши в чат',
+    'welcome.chat_first_reward': '+5 💎 за первое сообщение',
 };

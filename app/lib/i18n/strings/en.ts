@@ -400,4 +400,14 @@ export const en: Record<string, string> = {
 
     // Network
     'network.offline': 'No connection',
+
+    // Welcome quest (first-time user retention)
+    'welcome.title': 'GETTING STARTED',
+    'welcome.subtitle': 'Complete 3 first steps and earn +20 💎 bonus',
+    'welcome.hide_first': 'Hide your first stone',
+    'welcome.hide_first_reward': '+5 💎 for a hidden stone',
+    'welcome.find_first': 'Find your first stone',
+    'welcome.find_first_reward': '+5 💎 for a find',
+    'welcome.chat_first': 'Write in chat',
+    'welcome.chat_first_reward': '+5 💎 for first message',
 };
