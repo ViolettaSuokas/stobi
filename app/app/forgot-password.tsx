@@ -59,7 +59,7 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
           <CaretLeft size={22} color={Colors.text} weight="bold" />
           <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>

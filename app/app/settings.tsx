@@ -157,6 +157,8 @@ export default function SettingsScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
           >
             <CaretLeft size={22} color={Colors.text} weight="bold" />
           </TouchableOpacity>
@@ -204,7 +206,7 @@ export default function SettingsScreen() {
         {/* Язык */}
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={handleLanguage} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.row} onPress={handleLanguage} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.app_language')}>
             <Globe size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.app_language')}</Text>
             <Text style={styles.rowValue}>{LANGUAGE_NAMES[lang]}</Text>
@@ -215,7 +217,7 @@ export default function SettingsScreen() {
         {/* Платежи */}
         <Text style={styles.sectionTitle}>{t('settings.payments')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={handlePaymentHistory} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.row} onPress={handlePaymentHistory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.payment_history')}>
             <CreditCard size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.payment_history')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
@@ -225,6 +227,8 @@ export default function SettingsScreen() {
             style={styles.row}
             onPress={() => router.push('/premium')}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.manage_sub')}
           >
             <CreditCard size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.manage_sub')}</Text>
@@ -241,19 +245,19 @@ export default function SettingsScreen() {
             <Text style={styles.rowValue}>1.0.0</Text>
           </View>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/privacy')}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/privacy')} accessibilityRole="button" accessibilityLabel={t('settings.privacy')}>
             <Shield size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.privacy')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/terms')}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/terms')} accessibilityRole="button" accessibilityLabel={t('settings.terms')}>
             <Shield size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.terms')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/feedback' as any)}>
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/feedback' as any)} accessibilityRole="button" accessibilityLabel={t('settings.feedback')}>
             <Info size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.feedback')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
@@ -263,12 +267,12 @@ export default function SettingsScreen() {
         {/* Аккаунт */}
         <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={handleLogout} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.row} onPress={handleLogout} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.logout')}>
             <SignOut size={20} color={Colors.text2} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.logout')}</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.delete_account')} accessibilityHint="Удалит аккаунт навсегда">
             <Trash size={20} color="#DC2626" weight="regular" />
             <Text style={[styles.rowLabel, { color: '#DC2626' }]}>{t('settings.delete_account')}</Text>
           </TouchableOpacity>

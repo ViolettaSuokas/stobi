@@ -135,7 +135,7 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('common.back')}>
               <CaretLeft size={22} color="#FFFFFF" weight="bold" />
             </TouchableOpacity>
 

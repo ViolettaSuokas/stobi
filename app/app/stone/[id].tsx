@@ -459,6 +459,8 @@ export default function StoneDetailScreen() {
               style={styles.heroBtn}
               onPress={() => router.back()}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.back')}
             >
               <CaretDown size={22} color={Colors.text} weight="bold" />
             </TouchableOpacity>
