@@ -401,6 +401,8 @@ export default function MapScreen() {
                 }
               }}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('map.enable_location')}
             >
               <MapPin size={18} color="#FFFFFF" weight="fill" />
               <Text style={styles.permissionBtnText}>
@@ -453,6 +455,9 @@ export default function MapScreen() {
             style={styles.filterBtn}
             activeOpacity={0.7}
             onPress={() => setShowFilterMenu(!showFilterMenu)}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.filter_' + (filter === 'nearby' ? 'nearby' : filter === 'country' ? 'country' : 'world'))}
+            accessibilityHint="Переключить область поиска камней"
           >
             <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
             {filter === 'nearby' && <MapPinArea size={20} color={Colors.accent} weight="fill" />}
@@ -540,6 +545,9 @@ export default function MapScreen() {
           buttons: [{ label: t('common.understood'), style: 'cancel' }],
         })}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={t('map.approx_title')}
+        accessibilityHint="Информация о том, как работает примерная локация"
       >
         <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
         <Info size={22} color={Colors.accent} weight="bold" />

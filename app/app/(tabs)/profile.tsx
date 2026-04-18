@@ -385,7 +385,12 @@ export default function ProfileScreen() {
           <View style={styles.body}>
             {/* Profile photo + name card */}
             <View style={styles.profilePhotoCard}>
-              <TouchableOpacity onPress={handleChangePhoto} activeOpacity={0.8}>
+              <TouchableOpacity
+                onPress={handleChangePhoto}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
+              >
                 <View style={styles.profilePhotoCircle}>
                   {user?.photoUrl ? (
                     <Image source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} />
