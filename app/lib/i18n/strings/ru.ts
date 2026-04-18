@@ -419,4 +419,7 @@ export const ru: Record<string, string> = {
     'welcome.find_first_reward': '+5 💎 за находку',
     'welcome.chat_first': 'Напиши в чат',
     'welcome.chat_first_reward': '+5 💎 за первое сообщение',
+
+    // Celebration overlay
+    'celebration.total': 'Всего у тебя',
 };

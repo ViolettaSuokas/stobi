@@ -410,4 +410,7 @@ export const en: Record<string, string> = {
     'welcome.find_first_reward': '+5 💎 for a find',
     'welcome.chat_first': 'Write in chat',
     'welcome.chat_first_reward': '+5 💎 for first message',
+
+    // Celebration overlay
+    'celebration.total': 'You have',
 };

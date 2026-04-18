@@ -426,4 +426,7 @@ export const fi: Record<string, string> = {
     'welcome.find_first_reward': '+5 💎 löydöstä',
     'welcome.chat_first': 'Kirjoita chattiin',
     'welcome.chat_first_reward': '+5 💎 ensimmäisestä viestistä',
+
+    // Celebration overlay
+    'celebration.total': 'Sinulla on',
 };

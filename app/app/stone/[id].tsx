@@ -46,6 +46,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
 import { ShareTapped, StoneTapped } from '../../lib/analytics';
+import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { PencilSimple, Trash } from 'phosphor-react-native';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
@@ -70,6 +71,9 @@ export default function StoneDetailScreen() {
   const [isOwnStone, setIsOwnStone] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
+
+  // Celebration overlay for stone find
+  const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
 
   // 1-hour lock on freshly-hidden stones (anti-self-find farming).
   // Server enforces this in record_find RPC, but UI shouldn't even offer
@@ -350,33 +354,38 @@ export default function StoneDetailScreen() {
       const achStats = await gatherAchievementStats();
       const unlocked = await checkAchievements(achStats);
 
-      const baseMessage = `+${reward} 💎 · ${newBalance} 💎`;
-      const trialMessage = trialActivated
-        ? `\n\n${t('trial.activated_message')}`
-        : '';
-      const unlockedCosmetics = unlocked
-        .map((id) => ACHIEVEMENT_DEFS.find((d) => d.id === id)?.unlockCosmeticId)
-        .filter((id): id is string => !!id)
-        .map((id) => ALL_ITEMS.find((it) => it.id === id)?.label)
-        .filter((label): label is string => !!label);
-      const cosmeticSuffix = unlockedCosmetics.length > 0
-        ? ` + ${unlockedCosmetics.join(', ')}`
-        : '';
-      const achMessage = unlocked.length > 0
-        ? `\n\n🏆 ${t('achievement.unlocked')}${cosmeticSuffix}`
-        : '';
+      // Build extras (achievements + trial)
+      const extras: string[] = [];
+      if (trialActivated) {
+        extras.push(t('trial.activated_message'));
+      }
+      if (unlocked.length > 0) {
+        const unlockedCosmetics = unlocked
+          .map((id) => ACHIEVEMENT_DEFS.find((d) => d.id === id)?.unlockCosmeticId)
+          .filter((id): id is string => !!id)
+          .map((id) => ALL_ITEMS.find((it) => it.id === id)?.label)
+          .filter((label): label is string => !!label);
+        const cosmeticSuffix = unlockedCosmetics.length > 0
+          ? ` + ${unlockedCosmetics.join(', ')}`
+          : '';
+        extras.push(`${t('achievement.unlocked')}${cosmeticSuffix}`);
+      }
 
-      Alert.alert(
-        trialActivated ? t('trial.activated_title') : `🎉 ${t('stone.congrats')}`,
-        `${baseMessage}${trialMessage}${achMessage}`,
-        [{
-          text: t('common.nice'),
-          onPress: () => {
-            router.dismiss();
-            router.replace('/(tabs)/map');
-          },
-        }],
-      );
+      setCelebration({
+        visible: true,
+        title: trialActivated ? t('trial.activated_title') : t('stone.congrats'),
+        reward,
+        balance: newBalance,
+        extraLines: extras,
+        stoneId,
+        stoneName: stone?.name,
+        stoneCity: stone?.city ?? undefined,
+        onClose: () => {
+          setCelebration(null);
+          router.dismiss();
+          router.replace('/(tabs)/map');
+        },
+      });
     } catch (e: any) {
       Alert.alert(t('common.error'), e?.message ?? '');
     } finally {
@@ -685,6 +694,9 @@ export default function StoneDetailScreen() {
           </TouchableOpacity>
         )}
       </SafeAreaView>
+
+      {/* Celebration overlay — показывается после успешной находки */}
+      {celebration && <CelebrationOverlay {...celebration} />}
     </View>
   );
 }
