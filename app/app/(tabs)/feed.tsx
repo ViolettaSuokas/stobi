@@ -197,6 +197,8 @@ export default function FeedScreen() {
                         if (!(await requireAuth('открывать камни'))) return;
                         router.push(`/stone/${stone.stoneId}`);
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${stone.stoneName ?? 'stone'} — ${stone.city ?? ''}`}
                     >
                       <View style={styles.recentVisual}>
                         {stone.photoUri ? (
@@ -284,6 +286,9 @@ export default function FeedScreen() {
                       onPress={() => setLeaderKind(k)}
                       style={[styles.kindTab, active && styles.kindTabActive]}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={k === 'hide' ? t('feed.hiders') : t('feed.finders')}
                     >
                       <Text
                         style={[
@@ -308,6 +313,9 @@ export default function FeedScreen() {
                       onPress={() => setLeaderPeriod(p)}
                       style={[styles.periodChip, active && styles.periodChipActive]}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={p === 'today' ? t('feed.today_period') : p === 'week' ? t('feed.week') : t('feed.alltime')}
                     >
                       <Text
                         style={[

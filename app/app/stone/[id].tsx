@@ -594,6 +594,8 @@ export default function StoneDetailScreen() {
               style={styles.ownActionBtn}
               onPress={handleEditName}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.edit_name')}
             >
               <PencilSimple size={18} color={Colors.accent} weight="bold" />
               <Text style={styles.ownActionText}>{t('stone.edit_name')}</Text>
@@ -602,6 +604,8 @@ export default function StoneDetailScreen() {
               style={styles.ownActionBtn}
               onPress={handleEditPhoto}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.edit_photo')}
             >
               <PencilSimple size={18} color={Colors.accent} weight="bold" />
               <Text style={styles.ownActionText}>{t('stone.edit_photo')}</Text>
@@ -610,6 +614,9 @@ export default function StoneDetailScreen() {
               style={[styles.ownActionBtn, { borderColor: '#FCA5A5' }]}
               onPress={handleDeleteStone}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.delete')}
+              accessibilityHint="Удалит этот камень навсегда"
             >
               <Trash size={18} color="#DC2626" weight="bold" />
               <Text style={[styles.ownActionText, { color: '#DC2626' }]}>{t('common.delete')}</Text>
@@ -634,6 +641,9 @@ export default function StoneDetailScreen() {
             activeOpacity={0.85}
             onPress={handleFound}
             disabled={claiming}
+            accessibilityRole="button"
+            accessibilityLabel={t('stone.found_button')}
+            accessibilityState={{ disabled: claiming, busy: claiming }}
           >
             {claiming ? (
               <ActivityIndicator color="#fff" />

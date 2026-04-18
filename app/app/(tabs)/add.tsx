@@ -364,6 +364,9 @@ export default function AddScreen() {
             onPress={handleSave}
             disabled={saving}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('add.save_button')}
+            accessibilityState={{ disabled: saving, busy: saving }}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
