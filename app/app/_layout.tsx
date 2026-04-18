@@ -11,6 +11,7 @@ import { getCurrentUser } from '../lib/auth';
 import { initSentry, identifySentryUser } from '../lib/sentry';
 import { registerPushToken, attachResponseListener } from '../lib/push';
 import { AppOpened, NotificationOpened } from '../lib/analytics';
+import { savePendingReferralCode } from '../lib/referral';
 
 // Init crash reporter как можно раньше — до первого useState/useEffect.
 initSentry();
@@ -45,10 +46,17 @@ export default function RootLayout() {
     const handleUrl = (url: string | null) => {
       if (!url) return;
       const parsed = Linking.parse(url);
-      // Поддерживаем "stone/ID" и "/stone/ID" в path
       const parts = (parsed.path ?? '').replace(/^\//, '').split('/');
+      // stone/ID — открываем детейл
       if (parts[0] === 'stone' && parts[1]) {
         router.push(`/stone/${parts[1]}` as any);
+      }
+      // invite/CODE — сохраняем pending код, применим после регистрации
+      if (parts[0] === 'invite' && parts[1]) {
+        void savePendingReferralCode(parts[1]);
+        // Если юзер залогинен — мы не применяем здесь, так как
+        // redeem_referral_code нужно вызвать руками (может не пройти
+        // из-за already_redeemed). Покажем diff на профиле — потом.
       }
     };
     // Первоначальная ссылка (если app открыт впервые из share)

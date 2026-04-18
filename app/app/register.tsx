@@ -27,6 +27,7 @@ import { ArrowRight } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
 import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
 import { Registered } from '../lib/analytics';
+import { applyPendingReferralCode } from '../lib/referral';
 
 type Mode = 'buttons' | 'email';
 
@@ -73,6 +74,8 @@ export default function RegisterScreen() {
     try {
       await register(trimmedEmail, password, trimmedName);
       void Registered('email');
+      // Если есть pending ref-code от deep-link — применяем
+      void applyPendingReferralCode();
       router.replace('/map');
     } catch (e: any) {
       setError(e?.message ?? t('register.error'));

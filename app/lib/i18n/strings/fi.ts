@@ -455,4 +455,14 @@ export const fi: Record<string, string> = {
     'feedback.sent_title': 'Kiitos! 💜',
     'feedback.sent_text': 'Luemme viestin ja vastaamme jos jätit sähköpostin. Sovellus paranee kiitos sinun.',
     'feedback.error': 'Lähettäminen epäonnistui. Tarkista yhteys ja yritä uudelleen.',
+
+    // Referral
+    'referral.title': 'Kutsu ystävä',
+    'referral.subtitle': 'Saat molemmat +50 💎 kun ystäväsi asentaa Stobin koodillasi.',
+    'referral.your_code': 'KOODISI',
+    'referral.stat_invited': 'kutsuttu',
+    'referral.stat_earned': 'ansaittu',
+    'referral.share_cta': 'Jaa',
+    'referral.share_title': 'Stobi — etsi maalattuja kiviä',
+    'referral.share_message': '🎨 Liity Stobiin! Etsimme ja piilottelemme maalattuja kiviä ympäri Suomea. Käytä koodiani {code} rekisteröityessäsi ja saat +50 💎 alkuun.',
 };

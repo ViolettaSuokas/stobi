@@ -439,4 +439,14 @@ export const en: Record<string, string> = {
     'feedback.sent_title': 'Thanks! 💜',
     'feedback.sent_text': 'We\'ll read it and reply if you left an email. The app gets better thanks to you.',
     'feedback.error': 'Failed to send. Check your connection and try again.',
+
+    // Referral
+    'referral.title': 'Invite a friend',
+    'referral.subtitle': 'You both get +50 💎 when your friend installs Stobi with your code.',
+    'referral.your_code': 'YOUR CODE',
+    'referral.stat_invited': 'invited',
+    'referral.stat_earned': 'earned',
+    'referral.share_cta': 'Share',
+    'referral.share_title': 'Stobi — painted stones hunt',
+    'referral.share_message': '🎨 Join Stobi! We search and hide painted stones across Finland. Use my code {code} when signing up to get +50 💎 head start.',
 };

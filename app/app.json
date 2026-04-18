@@ -90,7 +90,8 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/stone" }
+            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/stone" },
+            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/invite" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }

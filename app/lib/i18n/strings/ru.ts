@@ -448,4 +448,14 @@ export const ru: Record<string, string> = {
     'feedback.sent_title': 'Спасибо! 💜',
     'feedback.sent_text': 'Мы прочитаем и ответим если оставил email. Приложение становится лучше благодаря тебе.',
     'feedback.error': 'Не удалось отправить. Проверь интернет и попробуй снова.',
+
+    // Referral
+    'referral.title': 'Пригласи друга',
+    'referral.subtitle': 'Вы оба получите +50 💎 когда друг установит Stobi по твоему коду.',
+    'referral.your_code': 'ТВОЙ КОД',
+    'referral.stat_invited': 'приглашено',
+    'referral.stat_earned': 'заработано',
+    'referral.share_cta': 'Поделиться',
+    'referral.share_title': 'Stobi — поиск раскрашенных камней',
+    'referral.share_message': '🎨 Присоединяйся к Stobi! Мы ищем и прячем раскрашенные камни по всей Финляндии. Введи мой код {code} при регистрации и получи +50 💎 на старте.',
 };

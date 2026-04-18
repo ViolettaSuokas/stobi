@@ -66,6 +66,7 @@ import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { StreakBadge } from '../../components/StreakBadge';
+import { ReferralCard } from '../../components/ReferralCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
@@ -441,6 +442,9 @@ export default function ProfileScreen() {
 
             {/* Welcome quest — скрывается когда все 3 задачи выполнены */}
             <WelcomeQuest />
+
+            {/* Referral card — appears when logged in, always shown */}
+            {user && <ReferralCard />}
 
             {/* Stats */}
             <View style={styles.statsRow}>
