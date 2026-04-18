@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -17,6 +18,7 @@ import {
   CheckCircle,
   Footprints,
   Eye,
+  ShareNetwork,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -230,6 +232,23 @@ export default function StoneDetailScreen() {
         },
       ],
     );
+  };
+
+  const handleShare = async () => {
+    if (!stone) return;
+    const url = `https://stobi.app/stone/${stoneId}`;
+    const message = t('stone.share_message')
+      .replace('{name}', stone.name)
+      .replace('{city}', stone.city ?? 'Finland');
+    try {
+      await Share.share({
+        message: `${message}\n${url}`,
+        url, // iOS учитывает отдельно, Android игнорит
+        title: t('stone.share_title'),
+      });
+    } catch (e) {
+      console.warn('share failed', e);
+    }
   };
 
   const handleFound = async () => {
@@ -623,11 +642,22 @@ export default function StoneDetailScreen() {
             </TouchableOpacity>
           </View>
         ) : alreadyFound ? (
-          <View style={[styles.findBtn, styles.findBtnDone]}>
-            <CheckCircle size={20} color={Colors.green} weight="fill" />
-            <Text style={[styles.findBtnText, { color: Colors.green }]}>
-              {t('stone.already_found')}
-            </Text>
+          <View style={styles.foundRow}>
+            <View style={[styles.findBtn, styles.findBtnDone, { flex: 1 }]}>
+              <CheckCircle size={20} color={Colors.green} weight="fill" />
+              <Text style={[styles.findBtnText, { color: Colors.green }]}>
+                {t('stone.already_found')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.shareBtn}
+              activeOpacity={0.85}
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.share')}
+            >
+              <ShareNetwork size={22} color={Colors.accent} weight="bold" />
+            </TouchableOpacity>
           </View>
         ) : isFresh ? (
           <View style={[styles.findBtn, styles.findBtnLocked]}>
@@ -930,6 +960,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   findBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  // Share button — next to "already_found" pill
+  foundRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  shareBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: Colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+  },
 
   // Own stone actions (edit/delete)
   ownActions: {
