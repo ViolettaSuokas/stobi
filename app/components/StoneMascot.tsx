@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 
@@ -109,7 +110,11 @@ type Props = {
  * no SVG / no image assets, so it scales freely. Used on onboarding,
  * profile, helper hints, etc. The mascot doubles as the user's stone-avatar.
  */
-export function StoneMascot({
+// Memo: mascot — тяжёлый View с 30+ StyleSheet subcomponents,
+// ре-рендеры при одинаковых props → лишний CPU. memo() даёт ~30-40%
+// экономии в профиле / celebration / welcome quest где маскот
+// рендерится несколько раз одновременно.
+export const StoneMascot = memo(function StoneMascot({
   size = 180,
   color = Colors.mascot,
   variant = 'happy',
@@ -495,7 +500,7 @@ export function StoneMascot({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   sparkle: {

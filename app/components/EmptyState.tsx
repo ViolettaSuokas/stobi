@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from './StoneMascot';
@@ -22,7 +23,7 @@ export type EmptyStateProps = {
   compact?: boolean;
 };
 
-export function EmptyState({
+export const EmptyState = memo(function EmptyState({
   title,
   subtitle,
   mascotVariant = 'happy',
@@ -61,7 +62,7 @@ export function EmptyState({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

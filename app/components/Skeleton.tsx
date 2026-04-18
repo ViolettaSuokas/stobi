@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/Colors';
@@ -17,7 +17,7 @@ type Props = {
  * Реализация: base-плашка (серый прямоугольник) + абсолютный
  * LinearGradient который ездит по translateX от -1.5× до +1.5× ширины.
  */
-export function Skeleton({ width, height, borderRadius = 8, style }: Props) {
+export const Skeleton = memo(function Skeleton({ width, height, borderRadius = 8, style }: Props) {
   const translate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -66,9 +66,9 @@ export function Skeleton({ width, height, borderRadius = 8, style }: Props) {
       </Animated.View>
     </View>
   );
-}
+});
 
-export function SkeletonRow({ count = 3 }: { count?: number }) {
+export const SkeletonRow = memo(function SkeletonRow({ count = 3 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
@@ -82,7 +82,7 @@ export function SkeletonRow({ count = 3 }: { count?: number }) {
       ))}
     </>
   );
-}
+});
 
 const styles = StyleSheet.create({
   base: {
