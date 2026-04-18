@@ -22,11 +22,20 @@ import { getCurrentUser } from '../lib/auth';
 import { useI18n } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 
-type PlanId = 'free-trial' | 'monthly';
+type PlanId = 'free-trial' | 'monthly' | 'annual';
 
 const PLAN_CONFIGS = [
-  { id: 'free-trial' as PlanId, labelKey: 'premium.plan_free', subKey: 'premium.plan_free_sub', price: '0,00€' },
-  { id: 'monthly' as PlanId, labelKey: 'premium.plan_monthly', subKey: 'premium.plan_monthly_sub', price: '3,99€' },
+  { id: 'free-trial' as PlanId, labelKey: 'premium.plan_free', subKey: 'premium.plan_free_sub', price: '0,00€', badgeKey: undefined },
+  { id: 'monthly' as PlanId, labelKey: 'premium.plan_monthly', subKey: 'premium.plan_monthly_sub', price: '3,99€', badgeKey: undefined },
+  { id: 'annual' as PlanId, labelKey: 'premium.plan_annual', subKey: 'premium.plan_annual_sub', price: '35,00€', badgeKey: 'premium.save_badge' },
+];
+
+type BoosterId = 'pack_small' | 'pack_medium' | 'pack_large';
+
+const BOOSTER_PACKS: { id: BoosterId; productId: string; diamonds: number; price: string; badgeKey?: string }[] = [
+  { id: 'pack_small',  productId: 'stobi_pack_small',  diamonds: 100,  price: '0,99€' },
+  { id: 'pack_medium', productId: 'stobi_pack_medium', diamonds: 500,  price: '3,99€', badgeKey: 'premium.popular_badge' },
+  { id: 'pack_large',  productId: 'stobi_pack_large',  diamonds: 1500, price: '9,99€', badgeKey: 'premium.best_value_badge' },
 ];
 
 export default function PremiumScreen() {
@@ -43,24 +52,32 @@ export default function PremiumScreen() {
     }
 
     // Try real purchase via RevenueCat
-    const { isPurchasesConfigured, getOfferings, purchaseSubscription } = await import('../lib/purchases');
+    const { isPurchasesConfigured, getOfferings, purchasePackage } = await import('../lib/purchases');
     if (isPurchasesConfigured()) {
       try {
         const offerings = await getOfferings();
-        if (offerings?.availablePackages?.length > 0) {
-          const pkg = offerings.availablePackages[0];
-          const success = await purchaseSubscription(pkg);
+        // Map selectedPlan → RC package identifier
+        const wantedId = selectedPlan === 'annual'
+          ? 'stobi_annual'
+          : selectedPlan === 'monthly'
+            ? 'stobi_monthly'
+            : 'stobi_free_trial';
+        const pkg = offerings?.availablePackages?.find(
+          (p: any) => p.product?.identifier === wantedId,
+        ) ?? offerings?.availablePackages?.[0];
+        if (pkg) {
+          const success = await purchasePackage(pkg);
           if (success) {
             modal.show({
               title: t('premium.success'),
-              message: 'Stobi Premium активен!',
+              message: t('premium.success_message'),
               buttons: [{ label: t('premium.nice'), onPress: () => router.back() }],
             });
           }
           return;
         }
-      } catch {
-        // Fall through to demo mode
+      } catch (e) {
+        console.warn('premium purchase failed', e);
       }
     }
 
@@ -72,6 +89,44 @@ export default function PremiumScreen() {
         .replace('{plan}', plan.label)
         .replace('{price}', plan.price),
       buttons: [{ label: t('premium.nice'), onPress: () => router.back() }],
+    });
+  };
+
+  const handleBuyBooster = async (pack: typeof BOOSTER_PACKS[number]) => {
+    const user = await getCurrentUser();
+    if (!user) {
+      router.push('/register');
+      return;
+    }
+    const { isPurchasesConfigured, getOfferings, purchasePackage } = await import('../lib/purchases');
+    if (isPurchasesConfigured()) {
+      try {
+        const offerings = await getOfferings();
+        const pkg = offerings?.availablePackages?.find(
+          (p: any) => p.product?.identifier === pack.productId,
+        );
+        if (pkg) {
+          const success = await purchasePackage(pkg);
+          if (success) {
+            modal.show({
+              title: t('premium.booster_success_title'),
+              message: t('premium.booster_success_message').replace('{amount}', String(pack.diamonds)),
+              buttons: [{ label: t('premium.nice') }],
+            });
+          }
+          return;
+        }
+      } catch (e) {
+        console.warn('booster purchase failed', e);
+      }
+    }
+    // Demo mode fallback
+    modal.show({
+      title: t('premium.success'),
+      message: t('premium.demo_message')
+        .replace('{plan}', `${pack.diamonds} 💎`)
+        .replace('{price}', pack.price),
+      buttons: [{ label: t('premium.nice') }],
     });
   };
 
@@ -174,11 +229,19 @@ export default function PremiumScreen() {
                   style={[styles.planCard, active && styles.planCardActive]}
                   onPress={() => setSelectedPlan(plan.id)}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`${plan.label}, ${plan.price}`}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.planLabel}>{plan.label}</Text>
                     <Text style={styles.planSub}>{plan.sub}</Text>
                   </View>
+                  {plan.badgeKey && (
+                    <View style={styles.planBadge}>
+                      <Text style={styles.planBadgeText}>{t(plan.badgeKey)}</Text>
+                    </View>
+                  )}
                   <Text style={styles.planPrice}>{plan.price}</Text>
                   {active && (
                     <View style={styles.planCheck}>
@@ -188,6 +251,33 @@ export default function PremiumScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          {/* Booster packs — instant 💎 top-up */}
+          <View style={styles.boosterSection}>
+            <Text style={styles.boosterHeader}>{t('premium.booster_title')}</Text>
+            <Text style={styles.boosterSub}>{t('premium.booster_sub')}</Text>
+            <View style={styles.boosterGrid}>
+              {BOOSTER_PACKS.map((pack) => (
+                <TouchableOpacity
+                  key={pack.id}
+                  style={styles.boosterCard}
+                  onPress={() => handleBuyBooster(pack)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${pack.diamonds} diamonds for ${pack.price}`}
+                >
+                  {pack.badgeKey && (
+                    <View style={styles.boosterBadge}>
+                      <Text style={styles.boosterBadgeText}>{t(pack.badgeKey)}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.boosterDiamonds}>{pack.diamonds}</Text>
+                  <Text style={styles.boosterLabel}>💎</Text>
+                  <Text style={styles.boosterPrice}>{pack.price}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </ScrollView>
 
@@ -201,14 +291,18 @@ export default function PremiumScreen() {
             <Text style={styles.ctaText}>
               {selectedPlan === 'free-trial'
                 ? t('premium.cta_trial')
-                : t('premium.cta_monthly')}
+                : selectedPlan === 'annual'
+                  ? t('premium.cta_annual')
+                  : t('premium.cta_monthly')}
             </Text>
           </TouchableOpacity>
 
           <Text style={styles.finePrint}>
             {selectedPlan === 'free-trial'
               ? t('premium.fine_trial')
-              : t('premium.fine_monthly')}
+              : selectedPlan === 'annual'
+                ? t('premium.fine_annual')
+                : t('premium.fine_monthly')}
           </Text>
 
           <TouchableOpacity activeOpacity={0.7} onPress={async () => {
@@ -361,6 +455,82 @@ const styles = StyleSheet.create({
   planCheck: {
     width: 24,
     height: 24,
+  },
+  planBadge: {
+    backgroundColor: '#FCD34D',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginRight: 8,
+  },
+  planBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#4F46E5',
+    letterSpacing: 0.3,
+  },
+
+  // Booster packs
+  boosterSection: {
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  boosterHeader: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  boosterSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    marginBottom: 12,
+  },
+  boosterGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  boosterCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    position: 'relative',
+  },
+  boosterBadge: {
+    position: 'absolute',
+    top: -6,
+    backgroundColor: '#FCD34D',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    zIndex: 1,
+  },
+  boosterBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#4F46E5',
+    letterSpacing: 0.3,
+  },
+  boosterDiamonds: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  boosterLabel: {
+    fontSize: 18,
+    marginTop: -2,
+    marginBottom: 6,
+  },
+  boosterPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
   },
 
   // CTA

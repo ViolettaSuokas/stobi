@@ -262,6 +262,22 @@ export const fi: Record<string, string> = {
     'premium.demo_message': 'Premium on saatavilla, kun maksaminen on yhdistetty.\n\nPaketti: {plan} ({price})',
     'premium.restored_message': 'Premium palautettu!',
     'premium.no_purchases': 'Ostoja ei löytynyt',
+    'premium.success_message': 'Stobi Premium käytössä! 🎉',
+
+    // Annual plan
+    'premium.plan_annual': 'Vuosi',
+    'premium.plan_annual_sub': 'Vuositilaus · säästä 27%',
+    'premium.cta_annual': 'Tilaa vuodeksi hintaan 35€',
+    'premium.fine_annual': '35€/vuosi (≈2,92€/kk). Voit peruuttaa milloin tahansa.',
+    'premium.save_badge': 'Säästä',
+
+    // Booster packs
+    'premium.booster_title': 'TIMANTTIPAKETIT',
+    'premium.booster_sub': 'Kertaosto — nopea tapa saada paljon 💎',
+    'premium.booster_success_title': '💎 Timantit lisätty!',
+    'premium.booster_success_message': '+{amount} 💎 saldoosi. Käytä niitä tyyleihin ja tehosteisiin!',
+    'premium.popular_badge': 'Suosittu',
+    'premium.best_value_badge': 'Paras tarjous',
 
     // Stone detail
     'stone.own_stone': 'Tämä on sinun kivesi 😄',

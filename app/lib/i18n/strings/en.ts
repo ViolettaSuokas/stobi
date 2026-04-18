@@ -248,6 +248,22 @@ export const en: Record<string, string> = {
     'premium.demo_message': 'Premium will be available once payment is connected.\n\nPlan: {plan} ({price})',
     'premium.restored_message': 'Premium restored!',
     'premium.no_purchases': 'No purchases found',
+    'premium.success_message': 'Stobi Premium is active! 🎉',
+
+    // Annual plan
+    'premium.plan_annual': 'Annual',
+    'premium.plan_annual_sub': 'Yearly subscription · save 27%',
+    'premium.cta_annual': 'Get annual for 35€',
+    'premium.fine_annual': '35€/year (≈2.92€/mo). Cancel anytime.',
+    'premium.save_badge': 'Save',
+
+    // Booster packs
+    'premium.booster_title': 'DIAMOND PACKS',
+    'premium.booster_sub': 'One-time purchase — fast way to get lots of 💎',
+    'premium.booster_success_title': '💎 Diamonds added!',
+    'premium.booster_success_message': '+{amount} 💎 to your balance. Spend on cosmetics and boosts!',
+    'premium.popular_badge': 'Popular',
+    'premium.best_value_badge': 'Best value',
 
     // Stone detail
     'stone.own_stone': 'This is your stone 😄',

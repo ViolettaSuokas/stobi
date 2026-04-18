@@ -257,6 +257,22 @@ export const ru: Record<string, string> = {
     'premium.demo_message': 'Premium будет доступен после подключения оплаты.\n\nПлан: {plan} ({price})',
     'premium.restored_message': 'Premium восстановлен!',
     'premium.no_purchases': 'Покупки не найдены',
+    'premium.success_message': 'Stobi Premium активен! 🎉',
+
+    // Annual plan
+    'premium.plan_annual': 'Год',
+    'premium.plan_annual_sub': 'Годовая подписка · экономия 27%',
+    'premium.cta_annual': 'Оформить годовую подписку за 35€',
+    'premium.fine_annual': '35€/год (≈2,92€/мес). Отменить можно в любой момент.',
+    'premium.save_badge': 'Экономь',
+
+    // Booster packs
+    'premium.booster_title': 'ПАКЕТЫ АЛМАЗИКОВ',
+    'premium.booster_sub': 'Одноразовая покупка — быстрый способ получить много 💎',
+    'premium.booster_success_title': '💎 Алмазики добавлены!',
+    'premium.booster_success_message': '+{amount} 💎 на твой баланс. Трать на косметику и boosts!',
+    'premium.popular_badge': 'Популярный',
+    'premium.best_value_badge': 'Выгодно',
 
     // Stone detail
     'stone.own_stone': 'Это твой камень 😄',

@@ -54,22 +54,32 @@ export async function getOfferings(): Promise<any | null> {
   }
 }
 
-/** Purchase a subscription package.
+/** Унифицированный метод покупки любого package (подписка или consumable).
  *
- * После миграции 001+009: клиент больше НЕ пишет is_premium в profiles.
- * Это делает RevenueCat webhook → Supabase Edge Function с service_role.
- * Здесь мы только возвращаем актуальный статус из RC SDK. */
-export async function purchaseSubscription(pkg: any): Promise<boolean> {
+ * Server-side state (is_premium, balance) обновляется через RC webhook →
+ * Supabase Edge Function с service_role. Клиент только триггерит покупку
+ * и получает ответ успех/отказ.
+ *
+ * Для consumable (booster pack) RC webhook обработает NON_RENEWING_PURCHASE
+ * и начислит 💎 по mapping-у в rc-webhook. */
+export async function purchasePackage(pkg: any): Promise<boolean> {
   if (!Purchases) return false;
-
   try {
-    const { customerInfo } = await Purchases.purchasePackage(pkg);
-    return customerInfo.entitlements.active['Stobi Pro'] !== undefined;
-  } catch (e) {
-    console.warn('purchaseSubscription failed', e);
+    const { customerInfo, productIdentifier } = await Purchases.purchasePackage(pkg);
+    // Если это подписка — чекаем entitlement
+    if (customerInfo?.entitlements?.active?.['Stobi Pro'] !== undefined) return true;
+    // Consumable — RC не даёт entitlement, но productIdentifier значит покупка прошла
+    if (productIdentifier) return true;
+    return false;
+  } catch (e: any) {
+    if (e?.userCancelled) return false; // User cancelled — не ошибка
+    console.warn('purchasePackage failed', e);
     return false;
   }
 }
+
+/** @deprecated используй purchasePackage */
+export const purchaseSubscription = purchasePackage;
 
 /** Check if user currently has active premium */
 export async function checkPremiumStatus(): Promise<boolean> {
