@@ -53,7 +53,17 @@ export const SpeechBubble = memo(function SpeechBubble({
       accessibilityRole="text"
     >
       <View style={styles.bubble}>
-        <Text style={styles.text}>{text}</Text>
+        {/* numberOfLines=3 + adjustsFontSizeToFit — защита от overflow.
+            Финский язык часто даёт +30% к длине относительно английского;
+            mascot-сообщения могут не помещаться в 260px при FI. */}
+        <Text
+          style={styles.text}
+          numberOfLines={3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+        >
+          {text}
+        </Text>
       </View>
       <View style={[tailStyle, { marginLeft: tailOffset }]} />
     </Animated.View>

@@ -57,6 +57,7 @@ import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/us
 import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
 import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { moderateMessage } from '../../lib/moderation';
+import { SafeImage } from '../../components/SafeImage';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -208,6 +209,10 @@ export default function ChatScreen() {
     if (!(await requireAuth('писать в чат'))) return;
 
     setSending(true);
+    // Сохраняем текст на случай ошибки — чтобы юзер не терял набранное
+    const originalText = text;
+    const originalPhoto = pendingPhoto;
+    const originalReply = replyingTo;
     try {
       if (editingMsg) {
         await editMessage(editingMsg.id, trimmed);
@@ -229,7 +234,18 @@ export default function ChatScreen() {
         }, 100);
       }
     } catch (e) {
-      // Silent for now
+      // Ошибку юзеру — haptics + modal с возможностью повторить.
+      // Восстанавливаем текст/фото/reply чтобы юзер не потерял набранное.
+      void haptics.error();
+      setText(originalText);
+      if (originalPhoto) setPendingPhoto(originalPhoto);
+      if (originalReply) setReplyingTo(originalReply);
+      console.warn('sendMessage failed', e);
+      Alert.alert(
+        t('chat.send_failed_title'),
+        t('chat.send_failed_text'),
+        [{ text: t('common.ok') }],
+      );
     } finally {
       setSending(false);
     }
@@ -377,7 +393,7 @@ export default function ChatScreen() {
               if (item.authorPhotoUrl) {
                 return (
                   <View style={styles.avatar}>
-                    <Image source={{ uri: item.authorPhotoUrl }} style={styles.chatPhoto} />
+                    <SafeImage source={{ uri: item.authorPhotoUrl }} style={styles.chatPhoto} fallbackIconSize={16} />
                   </View>
                 );
               }

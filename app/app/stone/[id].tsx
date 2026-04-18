@@ -47,6 +47,7 @@ import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
 import { ShareTapped, StoneTapped } from '../../lib/analytics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
+import { SafeImage } from '../../components/SafeImage';
 import { PencilSimple, Trash } from 'phosphor-react-native';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
@@ -275,7 +276,8 @@ export default function StoneDetailScreen() {
 
     if (!(await requireAuth('отметить находку'))) return;
 
-    // ── GPS verification: must be within 100m of the stone ──
+    // ── GPS verification: must be within 30 meters of the stone ──
+    // (Server enforces same limit in record_find RPC — migration 005)
     const userLocation = await getCurrentLocation();
     if (!userLocation) {
       Alert.alert(t('common.no_gps'), t('add.no_gps'));
@@ -290,9 +292,12 @@ export default function StoneDetailScreen() {
         const cityHint = userCity && stoneCity && userCity !== stoneCity
           ? `\n\n${t('stone.too_far_city').replace('{userCity}', userCity).replace('{stoneCity}', stoneCity)}`
           : '';
+        // Показываем конкретное расстояние — юзер поймёт, близко он или нет.
+        const distHint = `\n\n${t('stone.too_far_distance')
+          .replace('{distance}', String(Math.round(distanceM)))}`;
         Alert.alert(
           t('stone.too_far_title'),
-          `${t('stone.too_far_text')}${cityHint}`,
+          `${t('stone.too_far_text')}${distHint}${cityHint}`,
         );
         return;
       }
@@ -436,7 +441,7 @@ export default function StoneDetailScreen() {
         {/* Hero — large photo or gradient blob */}
         <View style={styles.heroArea}>
           {revealed && heroPhotoUri ? (
-            <Image source={{ uri: heroPhotoUri }} style={styles.heroImage} />
+            <SafeImage source={{ uri: heroPhotoUri }} style={styles.heroImage} fallbackIconSize={64} />
           ) : revealed && heroPhoto ? (
             <Image source={STONE_PHOTOS[heroPhoto]} style={styles.heroImage} />
           ) : (
@@ -506,7 +511,9 @@ export default function StoneDetailScreen() {
           {/* Title + meta */}
           <View style={styles.titleRow}>
             <Text style={styles.stoneEmoji}>{stone.emoji}</Text>
-            <Text style={styles.stoneName}>{stone.name}</Text>
+            <Text style={styles.stoneName} numberOfLines={2}>
+              {stone.name}
+            </Text>
           </View>
 
           <View style={styles.metaRow}>
@@ -648,7 +655,7 @@ export default function StoneDetailScreen() {
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel={t('common.delete')}
-              accessibilityHint="Удалит этот камень навсегда"
+              accessibilityHint={t('stone.delete_hint')}
             >
               <Trash size={18} color="#DC2626" weight="bold" />
               <Text style={[styles.ownActionText, { color: '#DC2626' }]}>{t('common.delete')}</Text>

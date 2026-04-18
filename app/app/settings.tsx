@@ -272,7 +272,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>{t('settings.logout')}</Text>
           </TouchableOpacity>
           <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.delete_account')} accessibilityHint="Удалит аккаунт навсегда">
+          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.delete_account')} accessibilityHint={t('settings.delete_account_hint')}>
             <Trash size={20} color="#DC2626" weight="regular" />
             <Text style={[styles.rowLabel, { color: '#DC2626' }]}>{t('settings.delete_account')}</Text>
           </TouchableOpacity>

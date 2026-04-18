@@ -41,6 +41,7 @@ import { requireAuth } from '../../lib/auth-gate';
 import { getUserStoneStyle, getMyStyle, type UserStoneStyle } from '../../lib/user-stone-styles';
 import { useI18n } from '../../lib/i18n';
 import { getCurrentUser, type User } from '../../lib/auth';
+import { SafeImage } from '../../components/SafeImage';
 
 // Removed gold/silver/bronze — all ranks use the same neutral style
 
@@ -362,7 +363,7 @@ export default function FeedScreen() {
                         </View>
                         <View style={styles.leaderAvatar}>
                           {entry.userPhotoUrl ? (
-                            <Image source={{ uri: entry.userPhotoUrl }} style={styles.leaderPhoto} />
+                            <SafeImage source={{ uri: entry.userPhotoUrl }} style={styles.leaderPhoto} fallbackIconSize={16} />
                           ) : (() => {
                             const s = resolveStyle(entry.userId);
                             return (

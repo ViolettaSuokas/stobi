@@ -19,6 +19,7 @@ import {
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { getCurrentUser } from '../lib/auth';
+import { getTrialInfo } from '../lib/premium-trial';
 import { useI18n } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 import {
@@ -46,7 +47,11 @@ const BOOSTER_PACKS: { id: BoosterId; productId: string; diamonds: number; price
 ];
 
 export default function PremiumScreen() {
+  // Начальный план — 'monthly' если trial уже активен/использован, иначе 'free-trial'.
+  // Подгружается в useEffect (async). Чтобы UX не был confusing, trial-карточка
+  // помечается как "Использовано" если trial уже был.
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('free-trial');
+  const [trialUsed, setTrialUsed] = useState(false);
   const { t } = useI18n();
   const modal = useModal();
   const plans = PLAN_CONFIGS.map(p => ({ ...p, label: t(p.labelKey), sub: t(p.subKey) }));
@@ -54,6 +59,15 @@ export default function PremiumScreen() {
   // Трекаем paywall_shown один раз на mount — для funnel-анализа
   useEffect(() => {
     void PaywallShown('other');
+    // Проверяем не был ли триал уже активирован (активен сейчас или expired).
+    // Если да — пресетим план на monthly и помечаем trial как used.
+    (async () => {
+      const trial = await getTrialInfo();
+      if (trial.active || trial.msRemaining < 0) {
+        setTrialUsed(true);
+        setSelectedPlan('monthly');
+      }
+    })();
   }, []);
 
   const handleRedeem = async () => {
@@ -242,27 +256,39 @@ export default function PremiumScreen() {
           <View style={styles.plans}>
             {plans.map((plan) => {
               const active = plan.id === selectedPlan;
+              const isTrialUsed = trialUsed && plan.id === 'free-trial';
               return (
                 <TouchableOpacity
                   key={plan.id}
-                  style={[styles.planCard, active && styles.planCardActive]}
-                  onPress={() => setSelectedPlan(plan.id)}
-                  activeOpacity={0.85}
+                  style={[
+                    styles.planCard,
+                    active && styles.planCardActive,
+                    isTrialUsed && styles.planCardDisabled,
+                  ]}
+                  onPress={() => { if (!isTrialUsed) setSelectedPlan(plan.id); }}
+                  activeOpacity={isTrialUsed ? 1 : 0.85}
+                  disabled={isTrialUsed}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={`${plan.label}, ${plan.price}`}
+                  accessibilityState={{ selected: active, disabled: isTrialUsed }}
+                  accessibilityLabel={`${plan.label}, ${plan.price}${isTrialUsed ? ` · ${t('premium.trial_used')}` : ''}`}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.planLabel}>{plan.label}</Text>
-                    <Text style={styles.planSub}>{plan.sub}</Text>
+                    <Text style={[styles.planLabel, isTrialUsed && styles.planLabelDisabled]}>
+                      {plan.label}
+                    </Text>
+                    <Text style={[styles.planSub, isTrialUsed && styles.planLabelDisabled]}>
+                      {isTrialUsed ? t('premium.trial_used') : plan.sub}
+                    </Text>
                   </View>
-                  {plan.badgeKey && (
+                  {plan.badgeKey && !isTrialUsed && (
                     <View style={styles.planBadge}>
                       <Text style={styles.planBadgeText}>{t(plan.badgeKey)}</Text>
                     </View>
                   )}
-                  <Text style={styles.planPrice}>{plan.price}</Text>
-                  {active && (
+                  <Text style={[styles.planPrice, isTrialUsed && styles.planLabelDisabled]}>
+                    {plan.price}
+                  </Text>
+                  {active && !isTrialUsed && (
                     <View style={styles.planCheck}>
                       <CheckCircle size={20} color="#FFFFFF" weight="fill" />
                     </View>
@@ -455,6 +481,13 @@ const styles = StyleSheet.create({
   planCardActive: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderColor: '#FFFFFF',
+  },
+  planCardDisabled: {
+    opacity: 0.5,
+    borderStyle: 'dashed',
+  },
+  planLabelDisabled: {
+    textDecorationLine: 'line-through',
   },
   planLabel: {
     fontSize: 16,

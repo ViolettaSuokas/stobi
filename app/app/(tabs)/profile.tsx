@@ -66,6 +66,7 @@ import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { MascotScene } from '../../components/MascotScene';
+import { SafeImage } from '../../components/SafeImage';
 import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { StreakBadge } from '../../components/StreakBadge';
 import { ReferralCard } from '../../components/ReferralCard';
@@ -451,7 +452,7 @@ export default function ProfileScreen() {
               >
                 <View style={styles.profilePhotoCircle}>
                   {user?.photoUrl ? (
-                    <Image source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} />
+                    <SafeImage source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} fallbackIconSize={28} />
                   ) : (
                     <Camera size={28} color={Colors.text2} weight="regular" />
                   )}
