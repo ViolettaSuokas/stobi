@@ -17,6 +17,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StoneMascot } from '../components/StoneMascot';
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
+import { PasswordResetRequested } from '../lib/analytics';
 
 export default function ForgotPasswordScreen() {
   const { t } = useI18n();
@@ -46,6 +47,7 @@ export default function ForgotPasswordScreen() {
         redirectTo: 'stobi://reset-password',
       });
       if (rpcError) throw rpcError;
+      void PasswordResetRequested(trimmed);
       setSent(true);
     } catch (e: any) {
       setError(e?.message ?? t('forgot.error'));

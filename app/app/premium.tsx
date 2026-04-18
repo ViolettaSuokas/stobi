@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,12 @@ import { Colors } from '../constants/Colors';
 import { getCurrentUser } from '../lib/auth';
 import { useI18n } from '../lib/i18n';
 import { useModal } from '../lib/modal';
+import {
+  PaywallShown,
+  SubscriptionPurchased,
+  BoosterPackPurchased,
+  SubscriptionRestored,
+} from '../lib/analytics';
 
 type PlanId = 'free-trial' | 'monthly' | 'annual';
 
@@ -43,6 +49,11 @@ export default function PremiumScreen() {
   const { t } = useI18n();
   const modal = useModal();
   const plans = PLAN_CONFIGS.map(p => ({ ...p, label: t(p.labelKey), sub: t(p.subKey) }));
+
+  // Трекаем paywall_shown один раз на mount — для funnel-анализа
+  useEffect(() => {
+    void PaywallShown('other');
+  }, []);
 
   const handleRedeem = async () => {
     const user = await getCurrentUser();
@@ -68,6 +79,9 @@ export default function PremiumScreen() {
         if (pkg) {
           const success = await purchasePackage(pkg);
           if (success) {
+            // Track subscription event
+            if (selectedPlan === 'monthly') void SubscriptionPurchased('monthly', 3.99);
+            else if (selectedPlan === 'annual') void SubscriptionPurchased('annual', 35);
             modal.show({
               title: t('premium.success'),
               message: t('premium.success_message'),
@@ -108,6 +122,8 @@ export default function PremiumScreen() {
         if (pkg) {
           const success = await purchasePackage(pkg);
           if (success) {
+            const priceEur = parseFloat(pack.price.replace(',', '.').replace('€', ''));
+            void BoosterPackPurchased(pack.productId, pack.diamonds, priceEur);
             modal.show({
               title: t('premium.booster_success_title'),
               message: t('premium.booster_success_message').replace('{amount}', String(pack.diamonds)),
@@ -308,6 +324,7 @@ export default function PremiumScreen() {
           <TouchableOpacity activeOpacity={0.7} onPress={async () => {
             const { restorePurchases } = await import('../lib/purchases');
             const restored = await restorePurchases();
+            if (restored) void SubscriptionRestored();
             modal.show({
               title: restored ? t('premium.success') : t('premium.restore'),
               message: restored ? t('premium.restored_message') : t('premium.no_purchases'),

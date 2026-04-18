@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { TrialActivated } from './analytics';
 
 // Free 7-day Premium trial earned by completing the Daily Challenge
 // (find 5 stones in one day). State is server-authoritative via
@@ -75,6 +76,7 @@ export async function activateTrial(): Promise<TrialInfo> {
         const { data, error } = await supabase.rpc('activate_trial');
         if (!error && data) {
           const parsed = data as { active: boolean; ms_remaining: number };
+          if (parsed.active) void TrialActivated('daily_challenge');
           return { active: !!parsed.active, msRemaining: Number(parsed.ms_remaining) || 0 };
         }
         // Server said no — do not cheat by writing local state.
@@ -89,6 +91,7 @@ export async function activateTrial(): Promise<TrialInfo> {
   // Guest fallback only — write local (no real protection).
   const expiresAt = Date.now() + TRIAL_DURATION_MS;
   await writeLocal({ expiresAt });
+  void TrialActivated('daily_challenge');
   return { active: true, msRemaining: TRIAL_DURATION_MS };
 }
 

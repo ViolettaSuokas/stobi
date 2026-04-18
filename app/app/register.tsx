@@ -26,6 +26,7 @@ import { StoneMascot } from '../components/StoneMascot';
 import { ArrowRight } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
 import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
+import { Registered } from '../lib/analytics';
 
 type Mode = 'buttons' | 'email';
 
@@ -71,6 +72,7 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await register(trimmedEmail, password, trimmedName);
+      void Registered('email');
       router.replace('/map');
     } catch (e: any) {
       setError(e?.message ?? t('register.error'));

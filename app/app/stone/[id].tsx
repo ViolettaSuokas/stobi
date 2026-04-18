@@ -45,6 +45,7 @@ import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import * as ImagePicker from 'expo-image-picker';
 import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
+import { ShareTapped, StoneTapped } from '../../lib/analytics';
 import { PencilSimple, Trash } from 'phosphor-react-native';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
@@ -235,7 +236,8 @@ export default function StoneDetailScreen() {
   };
 
   const handleShare = async () => {
-    if (!stone) return;
+    if (!stone || !stoneId) return;
+    void ShareTapped('stone', stoneId);
     const url = `https://stobi.app/stone/${stoneId}`;
     const message = t('stone.share_message')
       .replace('{name}', stone.name)

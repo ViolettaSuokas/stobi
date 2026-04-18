@@ -4,6 +4,7 @@ import { getFoundStoneIds } from './finds';
 import { getUserStones } from './user-stones';
 import { getMessages } from './chat';
 import { getCurrentUser } from './auth';
+import { AchievementUnlocked } from './analytics';
 
 const STORAGE_KEY = 'stobi:achievements';
 
@@ -107,6 +108,7 @@ export async function checkAchievements(stats: AchievementStats): Promise<string
       if (def.unlockCosmeticId) {
         await unlockCosmeticById(def.unlockCosmeticId, def.id);
       }
+      void AchievementUnlocked(def.id, def.reward);
       newlyUnlocked.push(def.id);
     }
 

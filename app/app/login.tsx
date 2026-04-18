@@ -19,6 +19,7 @@ import { StoneMascot } from '../components/StoneMascot';
 import { ArrowRight } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
 import { AppleLogo, GoogleLogo } from 'phosphor-react-native';
+import { LoggedIn } from '../lib/analytics';
 
 export default function LoginScreen() {
   const { t } = useI18n();
@@ -32,6 +33,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(loginEmail ?? email, loginPassword ?? password);
+      void LoggedIn(loginEmail ? 'demo' : 'email');
       router.replace('/map');
     } catch (e: any) {
       setError(e?.message ?? t('login.error'));
@@ -63,6 +65,7 @@ export default function LoginScreen() {
       });
       if (signInError) throw signInError;
 
+      void LoggedIn('google');
       router.replace('/map');
     } catch (e: any) {
       if (e?.code !== '-5' && e?.code !== 'SIGN_IN_CANCELLED') {
@@ -105,6 +108,7 @@ export default function LoginScreen() {
           await supabase.from('profiles').update({ username: fullName }).eq('id', data.user.id);
         }
       }
+      void LoggedIn('apple');
       router.replace('/map');
     } catch (e: any) {
       if (e?.code !== 'ERR_REQUEST_CANCELED') {

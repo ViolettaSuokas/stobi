@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { markOnboardingSeen, hasSeenOnboarding } from '../lib/auth';
 import { useI18n } from '../lib/i18n';
+import { OnboardingCompleted } from '../lib/analytics';
 import { StoneMascot, type MascotVariant } from '../components/StoneMascot';
 import { Heart } from 'phosphor-react-native';
 
@@ -203,6 +204,7 @@ export default function Onboarding() {
 
   const finishOnboarding = async () => {
     await markOnboardingSeen();
+    void OnboardingCompleted();
     // Guest-first flow: jump straight into the app, no forced login.
     // User can sign up later from the profile screen.
     router.replace('/map');

@@ -9,12 +9,16 @@ import { initPurchases } from '../lib/purchases';
 import { getCurrentUser } from '../lib/auth';
 import { initSentry, identifySentryUser } from '../lib/sentry';
 import { registerPushToken, attachResponseListener } from '../lib/push';
+import { AppOpened, NotificationOpened } from '../lib/analytics';
 
 // Init crash reporter как можно раньше — до первого useState/useEffect.
 initSentry();
 
 export default function RootLayout() {
   useEffect(() => {
+    // Session open event — одна точка входа, трекается всегда.
+    void AppOpened();
+
     // Параллельно: auth + purchases + push. Cold start не ждёт финиша.
     Promise.allSettled([
       getCurrentUser().then((u) => {
@@ -27,9 +31,10 @@ export default function RootLayout() {
       }),
     ]).catch(() => {});
 
-    // Notification tap → navigate to stone detail
+    // Notification tap → navigate to stone detail + track event
     let cleanup: (() => void) | null = null;
     attachResponseListener((stoneId) => {
+      void NotificationOpened('stone_found', stoneId);
       router.push(`/stone/${stoneId}` as any);
     }).then((fn) => { cleanup = fn; });
 

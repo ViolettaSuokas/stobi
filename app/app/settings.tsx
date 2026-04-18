@@ -27,6 +27,7 @@ import { Colors } from '../constants/Colors';
 import { getCurrentUser, logout, deleteAccount } from '../lib/auth';
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
+import { LanguageChanged, LoggedOut, AccountDeleted } from '../lib/analytics';
 
 const NOTIF_KEYS = {
   push: 'stobi:notif:push',
@@ -70,12 +71,16 @@ export default function SettingsScreen() {
 
   const handleLanguage = () => {
     const check = (code: Lang) => lang === code ? '✓ ' : '   ';
+    const pick = (code: Lang) => {
+      setLang(code);
+      void LanguageChanged(code);
+    };
     modal.show({
       title: 'Language / Kieli / Язык',
       buttons: [
-        { label: `${check('ru')}Русский`, onPress: () => setLang('ru') },
-        { label: `${check('fi')}Suomi`, onPress: () => setLang('fi') },
-        { label: `${check('en')}English`, onPress: () => setLang('en') },
+        { label: `${check('ru')}Русский`, onPress: () => pick('ru') },
+        { label: `${check('fi')}Suomi`, onPress: () => pick('fi') },
+        { label: `${check('en')}English`, onPress: () => pick('en') },
         { label: t('common.cancel'), style: 'cancel' },
       ],
     });
@@ -99,6 +104,7 @@ export default function SettingsScreen() {
           text: t('profile.logout_button'),
           style: 'destructive',
           onPress: async () => {
+            void LoggedOut();
             await logout();
             router.replace('/login');
           },
@@ -127,6 +133,7 @@ export default function SettingsScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
+                      void AccountDeleted();
                       await deleteAccount();
                       router.replace('/onboarding');
                     } catch (e: any) {

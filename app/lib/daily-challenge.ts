@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DailyChallengeCompleted } from './analytics';
 
 const STORAGE_KEY = 'stobi:daily_challenge';
 
@@ -89,11 +90,15 @@ export async function updateChallengeProgress(
   const def = CHALLENGE_DEFS.find((d) => d.id === state.challengeId);
   if (!def || !def.actions.includes(action)) return state;
 
+  const wasCompleted = state.completed;
   state.progress = Math.min(state.progress + 1, state.target);
   if (state.progress >= state.target) {
     state.completed = true;
   }
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!wasCompleted && state.completed) {
+    void DailyChallengeCompleted(state.challengeId);
+  }
   return state;
 }

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { ItemPurchased } from './analytics';
 
 // "Камешки" — the soft currency of Stobi. Earn by finding/hiding stones,
 // spend on mascot cosmetics and map boosts.
@@ -295,6 +296,7 @@ export async function buyItem(itemId: string): Promise<SpendResult> {
         if (!error && data) {
           const result = data as { balance: number; owned_items: string[] };
           const merged = new Set([...result.owned_items, ...freeItemIds()]);
+          void ItemPurchased(itemId, item.price);
           return { ok: true, balance: result.balance, ownedItemIds: [...merged] };
         }
         const msg = error?.message ?? '';
