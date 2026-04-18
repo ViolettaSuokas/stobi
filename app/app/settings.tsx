@@ -69,12 +69,13 @@ export default function SettingsScreen() {
   };
 
   const handleLanguage = () => {
+    const check = (code: Lang) => lang === code ? '✓ ' : '   ';
     modal.show({
       title: 'Language / Kieli / Язык',
       buttons: [
-        { label: 'Русский', onPress: () => setLang('ru') },
-        { label: 'Suomi', onPress: () => setLang('fi') },
-        { label: 'English', onPress: () => setLang('en') },
+        { label: `${check('ru')}Русский`, onPress: () => setLang('ru') },
+        { label: `${check('fi')}Suomi`, onPress: () => setLang('fi') },
+        { label: `${check('en')}English`, onPress: () => setLang('en') },
         { label: t('common.cancel'), style: 'cancel' },
       ],
     });
