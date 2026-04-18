@@ -34,8 +34,10 @@ yarn-error.*
 .env*.local
 .env
 
-# Firebase / Google services — никогда не коммитим
-google-services.json
+# Firebase / Google services
+# google-services.json трекается в git (нужен для EAS Build tarball upload)
+# ⚠️ Прод-ключ нужно ротировать в Google Cloud Console + restrict by package name + SHA-1
+# GoogleService-Info.plist не используется (iOS не настроен на Firebase)
 GoogleService-Info.plist
 
 # typescript
