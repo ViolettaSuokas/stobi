@@ -252,6 +252,12 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>{t('settings.terms')}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/feedback' as any)}>
+            <Info size={20} color={Colors.accent} weight="regular" />
+            <Text style={styles.rowLabel}>{t('settings.feedback')}</Text>
+            <CaretRight size={16} color={Colors.text2} weight="bold" />
+          </TouchableOpacity>
         </View>
 
         {/* Аккаунт */}
