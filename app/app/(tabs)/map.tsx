@@ -537,6 +537,7 @@ export default function MapScreen() {
             style={styles.dropdownOverlay}
             activeOpacity={1}
             onPress={() => setShowFilterMenu(false)}
+            accessibilityLabel={t('common.cancel')}
           />
           <View style={styles.dropdown}>
             {([
@@ -555,6 +556,9 @@ export default function MapScreen() {
                     setShowFilterMenu(false);
                     setMapKey((k) => k + 1);
                   }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={opt.label}
                 >
                   <opt.Icon
                     size={20}
@@ -597,6 +601,8 @@ export default function MapScreen() {
         style={styles.recenterBtn}
         onPress={recenter}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={t('map.recenter') || 'Recenter map'}
       >
         <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
         <Crosshair size={22} color={Colors.accent} weight="bold" />

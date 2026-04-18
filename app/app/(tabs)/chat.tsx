@@ -419,6 +419,9 @@ export default function ChatScreen() {
             onLongPress={() => showMessageMenu(item)}
             delayLongPress={400}
             style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}
+            accessibilityRole="text"
+            accessibilityLabel={`${isMe ? t('chat.you') || 'Ты' : item.authorName}: ${item.text}`}
+            accessibilityHint={t('chat.long_press_menu') || 'Удерживай для меню сообщения'}
           >
             {!isMe && showAuthor && (
               <View style={styles.authorRow}>
@@ -454,6 +457,9 @@ export default function ChatScreen() {
                 onPress={() => handleLike(item.id)}
                 activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={isLiked ? t('chat.unlike') || 'Убрать лайк' : t('chat.like') || 'Лайк'}
+                accessibilityState={{ selected: isLiked }}
               >
                 <Heart
                   size={14}
@@ -516,6 +522,9 @@ export default function ChatScreen() {
               style={[styles.channelChip, active && styles.channelChipActive]}
               onPress={() => { setMessages([]); setChannel(ch); }}
               activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={ch === 'global' ? t('chat.global') : String(userCountry)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 {ch === 'global'
@@ -572,6 +581,8 @@ export default function ChatScreen() {
                   onPress={loadOlderMessages}
                   disabled={loadingOlder}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('chat.load_older') || 'Загрузить старые сообщения'}
                 >
                   {loadingOlder ? (
                     <ActivityIndicator color={Colors.text2} size="small" />
@@ -610,6 +621,8 @@ export default function ChatScreen() {
               }}
               activeOpacity={0.7}
               style={{ padding: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
             >
               <Text style={styles.replyIndicatorClose}>✕</Text>
             </TouchableOpacity>
@@ -632,6 +645,8 @@ export default function ChatScreen() {
               onPress={() => setReplyingTo(null)}
               activeOpacity={0.7}
               style={{ padding: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
             >
               <Text style={styles.replyIndicatorClose}>✕</Text>
             </TouchableOpacity>
@@ -646,6 +661,8 @@ export default function ChatScreen() {
               style={styles.pendingPhotoClose}
               onPress={() => setPendingPhoto(null)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
             >
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>✕</Text>
             </TouchableOpacity>
@@ -658,6 +675,8 @@ export default function ChatScreen() {
             style={styles.attachBtn}
             onPress={handleAttachPhoto}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.attach_photo') || 'Приложить фото'}
           >
             <Paperclip size={22} color={Colors.text2} weight="regular" />
           </TouchableOpacity>
@@ -675,6 +694,9 @@ export default function ChatScreen() {
             onPress={handleSend}
             disabled={(!text.trim() && !pendingPhoto) || sending}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.send') || 'Отправить'}
+            accessibilityState={{ disabled: (!text.trim() && !pendingPhoto) || sending }}
           >
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />

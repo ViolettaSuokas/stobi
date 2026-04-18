@@ -240,6 +240,8 @@ export default function AddScreen() {
             onPress={() => router.back()}
             style={styles.headerBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back') || 'Назад'}
           >
             <X size={22} color={Colors.text} weight="bold" />
           </TouchableOpacity>
@@ -258,6 +260,8 @@ export default function AddScreen() {
             style={{ backgroundColor: Colors.accent, borderRadius: 18, paddingVertical: 16, paddingHorizontal: 40, marginTop: 24 }}
             onPress={() => router.push('/register')}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.register')}
           >
             <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{t('common.register')}</Text>
           </TouchableOpacity>
@@ -278,6 +282,8 @@ export default function AddScreen() {
             onPress={() => router.back()}
             style={styles.headerBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back') || 'Назад'}
           >
             <X size={22} color={Colors.text} weight="bold" />
           </TouchableOpacity>
@@ -295,6 +301,8 @@ export default function AddScreen() {
             style={styles.photoArea}
             onPress={handleSelectPhoto}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={photoUri ? (t('add.change_photo') || 'Сменить фото') : (t('add.select_photo') || 'Выбрать фото')}
           >
             {photoUri ? (
               <>

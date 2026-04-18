@@ -277,6 +277,8 @@ export default function ProfileScreen() {
                 style={styles.settingsBtn}
                 onPress={() => router.push('/settings')}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('settings.title')}
               >
                 <GearSix size={20} color="#FFFFFF" weight="regular" />
               </TouchableOpacity>
@@ -313,6 +315,8 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               style={styles.heroNameRow}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.character_name_title')}
               onPress={user ? () => {
                 modal.show({
                   title: t('profile.character_name_title'),
@@ -345,6 +349,8 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole={user ? 'button' : undefined}
+              accessibilityLabel={user ? t('profile.edit_bio') : t('profile.guest_cta')}
               onPress={user ? () => {
                 modal.show({
                   title: t('profile.edit_bio'),
@@ -379,6 +385,8 @@ export default function ProfileScreen() {
                   style={styles.guestSignUpBtn}
                   onPress={() => router.push('/register')}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.register')}
                 >
                   <Text style={styles.guestSignUpText}>{t('common.register')}</Text>
                 </TouchableOpacity>
@@ -386,6 +394,8 @@ export default function ProfileScreen() {
                   style={styles.guestLoginBtn}
                   onPress={() => router.push('/login')}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.login')}
                 >
                   <Text style={styles.guestLoginText}>{t('common.login')}</Text>
                 </TouchableOpacity>
@@ -405,6 +415,9 @@ export default function ProfileScreen() {
                 onPress={() => setMainTab(tab)}
                 style={[styles.mainTab, active && styles.mainTabActive]}
                 activeOpacity={0.85}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab === 'overview' ? t('profile.overview') : t('profile.customize')}
               >
                 <View style={styles.mainTabInner}>
                   <Icon
@@ -446,6 +459,8 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1 }}
+                accessibilityRole={user ? 'button' : undefined}
+                accessibilityLabel={user ? t('profile.edit_name') : undefined}
                 onPress={user ? () => {
                   modal.show({
                     title: t('profile.edit_name'),
@@ -556,6 +571,9 @@ export default function ProfileScreen() {
                     onPress={() => setMyStonesTab(stTab)}
                     style={[styles.myStonesTab, active && styles.myStonesTabActive]}
                     activeOpacity={0.85}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={stTab === 'hide' ? t('profile.tab_hidden') : t('profile.tab_found')}
                   >
                     <Text
                       style={[
@@ -599,6 +617,8 @@ export default function ProfileScreen() {
                       ]}
                       onPress={() => router.push(`/stone/${item.stoneId}`)}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.stoneName} · ${item.city ?? ''}`}
                     >
                       <View style={styles.myStoneVisual}>
                         {item.photoUri ? (
@@ -660,6 +680,8 @@ export default function ProfileScreen() {
                 style={styles.addStoneBtn}
                 activeOpacity={0.85}
                 onPress={() => router.push('/add')}
+                accessibilityRole="button"
+                accessibilityLabel={t('profile.add_stone')}
               >
                 <Plus size={18} color={Colors.accent} weight="bold" />
                 <Text style={styles.addStoneText}>{t('profile.add_stone')}</Text>
@@ -673,6 +695,8 @@ export default function ProfileScreen() {
               style={styles.artistCard}
               activeOpacity={0.85}
               onPress={() => router.push('/premium')}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.open_premium')}
             >
               <View style={styles.artistCardIcon}>
                 <Text style={{ fontSize: 24 }}>💎</Text>
@@ -694,6 +718,8 @@ export default function ProfileScreen() {
             {/* Character name */}
             <TouchableOpacity
               style={styles.characterNameRow}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.character_name_title')}
               onPress={() => {
                 modal.show({
                   title: t('profile.character_name_title'),
@@ -775,6 +801,9 @@ export default function ProfileScreen() {
                       ]}
                       onPress={() => handlePickColor(item)}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View
                         style={[
@@ -817,6 +846,9 @@ export default function ProfileScreen() {
                       ]}
                       onPress={() => handlePickEye(item)}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
                         <StoneMascot
@@ -867,6 +899,9 @@ export default function ProfileScreen() {
                       ]}
                       onPress={() => handlePickShape(item)}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
                         <StoneMascot
@@ -917,6 +952,9 @@ export default function ProfileScreen() {
                       ]}
                       onPress={() => handlePickDecor(item)}
                       activeOpacity={0.85}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
                         <StoneMascot

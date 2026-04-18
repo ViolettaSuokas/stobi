@@ -428,6 +428,8 @@ export default function FeedScreen() {
                       if (!(await requireAuth('открывать камни'))) return;
                       router.push(`/stone/${item.stoneId}`);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.userName} ${item.type === 'find' ? 'нашёл' : 'спрятал'} ${item.stoneName}`}
                   >
                     <View style={styles.timelineAvatar}>
                       {(() => {
