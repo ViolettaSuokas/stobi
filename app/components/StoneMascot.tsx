@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Flower, Leaf, Crown } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 
 export type MascotVariant =
@@ -377,44 +378,44 @@ export const StoneMascot = memo(function StoneMascot({
       {/* Decoration overlay — positioned in the outer wrapper so it sits
           over (or next to) the rotated body without inheriting rotation. */}
       {decor === 'flower' && (
-        <Text
+        <View
           style={{
             position: 'absolute',
             top: size * 0.04,
             right: size * 0.1,
-            fontSize: size * 0.22,
             transform: [{ rotate: '15deg' }],
           }}
+          pointerEvents="none"
         >
-          🌸
-        </Text>
+          <Flower size={size * 0.22} color="#F0ABFC" weight="fill" />
+        </View>
       )}
 
       {decor === 'leaf' && (
-        <Text
+        <View
           style={{
             position: 'absolute',
             top: size * 0.02,
             left: size * 0.08,
-            fontSize: size * 0.22,
             transform: [{ rotate: '-25deg' }],
           }}
+          pointerEvents="none"
         >
-          🍃
-        </Text>
+          <Leaf size={size * 0.22} color="#10B981" weight="fill" />
+        </View>
       )}
 
       {decor === 'crown' && (
-        <Text
+        <View
           style={{
             position: 'absolute',
             top: size * -0.02,
             alignSelf: 'center',
-            fontSize: size * 0.28,
           }}
+          pointerEvents="none"
         >
-          👑
-        </Text>
+          <Crown size={size * 0.28} color="#FCD34D" weight="fill" />
+        </View>
       )}
 
       {decor === 'cat-ears' && (
