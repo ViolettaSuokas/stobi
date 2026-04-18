@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { I18nProvider } from '../lib/i18n';
 import { ModalProvider } from '../lib/modal';
@@ -38,7 +39,27 @@ export default function RootLayout() {
       router.push(`/stone/${stoneId}` as any);
     }).then((fn) => { cleanup = fn; });
 
-    return () => { cleanup?.(); };
+    // Deep-link handler — stobi://stone/<id> или https://stobi.app/stone/<id>.
+    // Парсим URL, если это ссылка на stone — навигируем. Apple/Android
+    // вызывают listener когда приложение открывается из универсальной ссылки.
+    const handleUrl = (url: string | null) => {
+      if (!url) return;
+      const parsed = Linking.parse(url);
+      // Поддерживаем "stone/ID" и "/stone/ID" в path
+      const parts = (parsed.path ?? '').replace(/^\//, '').split('/');
+      if (parts[0] === 'stone' && parts[1]) {
+        router.push(`/stone/${parts[1]}` as any);
+      }
+    };
+    // Первоначальная ссылка (если app открыт впервые из share)
+    Linking.getInitialURL().then(handleUrl);
+    // Последующие ссылки (app уже открыт)
+    const linkSub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+
+    return () => {
+      cleanup?.();
+      linkSub.remove();
+    };
   }, []);
   return (
     <ErrorBoundary>

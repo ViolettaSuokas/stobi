@@ -16,6 +16,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.stobi.app",
       "usesAppleSignIn": true,
+      "associatedDomains": ["applinks:stobi.app"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "Stobi uses an anonymous identifier to measure app performance and improve stone discovery. We never sell your data.",
@@ -83,6 +84,16 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/stone" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {

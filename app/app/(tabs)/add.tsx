@@ -119,8 +119,23 @@ export default function AddScreen() {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    const trimmedDesc = description.trim();
+
+    if (!trimmedName) {
       Alert.alert(t('add.stone_name'), t('add.name_required'));
+      return;
+    }
+    if (trimmedName.length < 2) {
+      Alert.alert(t('add.stone_name'), t('add.name_too_short'));
+      return;
+    }
+    if (trimmedName.length > 80) {
+      Alert.alert(t('add.stone_name'), t('add.name_too_long'));
+      return;
+    }
+    if (trimmedDesc.length > 500) {
+      Alert.alert(t('add.description'), t('add.description_too_long'));
       return;
     }
     if (!photoUri) {
