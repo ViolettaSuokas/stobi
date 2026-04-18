@@ -24,6 +24,7 @@ import { StoneMascot } from '../../components/StoneMascot';
 import {
   getCurrentLocation,
   getNearbyStones,
+  getLocationPermissionStatus,
   type LocationInfo,
   type NearbyStone,
 } from '../../lib/location';
@@ -248,6 +249,7 @@ export default function MapScreen() {
   const [location, setLocation] = useState<LocationInfo | null>(null);
   const [stones, setStones] = useState<NearbyStone[]>([]);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [permissionUndetermined, setPermissionUndetermined] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mapKey, setMapKey] = useState(0);
   const [filter, setFilter] = useState<'nearby' | 'country' | 'world'>('country');
@@ -286,6 +288,34 @@ export default function MapScreen() {
       let cancelled = false;
       (async () => {
         try {
+          // Сначала проверяем permission status без OS-prompt.
+          // Если undetermined — показываем rationale-экран
+          // (с нашим объяснением + CTA), OS-prompt вызывается только
+          // после тапа пользователем в наш экран. Если denied — тоже
+          // показываем rationale, он откроет Settings.
+          const permStatus = await getLocationPermissionStatus();
+          if (permStatus === 'undetermined') {
+            if (cancelled) return;
+            setPermissionUndetermined(true);
+            setLoading(false);
+            const fallback = await getNearbyStones({ lat: 60.2934, lng: 25.0378 }).catch(() => []);
+            if (!cancelled) {
+              setStones(fallback);
+              setMapKey((k) => k + 1);
+            }
+            // Параллельно грузим не-location данные
+            const [fIds, trial, user] = await Promise.all([
+              getFoundStoneIds().catch(() => [] as string[]),
+              getTrialInfo().catch(() => ({ active: false, msRemaining: 0 } as any)),
+              getCurrentUser().catch(() => null),
+            ]);
+            if (cancelled) return;
+            setFoundIds(fIds);
+            setTrialActive(trial.active);
+            if (user) setCurrentUserId(user.id);
+            return;
+          }
+
           const [fIds, loc, trial, user] = await Promise.all([
             getFoundStoneIds().catch(() => [] as string[]),
             getCurrentLocation().catch(() => null),
@@ -377,8 +407,10 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Location permission prompt — shown when GPS denied */}
-      {!loading && permissionDenied && (
+      {/* Location permission prompt — shown both when never asked (rationale)
+           AND when GPS denied (retry / open settings). Показываем наш
+           экран ДО OS-prompt → user accept rate растёт с ~40% до 70%+. */}
+      {!loading && (permissionDenied || permissionUndetermined) && (
         <View style={styles.permissionOverlay}>
           <View style={styles.permissionCard}>
             <StoneMascot size={100} color="#C4B5FD" variant="happy" showSparkles />
@@ -391,13 +423,20 @@ export default function MapScreen() {
             <TouchableOpacity
               style={styles.permissionBtn}
               onPress={async () => {
+                // Здесь впервые вызываем OS-prompt (или повторный при denied).
                 const loc = await getCurrentLocation();
                 if (loc) {
                   setPermissionDenied(false);
+                  setPermissionUndetermined(false);
                   setLocation(loc);
                   const nearby = await getNearbyStones(loc.coords);
                   setStones(nearby);
                   setMapKey((k) => k + 1);
+                } else {
+                  // User отказал — оставляем на экране с объяснением,
+                  // но меняем state на denied (уже спрашивали)
+                  setPermissionUndetermined(false);
+                  setPermissionDenied(true);
                 }
               }}
               activeOpacity={0.85}

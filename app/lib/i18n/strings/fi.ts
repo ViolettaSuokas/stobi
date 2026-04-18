@@ -405,6 +405,10 @@ export const fi: Record<string, string> = {
     // Feed (additional)
     'feed.week_stats': 'piilotettu · löydetty viikossa',
     'feed.nobody_yet': 'Kukaan ei ole vielä mukana',
+    'feed.no_recent_title': 'Vielä hiljaista',
+    'feed.no_recent_sub': 'Uudet kivet ilmestyvät tähän',
+    'feed.no_activity_title': 'Mitään ei ole vielä tapahtunut',
+    'feed.no_activity_sub': 'Piilota tai löydä kivi — tapahtuma näkyy täällä',
 
     // Common (additional)
     'common.error': 'Virhe',

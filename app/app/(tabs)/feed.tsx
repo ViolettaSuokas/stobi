@@ -181,6 +181,13 @@ export default function FeedScreen() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>{t('feed.fresh')}</Text>
               </View>
+              {recent.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <StoneMascot size={56} variant="sleeping" showSparkles={false} />
+                  <Text style={styles.emptyText}>{t('feed.no_recent_title')}</Text>
+                  <Text style={styles.emptyTextSub}>{t('feed.no_recent_sub')}</Text>
+                </View>
+              ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -267,6 +274,7 @@ export default function FeedScreen() {
                   );
                 })}
               </ScrollView>
+              )}
             </View>
 
             {/* Лучшие — leaderboard */}
@@ -400,6 +408,13 @@ export default function FeedScreen() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>{t('feed.activity')}</Text>
               </View>
+              {feed.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <StoneMascot size={56} variant="happy" showSparkles={false} />
+                  <Text style={styles.emptyText}>{t('feed.no_activity_title')}</Text>
+                  <Text style={styles.emptyTextSub}>{t('feed.no_activity_sub')}</Text>
+                </View>
+              ) : (
               <View style={styles.timelineCard}>
                 {feed.map((item, i) => (
                   <TouchableOpacity
@@ -454,6 +469,7 @@ export default function FeedScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              )}
             </View>
           </>
         )}
@@ -774,9 +790,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptyTextSub: {
+    fontSize: 12,
     color: Colors.text2,
-    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 16,
   },
 
   // Timeline

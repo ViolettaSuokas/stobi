@@ -129,6 +129,25 @@ export async function requestLocationPermission(): Promise<boolean> {
   }
 }
 
+/**
+ * Проверить текущий статус разрешения без OS-prompt.
+ * Используется чтобы решить показывать ли rationale-модал перед
+ * первым запросом. Возвращает:
+ *   'granted'      — разрешено, можно сразу использовать location
+ *   'denied'       — уже отказано, OS больше не покажет prompt
+ *   'undetermined' — ещё не спрашивали, можно показать rationale + prompt
+ */
+export async function getLocationPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
+  try {
+    const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+    if (status === 'granted') return 'granted';
+    if (status === 'undetermined' || canAskAgain) return 'undetermined';
+    return 'denied';
+  } catch {
+    return 'undetermined';
+  }
+}
+
 let cachedLocation: { info: LocationInfo; timestamp: number } | null = null;
 const LOCATION_CACHE_MS = 5 * 60 * 1000;
 

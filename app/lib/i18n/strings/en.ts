@@ -389,6 +389,10 @@ export const en: Record<string, string> = {
     // Feed (additional)
     'feed.week_stats': 'hidden · found this week',
     'feed.nobody_yet': 'No entries yet',
+    'feed.no_recent_title': 'Quiet for now',
+    'feed.no_recent_sub': 'New stones will show up here',
+    'feed.no_activity_title': 'Nothing happened yet',
+    'feed.no_activity_sub': 'Hide or find a stone — it will appear here',
 
     // Common (additional)
     'common.error': 'Error',

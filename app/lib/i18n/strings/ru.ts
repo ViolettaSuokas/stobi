@@ -398,6 +398,10 @@ export const ru: Record<string, string> = {
     // Feed (additional)
     'feed.week_stats': 'спрятано · найдено за неделю',
     'feed.nobody_yet': 'Пока никто не отметился',
+    'feed.no_recent_title': 'Пока тихо',
+    'feed.no_recent_sub': 'Новые камни появятся здесь',
+    'feed.no_activity_title': 'Ещё ничего не произошло',
+    'feed.no_activity_sub': 'Спрячь или найди камень — и событие появится тут',
 
     // Common (additional)
     'common.error': 'Ошибка',
