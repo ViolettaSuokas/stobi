@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -115,6 +115,24 @@ export default function ChatScreen() {
     }
   }, [channel, messages, loadingOlder, canLoadOlder]);
 
+  // Detect user's country ОДИН РАЗ на mount — чтобы не перезатирать
+  // ручной выбор юзера в channel switcher. Раньше это было в
+  // useFocusEffect с dep на channel → при смене канала geo перезагружалось
+  // и setChannel(country) возвращало на FI. Бага фикс.
+  useEffect(() => {
+    getCurrentLocation()
+      .then((loc) => {
+        const country = loc?.country;
+        if (country) {
+          setUserCountry(country);
+          // Устанавливаем только если всё ещё дефолтное значение 'FI'
+          // и юзер ещё не менял канал вручную
+          setChannel((current) => (current === 'FI' ? country : current));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -122,13 +140,6 @@ export default function ChatScreen() {
       AsyncStorage.getItem('stobi:reported_messages').then((json) => {
         if (json) setReportedIds(new Set(JSON.parse(json)));
       });
-      // Detect user's country for local chat
-      getCurrentLocation().then((loc) => {
-        if (loc?.country) {
-          setUserCountry(loc.country);
-          setChannel(loc.country);
-        }
-      }).catch(() => {});
       getCurrentUser().then((u) => {
         if (active) setUser(u);
       });
@@ -163,7 +174,7 @@ export default function ChatScreen() {
       return () => {
         active = false;
       };
-    }, [loadMessages, channel]),
+    }, [loadMessages]),
   );
 
   const handleAttachPhoto = async () => {
