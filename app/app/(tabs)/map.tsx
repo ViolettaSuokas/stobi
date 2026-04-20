@@ -250,6 +250,9 @@ export default function MapScreen() {
   const [stones, setStones] = useState<NearbyStone[]>([]);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [permissionUndetermined, setPermissionUndetermined] = useState(false);
+  // Юзер может скипнуть permission overlay и посмотреть Helsinki-fallback.
+  // Показываем sticky-notice сверху чтобы напомнить про GPS.
+  const [dismissedPermissionOverlay, setDismissedPermissionOverlay] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mapKey, setMapKey] = useState(0);
   const [filter, setFilter] = useState<'nearby' | 'country' | 'world'>('country');
@@ -409,8 +412,10 @@ export default function MapScreen() {
     <View style={styles.container}>
       {/* Location permission prompt — shown both when never asked (rationale)
            AND when GPS denied (retry / open settings). Показываем наш
-           экран ДО OS-prompt → user accept rate растёт с ~40% до 70%+. */}
-      {!loading && (permissionDenied || permissionUndetermined) && (
+           экран ДО OS-prompt → user accept rate растёт с ~40% до 70%+.
+           User может нажать "Skip" и посмотреть Helsinki-fallback.
+           Skip-state сохраняется в dismissedPermissionOverlay. */}
+      {!loading && !dismissedPermissionOverlay && (permissionDenied || permissionUndetermined) && (
         <View style={styles.permissionOverlay}>
           <View style={styles.permissionCard}>
             <StoneMascot size={100} color="#C4B5FD" variant="happy" showSparkles />
@@ -423,7 +428,6 @@ export default function MapScreen() {
             <TouchableOpacity
               style={styles.permissionBtn}
               onPress={async () => {
-                // Здесь впервые вызываем OS-prompt (или повторный при denied).
                 const loc = await getCurrentLocation();
                 if (loc) {
                   setPermissionDenied(false);
@@ -433,8 +437,6 @@ export default function MapScreen() {
                   setStones(nearby);
                   setMapKey((k) => k + 1);
                 } else {
-                  // User отказал — оставляем на экране с объяснением,
-                  // но меняем state на denied (уже спрашивали)
                   setPermissionUndetermined(false);
                   setPermissionDenied(true);
                 }
@@ -448,12 +450,41 @@ export default function MapScreen() {
                 {t('map.enable_location')}
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.permissionSkipBtn}
+              onPress={() => setDismissedPermissionOverlay(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('map.skip_location')}
+            >
+              <Text style={styles.permissionSkipText}>
+                {t('map.skip_location')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
 
+      {/* Sticky banner: если юзер скипнул permission overlay, напоминаем
+          что смотрит Helsinki-fallback, можно включить GPS в любой момент. */}
+      {dismissedPermissionOverlay && (permissionDenied || permissionUndetermined) && (
+        <SafeAreaView edges={['top']} style={styles.fallbackBanner} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.fallbackBannerInner}
+            onPress={() => setDismissedPermissionOverlay(false)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.fallback_notice')}
+          >
+            <Text style={styles.fallbackBannerText} numberOfLines={2}>
+              {t('map.fallback_notice')}
+            </Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      )}
+
       {/* Real map via WebView + Leaflet */}
-      {!loading && !permissionDenied ? (
+      {!loading && (!permissionDenied || dismissedPermissionOverlay) ? (
         <WebView
           key={mapKey}
           ref={webViewRef}
@@ -704,6 +735,40 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  permissionSkipBtn: {
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  permissionSkipText: {
+    color: Colors.text2,
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  fallbackBanner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 8,
+  },
+  fallbackBannerInner: {
+    backgroundColor: 'rgba(250,204,21,0.95)',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(146,64,14,0.3)',
+  },
+  fallbackBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#78350F',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 
   // Top overlay

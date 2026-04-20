@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { markOnboardingSeen, hasSeenOnboarding } from '../lib/auth';
 import { useI18n } from '../lib/i18n';
-import { OnboardingCompleted } from '../lib/analytics';
+import { OnboardingCompleted, OnboardingSlideViewed, OnboardingSkipped } from '../lib/analytics';
 import { StoneMascot, type MascotVariant } from '../components/StoneMascot';
 import { Heart } from 'phosphor-react-native';
 
@@ -194,7 +194,10 @@ export default function Onboarding() {
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const newPage = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (newPage !== page) setPage(newPage);
+    if (newPage !== page) {
+      setPage(newPage);
+      void OnboardingSlideViewed(newPage);
+    }
   };
 
   const goToPage = (index: number) => {
@@ -219,6 +222,7 @@ export default function Onboarding() {
   };
 
   const handleSkip = () => {
+    void OnboardingSkipped(page);
     finishOnboarding();
   };
 

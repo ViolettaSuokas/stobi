@@ -29,6 +29,7 @@ import { Colors } from '../../constants/Colors';
 import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
 import { addUserStone } from '../../lib/user-stones';
+import { StoneHidden } from '../../lib/analytics';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import { StoneMascot } from '../../components/StoneMascot';
@@ -174,7 +175,7 @@ export default function AddScreen() {
       };
 
       // Persist the stone — appears on map + profile after this
-      await addUserStone({
+      const saved = await addUserStone({
         name: name.trim(),
         emoji,
         description: description.trim() || undefined,
@@ -189,6 +190,7 @@ export default function AddScreen() {
       });
 
       void haptics.success();
+      void StoneHidden(saved?.id ?? 'unknown');
       // Award diamonds + track progress (server-audited via earn_points RPC)
       const newBalance = await earnPoints(REWARD_HIDE, 'stone_hide');
       await updateChallengeProgress('hide');

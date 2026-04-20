@@ -45,7 +45,7 @@ import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import * as ImagePicker from 'expo-image-picker';
 import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
-import { ShareTapped, StoneTapped } from '../../lib/analytics';
+import { ShareTapped, StoneTapped, FirstFindCelebrated } from '../../lib/analytics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { SafeImage } from '../../components/SafeImage';
 import { PencilSimple, Trash } from 'phosphor-react-native';
@@ -348,6 +348,13 @@ export default function StoneDetailScreen() {
 
       // Check daily challenge: 5 finds → 7-day premium trial
       const todayFinds = await getFindsToday();
+
+      // Analytics: track first-find celebration для funnel
+      // (самый важный magic moment — если юзер сюда дошёл, retention 70%+)
+      const isFirstFind = (await getFindsToday()) === 1;
+      if (isFirstFind) {
+        void FirstFindCelebrated();
+      }
       let trialActivated = false;
       if (todayFinds >= DAILY_CHALLENGE_GOAL) {
         const trialInfo = await activateTrial();

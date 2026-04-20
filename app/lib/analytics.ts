@@ -53,7 +53,11 @@ export async function trackEvent(
 
 // Lifecycle
 export const AppOpened = () => trackEvent('app_open');
+export const OnboardingSlideViewed = (index: number) =>
+  trackEvent('onboarding_slide_viewed', { slide_index: index });
 export const OnboardingCompleted = () => trackEvent('onboarding_completed');
+export const OnboardingSkipped = (fromSlide: number) =>
+  trackEvent('onboarding_skipped', { from_slide: fromSlide });
 
 // Auth
 export const Registered = (source: 'email' | 'google' | 'apple') =>
@@ -84,6 +88,8 @@ export const StoneRevealed = (stoneId: string, cost: number) =>
 // Location / Map
 export const LocationGranted = () => trackEvent('location_granted');
 export const LocationDenied = () => trackEvent('location_denied');
+export const LocationPermissionSkipped = () => trackEvent('location_permission_skipped');
+export const LocationRationaleShown = () => trackEvent('location_rationale_shown');
 export const MapOpened = (filter?: string) =>
   trackEvent('map_opened', { filter });
 export const MapFilterChanged = (filter: string) =>
@@ -119,6 +125,24 @@ export const DailyChallengeCompleted = (challengeId: string) =>
   trackEvent('daily_challenge_completed', { challenge_id: challengeId });
 export const ItemPurchased = (itemId: string, price: number) =>
   trackEvent('item_purchased', { item_id: itemId, price });
+
+// Welcome Quest — D1 retention lever
+export const WelcomeQuestTaskCompleted = (taskId: 'hide-first' | 'find-first' | 'social-chat') =>
+  trackEvent('welcome_quest_task_completed', { task_id: taskId });
+export const WelcomeQuestFullyCompleted = () =>
+  trackEvent('welcome_quest_completed');
+
+// Magic moments — для понимания что юзер почувствовал "wow"
+export const FirstFindCelebrated = () =>
+  trackEvent('first_find_celebrated');
+export const FirstHideCompleted = () =>
+  trackEvent('first_hide_completed');
+
+// Guest → registered funnel
+export const AuthGatePrompted = (action: string) =>
+  trackEvent('auth_gate_prompted', { action });
+export const AuthGateConverted = (action: string) =>
+  trackEvent('auth_gate_converted', { action });
 
 // Viral
 export const ShareTapped = (type: 'stone' | 'leaderboard' | 'invite', refId?: string) =>

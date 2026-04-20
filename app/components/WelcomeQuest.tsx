@@ -5,6 +5,7 @@ import { CheckCircle, PaintBrush, MagnifyingGlass, ChatCircle } from 'phosphor-r
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
 import { getAchievements } from '../lib/achievements';
+import { WelcomeQuestTaskCompleted, WelcomeQuestFullyCompleted } from '../lib/analytics';
 import { router } from 'expo-router';
 
 /**
@@ -61,10 +62,25 @@ export function WelcomeQuest() {
 
   const load = useCallback(async () => {
     const state = await getAchievements();
-    setUnlocked({
+    const newUnlocked = {
       'hide-first': !!state['hide-first']?.unlocked,
       'find-first': !!state['find-first']?.unlocked,
       'social-chat': !!state['social-chat']?.unlocked,
+    };
+    // Трекаем когда task-и закрываются (сравниваем с предыдущим состоянием).
+    // Это для funnel-анализа: какой task является gateway к retention.
+    setUnlocked((prev) => {
+      for (const key of Object.keys(newUnlocked) as (keyof typeof newUnlocked)[]) {
+        if (newUnlocked[key] && !prev[key]) {
+          void WelcomeQuestTaskCompleted(key);
+        }
+      }
+      const allDoneNew = Object.values(newUnlocked).every(Boolean);
+      const allDonePrev = Object.values(prev).every(Boolean);
+      if (allDoneNew && !allDonePrev && Object.values(prev).some(Boolean)) {
+        void WelcomeQuestFullyCompleted();
+      }
+      return newUnlocked;
     });
   }, []);
 
