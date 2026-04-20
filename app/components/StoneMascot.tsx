@@ -344,32 +344,33 @@ export const StoneMascot = memo(function StoneMascot({
         </View>
 
         {/* Blush cheeks — bottom position scales with body height.
-             Для variant='blush' щёки крупнее и ярче. */}
+             Для variant='blush' щёки значительно крупнее и ярче —
+             чтобы разница была видна даже на 60px preview-карточках. */}
         <View
           style={{
             position: 'absolute',
-            bottom: size * cfg.bodyHeight * 0.22,
+            bottom: size * cfg.bodyHeight * 0.2,
             flexDirection: 'row',
-            gap: blush ? size * 0.28 : size * 0.34,
+            gap: blush ? size * 0.22 : size * 0.34,
             transform: [{ rotate: `${-cfg.rotation}deg` }],
           }}
         >
           <View
             style={{
-              width: size * (blush ? 0.1 : 0.075),
-              height: size * (blush ? 0.065 : 0.045),
-              borderRadius: size * 0.05,
-              backgroundColor: Colors.blush,
-              opacity: blush ? 0.9 : 0.7,
+              width: size * (blush ? 0.16 : 0.075),
+              height: size * (blush ? 0.1 : 0.045),
+              borderRadius: size * 0.06,
+              backgroundColor: blush ? '#F87171' : Colors.blush,
+              opacity: blush ? 1 : 0.7,
             }}
           />
           <View
             style={{
-              width: size * (blush ? 0.1 : 0.075),
-              height: size * (blush ? 0.065 : 0.045),
-              borderRadius: size * 0.05,
-              backgroundColor: Colors.blush,
-              opacity: blush ? 0.9 : 0.7,
+              width: size * (blush ? 0.16 : 0.075),
+              height: size * (blush ? 0.1 : 0.045),
+              borderRadius: size * 0.06,
+              backgroundColor: blush ? '#F87171' : Colors.blush,
+              opacity: blush ? 1 : 0.7,
             }}
           />
         </View>
