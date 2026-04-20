@@ -332,7 +332,7 @@ export const en: Record<string, string> = {
     'profile.section_color': 'COLOR',
     'profile.section_face': 'FACE',
     'profile.section_shape': 'SHAPE',
-    'profile.section_decor': 'DECORATIONS',
+    'profile.section_decor': 'DECOR',
 
     // Premium trial (daily challenge)
     'trial.activated_title': 'Premium activated!',

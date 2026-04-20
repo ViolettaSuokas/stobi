@@ -347,8 +347,8 @@ export const fi: Record<string, string> = {
     'profile.earn_hint_text': 'Ansaitse timantteja löytämällä ja piilottamalla kiviä. Käytä niitä kivesi väriin, ilmeeseen ja muotoon.',
     'profile.section_color': 'VÄRI',
     'profile.section_face': 'ILME',
-    'profile.section_shape': 'KIVEN MUOTO',
-    'profile.section_decor': 'KORISTEET',
+    'profile.section_shape': 'MUOTO',
+    'profile.section_decor': 'KORISTE',
 
     // Premium trial (daily challenge)
     'trial.activated_title': 'Premium aktivoitu!',

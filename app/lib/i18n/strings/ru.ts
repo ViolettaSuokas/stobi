@@ -339,9 +339,9 @@ export const ru: Record<string, string> = {
     'profile.buy_message': 'Стоит {price} 💎. У тебя {balance} 💎.',
     'profile.earn_hint_text': 'Зарабатывай алмазики за находки и закладки. Трать на цвет, выражение и форму своего камня.',
     'profile.section_color': 'ЦВЕТ',
-    'profile.section_face': 'ВЫРАЖЕНИЕ ЛИЦА',
-    'profile.section_shape': 'ФОРМА КАМНЯ',
-    'profile.section_decor': 'УКРАШЕНИЯ',
+    'profile.section_face': 'ЛИЦО',
+    'profile.section_shape': 'ФОРМА',
+    'profile.section_decor': 'ДЕКОР',
 
     // Premium trial (daily challenge)
     'trial.activated_title': 'Premium активирован!',
