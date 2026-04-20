@@ -297,7 +297,10 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.mascotWrap}>
+              {/* key форсит перерендер при любой смене preview — защита
+                  от memo stale в некоторых RN-версиях. */}
               <MascotScene
+                key={`${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
                 size={180}
                 color={selectedColor}
                 variant={selectedVariant}
