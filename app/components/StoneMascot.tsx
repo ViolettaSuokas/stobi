@@ -558,54 +558,25 @@ export const StoneMascot = memo(function StoneMascot({
         </View>
       )}
 
-      {/* Headband — розовый bow сверху */}
+      {/* Headband — два розовых сердечка как бант-бабочка (симметрично) */}
       {decor === 'headband' && (
         <View
           style={{
             position: 'absolute',
-            top: size * 0.0,
+            top: size * 0.02,
             alignSelf: 'center',
-            width: size * 0.35,
-            height: size * 0.15,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
           }}
           pointerEvents="none"
         >
-          {/* Left bow loop */}
-          <View
-            style={{
-              width: size * 0.12,
-              height: size * 0.1,
-              backgroundColor: '#F0ABFC',
-              borderTopLeftRadius: size * 0.08,
-              borderBottomLeftRadius: size * 0.05,
-              borderBottomRightRadius: size * 0.02,
-              transform: [{ rotate: '-15deg' }],
-            }}
-          />
-          {/* Center knot */}
-          <View
-            style={{
-              width: size * 0.05,
-              height: size * 0.08,
-              backgroundColor: '#DB2777',
-              borderRadius: size * 0.02,
-            }}
-          />
-          {/* Right bow loop */}
-          <View
-            style={{
-              width: size * 0.12,
-              height: size * 0.1,
-              backgroundColor: '#F0ABFC',
-              borderTopRightRadius: size * 0.08,
-              borderBottomRightRadius: size * 0.05,
-              borderBottomLeftRadius: size * 0.02,
-              transform: [{ rotate: '15deg' }],
-            }}
-          />
+          <View style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Heart size={size * 0.15} color="#F0ABFC" weight="fill" />
+          </View>
+          <View style={{ transform: [{ rotate: '90deg' }], marginLeft: -size * 0.04 }}>
+            <Heart size={size * 0.15} color="#F0ABFC" weight="fill" />
+          </View>
         </View>
       )}
 
@@ -631,51 +602,17 @@ export const StoneMascot = memo(function StoneMascot({
         />
       )}
 
-      {/* Heart hat — красное сердечко сверху */}
+      {/* Heart hat — Phosphor Heart для идеальной формы */}
       {decor === 'heart-hat' && (
         <View
           style={{
             position: 'absolute',
             top: size * -0.02,
             alignSelf: 'center',
-            width: size * 0.22,
-            height: size * 0.2,
           }}
           pointerEvents="none"
         >
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: size * 0.13,
-              height: size * 0.13,
-              borderRadius: size * 0.065,
-              backgroundColor: '#EF4444',
-            }}
-          />
-          <View
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: size * 0.13,
-              height: size * 0.13,
-              borderRadius: size * 0.065,
-              backgroundColor: '#EF4444',
-            }}
-          />
-          <View
-            style={{
-              position: 'absolute',
-              top: size * 0.05,
-              left: size * 0.015,
-              width: size * 0.19,
-              height: size * 0.13,
-              backgroundColor: '#EF4444',
-              transform: [{ rotate: '45deg' }],
-            }}
-          />
+          <Heart size={size * 0.28} color="#EF4444" weight="fill" />
         </View>
       )}
 
