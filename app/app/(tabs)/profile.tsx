@@ -75,6 +75,7 @@ import { ReferralCard } from '../../components/ReferralCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
+import * as haptics from '../../lib/haptics';
 import { processPhoto } from '../../lib/photo';
 import { updateProfilePhoto, updateCharacterName } from '../../lib/auth';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -164,24 +165,28 @@ export default function ProfileScreen() {
     (DECOR_ITEMS.find((d) => d.id === selectedDecorId)?.decor as MascotDecor) ?? 'none';
 
   // Preview-режим: тап на любой item сразу меняет mascot.
-  // Если item owned — также записываем в equipped (persist на сервер).
-  // Если нет — показываем "купить" модал, но preview остаётся до ухода
-  // со screen (useFocusEffect blur в эффекте ниже сбрасывает к owned).
+  // Если item owned — сохраняется в equipped (persist на сервер).
+  // Если нет — preview остаётся на экране + показываем "купить" модал.
+  // Preview сбрасывается только при blur экрана через useFocusEffect.
   const handlePickItem = async (
     item: CosmeticItem,
     setPreview: (id: string) => void,
     persist: (id: string) => void,
   ) => {
-    // Сначала обновляем preview — UI мгновенно
+    // ① Preview — мгновенно (selectedColorId/Eye/Shape/Decor update)
+    // haptic selection → юзер чувствует что тап принят.
+    void haptics.selection();
     setPreview(item.id);
 
     if (ownedIds.includes(item.id)) {
-      // Owned — можно сохранить на сервер и не трогать баланс
+      // Owned — сохранить в equipped
       persist(item.id);
       return;
     }
 
-    // Не owned — показываем модал покупки (preview уже работает)
+    // ② Не owned — preview уже показан. Показываем модал покупки.
+    // Preview НЕ сбрасывается при отмене — юзер видит mascot в новом
+    // образе пока не уйдёт с экрана.
     if (!(await requireAuth('менять внешний вид камня'))) return;
 
     if (balance < item.price) {
@@ -202,6 +207,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             const result = await buyItem(item.id);
             if (result.ok) {
+              void haptics.success();
               setBalance(result.balance);
               setOwnedIds(result.ownedItemIds);
               persist(item.id);
