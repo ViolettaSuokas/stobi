@@ -840,7 +840,7 @@ export default function ProfileScreen() {
                       onPress={() => handlePickColor(item)}
                       activeOpacity={0.85}
                       accessibilityRole="button"
-                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityState={{ selected: active }}
                       accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View
@@ -885,7 +885,7 @@ export default function ProfileScreen() {
                       onPress={() => handlePickEye(item)}
                       activeOpacity={0.85}
                       accessibilityRole="button"
-                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityState={{ selected: active }}
                       accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
@@ -938,7 +938,7 @@ export default function ProfileScreen() {
                       onPress={() => handlePickShape(item)}
                       activeOpacity={0.85}
                       accessibilityRole="button"
-                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityState={{ selected: active }}
                       accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
@@ -991,7 +991,7 @@ export default function ProfileScreen() {
                       onPress={() => handlePickDecor(item)}
                       activeOpacity={0.85}
                       accessibilityRole="button"
-                      accessibilityState={{ selected: active, disabled: !owned }}
+                      accessibilityState={{ selected: active }}
                       accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
                     >
                       <View style={styles.eyePreview}>
