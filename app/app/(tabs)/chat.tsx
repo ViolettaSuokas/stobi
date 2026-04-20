@@ -76,6 +76,9 @@ export default function ChatScreen() {
   const [channel, setChannel] = useState<string>('FI');
   const lastSendTime = useRef<number>(0);
   const [userCountry, setUserCountry] = useState<string>('FI');
+  // Guard: если юзер вручную тапнул channel chip → geo detection
+  // больше НЕ переопределяет выбор, даже если резолвится позже.
+  const userPickedChannelRef = useRef<boolean>(false);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const { t } = useI18n();
   const modal = useModal();
@@ -84,14 +87,24 @@ export default function ChatScreen() {
   const [canLoadOlder, setCanLoadOlder] = useState(true);
 
   const loadMessages = useCallback(async () => {
-    const [msgs, likesData] = await Promise.all([getMessages(channel), getLikes()]);
+    const currentChannel = channel; // snapshot для race protection
+    const [msgs, likesData] = await Promise.all([getMessages(currentChannel), getLikes()]);
+    // Если канал сменился пока мы грузили — отбросить результат
+    if (currentChannel !== channel) return;
     setMessages(msgs);
     setLikes(likesData);
     setLoading(false);
-    // Меньше полной страницы = истории больше нет
     setCanLoadOlder(msgs.length >= 50);
     markChatRead();
   }, [channel]);
+
+  // Отдельный эффект на смену channel — грузит messages для нового канала.
+  // Раньше это было через useFocusEffect с dep [loadMessages] — но тот
+  // re-fired на каждое изменение channel создавая race с другими
+  // async-операциями. Теперь чисто.
+  useEffect(() => {
+    void loadMessages();
+  }, [loadMessages]);
 
   const loadOlderMessages = useCallback(async () => {
     if (loadingOlder || !canLoadOlder || messages.length === 0) return;
@@ -123,20 +136,22 @@ export default function ChatScreen() {
     getCurrentLocation()
       .then((loc) => {
         const country = loc?.country;
-        if (country) {
-          setUserCountry(country);
-          // Устанавливаем только если всё ещё дефолтное значение 'FI'
-          // и юзер ещё не менял канал вручную
-          setChannel((current) => (current === 'FI' ? country : current));
-        }
+        if (!country) return;
+        setUserCountry(country);
+        // Ref-guard + state check: не трогаем channel если юзер уже выбрал
+        if (userPickedChannelRef.current) return;
+        setChannel((current) => (current === 'FI' ? country : current));
       })
       .catch(() => {});
   }, []);
 
+  // useFocusEffect БЕЗ зависимости от loadMessages/channel —
+  // фокус-эффект не должен re-fire при смене channel (это делает
+  // отдельный useEffect выше). Здесь только «вещи при фокусе»:
+  // презентация (reported list, user, style, member count).
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      loadMessages();
       AsyncStorage.getItem('stobi:reported_messages').then((json) => {
         if (json) setReportedIds(new Set(JSON.parse(json)));
       });
@@ -146,23 +161,16 @@ export default function ChatScreen() {
       getMyStyle().then((s) => {
         if (active) setMyStyle(s);
       });
-      // Load member count + online count + mark self active
       (async () => {
         try {
           const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
           if (!isSupabaseConfigured()) return;
-
-          // Mark current user as active
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (authUser) {
             await supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', authUser.id);
           }
-
-          // Total members
           const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
           if (active && count !== null) setMemberCount(count);
-
-          // Online = active in last 5 min
           const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
           const { count: online } = await supabase
             .from('profiles')
@@ -174,7 +182,7 @@ export default function ChatScreen() {
       return () => {
         active = false;
       };
-    }, [loadMessages]),
+    }, []),
   );
 
   const handleAttachPhoto = async () => {
@@ -547,7 +555,11 @@ export default function ChatScreen() {
             <TouchableOpacity
               key={ch}
               style={[styles.channelChip, active && styles.channelChipActive]}
-              onPress={() => { setMessages([]); setChannel(ch); }}
+              onPress={() => {
+                userPickedChannelRef.current = true;
+                setMessages([]);
+                setChannel(ch);
+              }}
               activeOpacity={0.8}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
