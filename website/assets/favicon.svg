@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="stoneGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#7C6AF5"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" fill="#FAFAF8" rx="14"/>
+  <path d="M 16 32 Q 18 18 32 16 Q 48 18 50 32 Q 48 46 32 48 Q 18 46 16 32 Z" fill="url(#stoneGrad)" transform="rotate(-8 32 32)"/>
+  <circle cx="26" cy="30" r="2.5" fill="#1A1A2E"/>
+  <circle cx="38" cy="30" r="2.5" fill="#1A1A2E"/>
+  <path d="M 27 38 Q 32 41 37 38" stroke="#1A1A2E" stroke-width="2" stroke-linecap="round" fill="none"/>
+</svg>

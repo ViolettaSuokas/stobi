@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAM_ID_PLACEHOLDER.com.stobi.app"],
+        "components": [
+          {
+            "/": "/invite/*",
+            "comment": "Referral links"
+          },
+          {
+            "/": "/stone/*",
+            "comment": "Deep link to stone detail"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAM_ID_PLACEHOLDER.com.stobi.app"]
+  }
+}

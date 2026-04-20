@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.stobi.app",
+      "sha256_cert_fingerprints": [
+        "51:66:95:86:43:D1:95:F7:D6:7F:61:E7:AA:70:67:BF:21:B0:39:62:21:F3:D3:63:DD:06:19:1D:F8:8B:17:36"
+      ]
+    }
+  }
+]
