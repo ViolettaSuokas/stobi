@@ -2,11 +2,10 @@ import { ALL_ITEMS, COLOR_ITEMS, EYE_ITEMS, SHAPE_ITEMS, DECOR_ITEMS } from '../
 
 describe('points — cosmetics catalog', () => {
   test('catalog has expected count (mirrors server items table)', () => {
-    // 15 colors + 7 eyes + 6 shapes + 9 decors = 37
-    // Удалены дубликаты: shape-star (=bumpy), eye-heart (=sparkle),
-    // decor-wizard (=crown) — все использовали тот же underlying
-    // shape/variant/decor что и другой item.
-    expect(ALL_ITEMS.length).toBe(37);
+    // 15 colors + 8 eyes + 6 shapes + 9 decors = 38
+    // eye-heart возвращён с variant='heart' (настоящие глаза-сердечки).
+    // shape-star и decor-wizard остаются удалёнными.
+    expect(ALL_ITEMS.length).toBe(38);
   });
 
   test('every category has at least one free default', () => {

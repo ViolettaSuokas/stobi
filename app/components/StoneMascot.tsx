@@ -1,16 +1,17 @@
 import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Flower, Leaf, Crown } from 'phosphor-react-native';
+import { Flower, Leaf, Crown, Heart } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 
 export type MascotVariant =
   | 'happy'       // обычный smile + круглые глаза
   | 'sleeping'   // закрытые глаза → полосочки
   | 'wink'       // одна полосочка, другой глаз круглый
-  | 'sparkle'    // + sparkles вокруг
+  | 'sparkle'    // + sparkles вокруг (always shown)
   | 'blush'      // happy + большой розовый blush
   | 'laughing'   // закрытые arc-eyes + широкий рот
-  | 'surprised'; // круглые глаза + O-рот
+  | 'surprised'  // круглые глаза + O-рот
+  | 'heart';     // глаза-сердечки (влюблённый look)
 
 export type MascotShape =
   | 'pebble'
@@ -140,6 +141,9 @@ export const StoneMascot = memo(function StoneMascot({
   const surprised = variant === 'surprised';
   const laughing = variant === 'laughing';
   const blush = variant === 'blush';
+  const heart = variant === 'heart';
+  // Variant 'sparkle' форсит sparkles независимо от prop — иначе на preview без эффекта.
+  const effectiveSparkles = showSparkles || variant === 'sparkle';
   const cfg = SHAPES[shape];
 
   return (
@@ -152,7 +156,7 @@ export const StoneMascot = memo(function StoneMascot({
       }}
     >
       {/* Sparkles around the stone */}
-      {showSparkles && (
+      {effectiveSparkles && (
         <>
           <Text
             style={[
@@ -246,7 +250,13 @@ export const StoneMascot = memo(function StoneMascot({
             }}
           >
             {/* Left eye */}
-            {winkLeft || eyeOpen ? (
+            {heart ? (
+              <Heart
+                size={size * 0.11}
+                color="#EF4444"
+                weight="fill"
+              />
+            ) : winkLeft || eyeOpen ? (
               <View
                 style={{
                   width: size * 0.07,
@@ -268,7 +278,13 @@ export const StoneMascot = memo(function StoneMascot({
             )}
 
             {/* Right eye */}
-            {eyeOpen ? (
+            {heart ? (
+              <Heart
+                size={size * 0.11}
+                color="#EF4444"
+                weight="fill"
+              />
+            ) : eyeOpen ? (
               <View
                 style={{
                   width: size * 0.07,

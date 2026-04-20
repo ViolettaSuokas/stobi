@@ -29,7 +29,7 @@ export type CosmeticItem = {
   /** Hex color (for color category) */
   color?: string;
   /** Mascot face variant the eye/smile maps to */
-  variant?: 'happy' | 'sleeping' | 'wink' | 'sparkle' | 'blush' | 'laughing' | 'surprised';
+  variant?: 'happy' | 'sleeping' | 'wink' | 'sparkle' | 'blush' | 'laughing' | 'surprised' | 'heart';
   /** Mascot body shape (for shape category) */
   shape?: 'pebble' | 'round' | 'egg' | 'long' | 'bumpy' | 'tall';
   /** Mascot decoration (for decor category) */
@@ -66,7 +66,7 @@ export const EYE_ITEMS: CosmeticItem[] = [
   { id: 'eye-sleeping', category: 'eye', label: 'Сонные', variant: 'sleeping', price: 0, freeByDefault: true },
   { id: 'eye-wink', category: 'eye', label: 'Подмигивает', variant: 'wink', price: 15, freeByDefault: false },
   { id: 'eye-sparkle', category: 'eye', label: 'Со звёздочками', variant: 'sparkle', price: 15, freeByDefault: false },
-  // eye-heart убран — был дубликатом eye-sparkle (оба variant='sparkle').
+  { id: 'eye-heart', category: 'eye', label: 'Глаза-сердечки', variant: 'heart', price: 40, freeByDefault: false, premiumOnly: true },
   // Новые эмоции:
   { id: 'eye-blush',     category: 'eye', label: 'Смущение',  variant: 'blush',     price: 15, freeByDefault: false },
   { id: 'eye-laughing',  category: 'eye', label: 'Смех',      variant: 'laughing',  price: 20, freeByDefault: false },
