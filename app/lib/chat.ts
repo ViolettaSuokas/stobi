@@ -209,10 +209,14 @@ export async function getMessages(
     }
   }
 
-  // Local fallback — применяем те же параметры пагинации
+  // Local fallback — strict channel filtering.
+  // Legacy messages без channel считаем как 'FI' (default при создании).
   const persisted = await readPersisted();
   let filtered = persisted
-    .filter((m) => (m as any).channel === channel || !(m as any).channel)
+    .filter((m) => {
+      const msgChannel = (m as any).channel ?? 'FI';
+      return msgChannel === channel;
+    })
     .sort((a, b) => a.createdAt - b.createdAt);
 
   if (beforeMs) {
@@ -277,7 +281,7 @@ export async function sendMessage(
     }
   }
 
-  const message: ChatMessage = {
+  const message: ChatMessage & { channel?: string } = {
     id: `msg-${Date.now()}`,
     authorId: user.id,
     authorName: user.username,
@@ -289,6 +293,7 @@ export async function sendMessage(
     photo,
     photoUri,
     replyToId,
+    channel, // Сохраняем channel чтобы сообщения не смешивались между каналами
   };
 
   const persisted = await readPersisted();
