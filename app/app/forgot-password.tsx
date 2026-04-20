@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen() {
   const handleSubmit = async () => {
     setError(null);
     const trimmed = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(trimmed)) {
       setError(t('register.email_invalid'));
       return;
     }

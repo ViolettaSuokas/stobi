@@ -67,7 +67,8 @@ export async function getReferralStats(): Promise<ReferralStats> {
       return { invited: Number(parsed.invited) || 0, earned: Number(parsed.earned) || 0 };
     }
     return { invited: 0, earned: 0 };
-  } catch {
+  } catch (e) {
+    console.warn('getReferralStats failed', e);
     return { invited: 0, earned: 0 };
   }
 }

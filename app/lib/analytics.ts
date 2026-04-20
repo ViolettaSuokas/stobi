@@ -41,8 +41,9 @@ export async function trackEvent(
       user_id: data?.user?.id ?? null,
       metadata: metadata ?? {},
     });
-  } catch {
-    // Analytics should never crash the app
+  } catch (e) {
+    // Лог — не крашим, но хотим видеть проблемы в Sentry.
+    console.warn('analytics trackEvent failed', event, e);
   }
 }
 

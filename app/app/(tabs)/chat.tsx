@@ -7,6 +7,7 @@ import {
   TextInput,
   FlatList,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   Image,
@@ -556,6 +557,7 @@ export default function ChatScreen() {
               key={ch}
               style={[styles.channelChip, active && styles.channelChipActive]}
               onPress={() => {
+                Keyboard.dismiss();
                 userPickedChannelRef.current = true;
                 setMessages([]);
                 setChannel(ch);

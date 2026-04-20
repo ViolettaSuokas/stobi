@@ -65,7 +65,9 @@ export default function RegisterScreen() {
       return;
     }
     // Простой email-regex: something@something.tld
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    // Stricter regex: local-part chars + domain.TLD (минимум 2 chars).
+    // Пропускает 99% валидных email, отклоняет `a@b.x`, whitespace, unicode-mess.
+    if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(trimmedEmail)) {
       setError(t('register.email_invalid'));
       return;
     }

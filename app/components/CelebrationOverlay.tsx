@@ -16,6 +16,7 @@ import { Colors } from '../constants/Colors';
 import { StoneMascot } from './StoneMascot';
 import { useI18n } from '../lib/i18n';
 import { ShareTapped } from '../lib/analytics';
+import * as haptics from '../lib/haptics';
 
 /**
  * Full-screen celebration оверлей для magic moments — находка камня
@@ -132,6 +133,12 @@ export function CelebrationOverlay({
     if (!visible) return;
     rewardScale.setValue(0);
     mascotScale.setValue(0);
+    // Haptics burst в такт анимации: big success на появлении,
+    // потом light pops как "confetti" звук через haptics.
+    void haptics.success();
+    setTimeout(() => void haptics.selection(), 350);
+    setTimeout(() => void haptics.selection(), 550);
+    setTimeout(() => void haptics.tap(), 750);
     Animated.sequence([
       Animated.timing(mascotScale, {
         toValue: 1,
