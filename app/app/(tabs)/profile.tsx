@@ -1311,7 +1311,7 @@ const styles = StyleSheet.create({
   },
 
   // Body
-  body: { padding: 20 },
+  body: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 20 },
 
   statsRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
   statCard: {

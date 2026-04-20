@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentLight,
     borderRadius: 20,
     padding: 16,
-    marginHorizontal: 16,
+    marginHorizontal: 0,
     marginBottom: 16,
     borderWidth: 1.5,
     borderColor: Colors.accent,
