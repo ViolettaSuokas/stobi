@@ -110,6 +110,8 @@ export const fi: Record<string, string> = {
     'profile.found_count': 'Löydetty',
     'profile.diamonds': '💎 Timantit',
     'profile.achievements': 'SAAVUTUKSET',
+    'profile.achievements_hint': 'Piilota ja löydä kiviä avataksesi saavutuksia ✨',
+    'profile.achievement_locked': 'lukittu',
     'profile.my_stones': 'OMAT KIVENI',
     'profile.tab_hidden': 'Piilotin',
     'profile.tab_found': 'Löysin',

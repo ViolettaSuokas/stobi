@@ -105,6 +105,8 @@ export const ru: Record<string, string> = {
     'profile.found_count': 'Найдено',
     'profile.diamonds': '💎 Алмазики',
     'profile.achievements': 'ДОСТИЖЕНИЯ',
+    'profile.achievements_hint': 'Прячь и находи камни, чтобы разблокировать достижения ✨',
+    'profile.achievement_locked': 'заблокировано',
     'profile.my_stones': 'МОИ КАМНИ',
     'profile.tab_hidden': 'Спрятал',
     'profile.tab_found': 'Нашёл',

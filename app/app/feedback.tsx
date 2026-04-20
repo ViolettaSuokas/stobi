@@ -74,10 +74,10 @@ export default function FeedbackScreen() {
     return (
       <View style={styles.container}>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
             <CaretLeft size={22} color={Colors.text} weight="bold" />
           </TouchableOpacity>
-          <View style={styles.successWrap}>
+          <View style={styles.successWrap} accessibilityLiveRegion="polite">
             <StoneMascot size={120} color={Colors.green} variant="happy" showSparkles />
             <CheckCircle size={40} color={Colors.green} weight="fill" style={{ marginTop: 16 }} />
             <Text style={styles.successTitle}>{t('feedback.sent_title')}</Text>
@@ -99,7 +99,7 @@ export default function FeedbackScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
           <CaretLeft size={22} color={Colors.text} weight="bold" />
           <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>

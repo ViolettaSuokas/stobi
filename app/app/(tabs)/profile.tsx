@@ -525,6 +525,13 @@ export default function ProfileScreen() {
           {/* Achievements */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('profile.achievements')}</Text>
+            {/* Если не заработано ни одного — подсказка как анлокать.
+                Просто locked-иконки без контекста = юзер не понимает как unlock. */}
+            {achievements.every((a) => !a.earned) && (
+              <Text style={styles.achievementsHint}>
+                {t('profile.achievements_hint')}
+              </Text>
+            )}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -533,7 +540,11 @@ export default function ProfileScreen() {
               {achievements.map((a, i) => {
                 const { Icon } = a;
                 return (
-                  <View key={i} style={styles.achievement}>
+                  <View
+                    key={i}
+                    style={styles.achievement}
+                    accessibilityLabel={`${a.label}${a.earned ? '' : ` · ${t('profile.achievement_locked')}`}`}
+                  >
                     <View
                       style={[
                         styles.achievementIcon,
@@ -1445,6 +1456,13 @@ const styles = StyleSheet.create({
   },
 
   // Achievements
+  achievementsHint: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginBottom: 10,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
   achievementsRow: { gap: 14, paddingRight: 10 },
   achievement: { alignItems: 'center', width: 60 },
   achievementIcon: {

@@ -96,6 +96,8 @@ export const en: Record<string, string> = {
     'profile.found_count': 'Found',
     'profile.diamonds': '💎 Diamonds',
     'profile.achievements': 'ACHIEVEMENTS',
+    'profile.achievements_hint': 'Hide and find stones to unlock achievements ✨',
+    'profile.achievement_locked': 'locked',
     'profile.my_stones': 'MY STONES',
     'profile.tab_hidden': 'Hidden',
     'profile.tab_found': 'Found',

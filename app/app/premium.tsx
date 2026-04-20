@@ -181,6 +181,8 @@ export default function PremiumScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
           >
             <CaretLeft size={22} color="#FFFFFF" weight="bold" />
           </TouchableOpacity>
@@ -332,6 +334,14 @@ export default function PremiumScreen() {
             style={styles.ctaBtn}
             onPress={handleRedeem}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={
+              selectedPlan === 'free-trial'
+                ? t('premium.cta_trial')
+                : selectedPlan === 'annual'
+                  ? t('premium.cta_annual')
+                  : t('premium.cta_monthly')
+            }
           >
             <Text style={styles.ctaText}>
               {selectedPlan === 'free-trial'
@@ -350,16 +360,20 @@ export default function PremiumScreen() {
                 : t('premium.fine_monthly')}
           </Text>
 
-          <TouchableOpacity activeOpacity={0.7} onPress={async () => {
-            const { restorePurchases } = await import('../lib/purchases');
-            const restored = await restorePurchases();
-            if (restored) void SubscriptionRestored();
-            modal.show({
-              title: restored ? t('premium.success') : t('premium.restore'),
-              message: restored ? t('premium.restored_message') : t('premium.no_purchases'),
-              buttons: [{ label: t('common.ok') }],
-            });
-          }}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('premium.restore')}
+            onPress={async () => {
+              const { restorePurchases } = await import('../lib/purchases');
+              const restored = await restorePurchases();
+              if (restored) void SubscriptionRestored();
+              modal.show({
+                title: restored ? t('premium.success') : t('premium.restore'),
+                message: restored ? t('premium.restored_message') : t('premium.no_purchases'),
+                buttons: [{ label: t('common.ok') }],
+              });
+            }}>
             <Text style={styles.restoreLink}>{t('premium.restore')}</Text>
           </TouchableOpacity>
         </View>
