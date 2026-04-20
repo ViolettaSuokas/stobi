@@ -25,6 +25,8 @@ import {
   PencilSimple,
   ChartBar,
   Palette,
+  SmileyWink,
+  Shapes,
   type IconProps,
 } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
@@ -762,15 +764,20 @@ export default function ProfileScreen() {
               <PencilSimple size={14} color={Colors.text2} weight="bold" />
             </TouchableOpacity>
 
-            {/* Sub-tabs: Color / Face / Shape / Decor — горизонтальные pills */}
+            {/* Sub-tabs: Color / Face / Shape / Decor — горизонтальные pills с Phosphor иконками */}
             <View style={styles.customTabs}>
               {(['color', 'face', 'shape', 'decor'] as const).map((tab) => {
                 const active = customTab === tab;
+                const Icon =
+                  tab === 'color' ? Palette :
+                  tab === 'face' ? SmileyWink :
+                  tab === 'shape' ? Shapes :
+                  Sparkle;
                 const label =
-                  tab === 'color' ? `🎨 ${t('profile.section_color')}` :
-                  tab === 'face' ? `😊 ${t('profile.section_face')}` :
-                  tab === 'shape' ? `🪨 ${t('profile.section_shape')}` :
-                  `✨ ${t('profile.section_decor')}`;
+                  tab === 'color' ? t('profile.section_color') :
+                  tab === 'face' ? t('profile.section_face') :
+                  tab === 'shape' ? t('profile.section_shape') :
+                  t('profile.section_decor');
                 return (
                   <TouchableOpacity
                     key={tab}
@@ -781,12 +788,19 @@ export default function ProfileScreen() {
                     accessibilityState={{ selected: active }}
                     accessibilityLabel={label}
                   >
-                    <Text
-                      style={[styles.customTabText, active && styles.customTabTextActive]}
-                      numberOfLines={1}
-                    >
-                      {label}
-                    </Text>
+                    <View style={styles.customTabInner}>
+                      <Icon
+                        size={15}
+                        color={active ? '#FFFFFF' : Colors.text2}
+                        weight={active ? 'fill' : 'regular'}
+                      />
+                      <Text
+                        style={[styles.customTabText, active && styles.customTabTextActive]}
+                        numberOfLines={1}
+                      >
+                        {label}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -1110,6 +1124,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  customTabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   customTabActive: {
     backgroundColor: Colors.accent,
