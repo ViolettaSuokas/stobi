@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Colors } from '../constants/Colors';
 
 /**
@@ -53,6 +54,15 @@ export const SpeechBubble = memo(function SpeechBubble({
       accessibilityRole="text"
     >
       <View style={styles.bubble}>
+        {/* Frosted-glass фон — BlurView с light tint, позволяет
+            пурпурному фону просвечивать создавая премиум-look.
+            Semi-transparent white overlay чтобы текст читался. */}
+        <BlurView
+          intensity={60}
+          tint="light"
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.bubbleOverlay} pointerEvents="none" />
         {/* numberOfLines=3 + adjustsFontSizeToFit — защита от overflow.
             Финский язык часто даёт +30% к длине относительно английского;
             mascot-сообщения могут не помещаться в 260px при FI. */}
@@ -75,25 +85,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bubble: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     paddingVertical: 12,
     paddingHorizontal: 16,
+    overflow: 'hidden',
     shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(91,79,240,0.08)',
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  bubbleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   text: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.text,
     lineHeight: 20,
     textAlign: 'center',
   },
+  // Tail — полупрозрачный в тон bubble, чтобы был единый frosted-glass
   tailBottom: {
     width: 0,
     height: 0,
@@ -102,7 +117,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#FFFFFF',
+    borderTopColor: 'rgba(255,255,255,0.75)',
     marginTop: -1,
   },
   tailTop: {
@@ -113,7 +128,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#FFFFFF',
+    borderBottomColor: 'rgba(255,255,255,0.75)',
     marginBottom: -1,
   },
 });
