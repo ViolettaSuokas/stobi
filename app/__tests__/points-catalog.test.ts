@@ -2,8 +2,11 @@ import { ALL_ITEMS, COLOR_ITEMS, EYE_ITEMS, SHAPE_ITEMS, DECOR_ITEMS } from '../
 
 describe('points — cosmetics catalog', () => {
   test('catalog has expected count (mirrors server items table)', () => {
-    // 15 colors + 8 eyes + 7 shapes + 10 decors = 40
-    expect(ALL_ITEMS.length).toBe(40);
+    // 15 colors + 7 eyes + 6 shapes + 9 decors = 37
+    // Удалены дубликаты: shape-star (=bumpy), eye-heart (=sparkle),
+    // decor-wizard (=crown) — все использовали тот же underlying
+    // shape/variant/decor что и другой item.
+    expect(ALL_ITEMS.length).toBe(37);
   });
 
   test('every category has at least one free default', () => {
@@ -51,5 +54,27 @@ describe('points — cosmetics catalog', () => {
     for (const item of COLOR_ITEMS) {
       expect(item.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
+  });
+
+  // Guard против бага как shape-star (id уникальный, но shape === другой).
+  // Юзер получает визуально одинаковые варианты под разными названиями.
+  test('shapes: no two items share the same underlying shape', () => {
+    const shapes = SHAPE_ITEMS.map((i) => i.shape);
+    expect(new Set(shapes).size).toBe(shapes.length);
+  });
+
+  test('eye items: no two share the same underlying variant', () => {
+    const variants = EYE_ITEMS.map((i) => i.variant);
+    expect(new Set(variants).size).toBe(variants.length);
+  });
+
+  test('decor items: no two share the same underlying decor', () => {
+    const decors = DECOR_ITEMS.map((i) => i.decor);
+    expect(new Set(decors).size).toBe(decors.length);
+  });
+
+  test('colors: no two share the same hex value', () => {
+    const hexes = COLOR_ITEMS.map((i) => i.color);
+    expect(new Set(hexes).size).toBe(hexes.length);
   });
 });

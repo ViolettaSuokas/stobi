@@ -66,7 +66,7 @@ export const EYE_ITEMS: CosmeticItem[] = [
   { id: 'eye-sleeping', category: 'eye', label: 'Сонные', variant: 'sleeping', price: 0, freeByDefault: true },
   { id: 'eye-wink', category: 'eye', label: 'Подмигивает', variant: 'wink', price: 15, freeByDefault: false },
   { id: 'eye-sparkle', category: 'eye', label: 'Со звёздочками', variant: 'sparkle', price: 15, freeByDefault: false },
-  { id: 'eye-heart', category: 'eye', label: 'Heart Eyes', variant: 'sparkle', price: 40, freeByDefault: false, premiumOnly: true },
+  // eye-heart убран — был дубликатом eye-sparkle (оба variant='sparkle').
   // Новые эмоции:
   { id: 'eye-blush',     category: 'eye', label: 'Смущение',  variant: 'blush',     price: 15, freeByDefault: false },
   { id: 'eye-laughing',  category: 'eye', label: 'Смех',      variant: 'laughing',  price: 20, freeByDefault: false },
@@ -80,7 +80,8 @@ export const SHAPE_ITEMS: CosmeticItem[] = [
   { id: 'shape-long', category: 'shape', label: 'Длинный', shape: 'long', price: 20, freeByDefault: false },
   { id: 'shape-bumpy', category: 'shape', label: 'Бугристый', shape: 'bumpy', price: 25, freeByDefault: false },
   { id: 'shape-tall', category: 'shape', label: 'Высокий', shape: 'tall', price: 25, freeByDefault: false },
-  { id: 'shape-star', category: 'shape', label: 'Star', shape: 'bumpy', price: 50, freeByDefault: false, premiumOnly: true },
+  // shape-star удалён — был дубликатом shape-bumpy (оба shape='bumpy').
+  // StoneMascot поддерживает 6 форм: pebble, round, egg, long, bumpy, tall.
 ];
 
 export const DECOR_ITEMS: CosmeticItem[] = [
@@ -90,7 +91,7 @@ export const DECOR_ITEMS: CosmeticItem[] = [
   { id: 'decor-cat-ears', category: 'decor', label: 'Ушки котика', decor: 'cat-ears', price: 40, freeByDefault: false, premiumOnly: true },
   { id: 'decor-glasses', category: 'decor', label: 'Очки', decor: 'glasses', price: 40, freeByDefault: false, premiumOnly: true },
   { id: 'decor-crown', category: 'decor', label: 'Корона 👑', decor: 'crown', price: 50, freeByDefault: false, premiumOnly: true },
-  { id: 'decor-wizard', category: 'decor', label: 'Wizard Hat', decor: 'crown', price: 50, freeByDefault: false, premiumOnly: true },
+  // decor-wizard убран — был дубликатом decor-crown (оба decor='crown').
   // Новые декоры:
   { id: 'decor-headband',  category: 'decor', label: 'Бантик 🎀',   decor: 'headband',  price: 25, freeByDefault: false },
   { id: 'decor-halo',      category: 'decor', label: 'Нимб',         decor: 'halo',      price: 35, freeByDefault: false, premiumOnly: true },
