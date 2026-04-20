@@ -969,10 +969,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Bottom card
+  // Bottom card — зазор от tab bar (который ~88px высоты + safe-area)
   bottomCard: {
     position: 'absolute',
-    bottom: 110,
+    bottom: 128,
     left: 16,
     right: 16,
     zIndex: 10,
