@@ -257,7 +257,10 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 140 }}
+      >
         {/* Hero — deep purple background with mascot */}
         <View style={styles.hero}>
           <View style={[styles.heroGlow, styles.heroGlowTL]} />
