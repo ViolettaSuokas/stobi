@@ -33,10 +33,16 @@ function getEnv(name: string): string {
   return v;
 }
 
-/** Fetches the image at `photoUrl` as bytes, then sends base64 to Rekognition. */
+/** Fetches the image at `photoUrl` as bytes, then sends base64 to Rekognition.
+ *  If AWS credentials are not configured, returns {safe: true, labels: []} —
+ *  это «fail-open» для dev-окружения без AWS. В production всегда should be set. */
 export async function detectModeration(photoUrl: string): Promise<ModerationResult> {
-  const accessKey = getEnv("AWS_ACCESS_KEY_ID");
-  const secretKey = getEnv("AWS_SECRET_ACCESS_KEY");
+  const accessKey = Deno.env.get("AWS_ACCESS_KEY_ID");
+  const secretKey = Deno.env.get("AWS_SECRET_ACCESS_KEY");
+  if (!accessKey || !secretKey) {
+    console.warn("AWS credentials not set — skipping NSFW moderation (dev mode)");
+    return { safe: true, labels: [] };
+  }
   const region = Deno.env.get("AWS_REGION") ?? "eu-central-1";
 
   // 1. Скачиваем фото

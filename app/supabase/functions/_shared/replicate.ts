@@ -21,7 +21,9 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
   if (!token) throw new Error("Missing REPLICATE_API_TOKEN");
   if (!modelVersion) throw new Error("Missing REPLICATE_CLIP_MODEL_VERSION");
 
-  // Start prediction
+  // Start prediction.
+  // Для andreasjansson/clip-features input = { inputs: "<url>" }
+  // (newline-separated strings: либо тексты, либо image URLs).
   const startRes = await fetch(`${REPLICATE_API}/predictions`, {
     method: "POST",
     headers: {
@@ -30,7 +32,7 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
     },
     body: JSON.stringify({
       version: modelVersion,
-      input: { input: photoUrl },      // actual input field name depends on model
+      input: { inputs: photoUrl },
     }),
   });
 
@@ -55,15 +57,24 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
     }
     const poll = await pollRes.json();
     if (poll.status === "succeeded") {
-      // Output shape зависит от модели. Стандарт CLIP — массив чисел.
+      // andreasjansson/clip-features возвращает:
+      //   [{ input: "url", embedding: [512 floats] }, ...]
+      // Для single-image запроса берём первый element.
       const out = poll.output;
-      if (Array.isArray(out) && out.length === 512 && typeof out[0] === "number") {
-        return out;
+      if (Array.isArray(out) && out.length > 0) {
+        const first = out[0];
+        if (Array.isArray(first?.embedding) && first.embedding.length === 512) {
+          return first.embedding as number[];
+        }
+        // Fallback: если модель вернула массив чисел напрямую
+        if (out.length === 512 && typeof out[0] === "number") {
+          return out as number[];
+        }
       }
       if (Array.isArray(out?.embedding) && out.embedding.length === 512) {
         return out.embedding;
       }
-      throw new Error(`Unexpected Replicate output shape: ${JSON.stringify(out).slice(0, 200)}`);
+      throw new Error(`Unexpected Replicate output shape: ${JSON.stringify(out).slice(0, 300)}`);
     }
     if (poll.status === "failed" || poll.status === "canceled") {
       throw new Error(`Replicate prediction ${poll.status}: ${poll.error ?? ""}`);
