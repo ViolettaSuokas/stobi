@@ -132,6 +132,57 @@ export async function moderateAndEmbedPhoto(
   throw new Error(`Edge function ${functionName} returned unexpected shape`);
 }
 
+/**
+ * Uploads a local file:// photo to Supabase Storage bucket `photos`
+ * under `<user_id>/<kind>/<uuid>.jpg` and returns both the storage path
+ * and a short-lived signed URL (for Edge Function to fetch).
+ *
+ * Signed URL expires in 10 minutes — long enough for the edge function
+ * pipeline (NSFW + CLIP) but short enough to avoid leaking references.
+ */
+export async function uploadPhotoToStorage(
+  localUri: string,
+  kind: 'stone' | 'find' | 'avatar',
+): Promise<{ path: string; signedUrl: string }> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Read local file as blob via fetch (RN-safe).
+  const resp = await fetch(localUri);
+  if (!resp.ok) {
+    throw new Error(`Failed to read local photo: ${resp.status}`);
+  }
+  const blob = await resp.blob();
+
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
+  const path = `${user.id}/${kind}/${filename}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('photos')
+    .upload(path, blob, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
+  if (uploadError) {
+    throw new Error(`Upload failed: ${uploadError.message}`);
+  }
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from('photos')
+    .createSignedUrl(path, 600);
+  if (signError || !signed?.signedUrl) {
+    throw new Error(`Signed URL failed: ${signError?.message ?? 'unknown'}`);
+  }
+
+  return { path, signedUrl: signed.signedUrl };
+}
+
 async function logModerationEvent(
   photoUrl: string,
   labels: unknown[],

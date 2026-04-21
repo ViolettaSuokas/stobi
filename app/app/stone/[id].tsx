@@ -36,7 +36,15 @@ import {
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getPoints, spendPoints, ALL_ITEMS } from '../../lib/points';
-import { hasFoundStone, markStoneFound, getFindsToday, getFindsOfAuthorToday, isAuthorLimitReached } from '../../lib/finds';
+import {
+  hasFoundStone,
+  markStoneFound,
+  getFindsToday,
+  getFindsOfAuthorToday,
+  isAuthorLimitReached,
+  reportStoneMissing,
+  authorConfirmStone,
+} from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
 import { deleteUserStone, editUserStone } from '../../lib/user-stones';
@@ -75,6 +83,11 @@ export default function StoneDetailScreen() {
 
   // Celebration overlay for stone find
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
+
+  // "Камня здесь нет" report flow (migration 017)
+  const [reportingMissing, setReportingMissing] = useState(false);
+  const [reportCount, setReportCount] = useState<number>(0);
+  const [authorConfirming, setAuthorConfirming] = useState(false);
 
   // 1-hour lock on freshly-hidden stones (anti-self-find farming).
   // Server enforces this in record_find RPC, but UI shouldn't even offer
@@ -147,6 +160,25 @@ export default function StoneDetailScreen() {
       // Premium users see all details
       const trial = await getTrialInfo();
       if (trial.active) setRevealed(true);
+
+      // Count of "камня здесь нет" репортов за последние 90 дней
+      // — показываем автору как banner и всем как прозрачный counter.
+      if (stoneId) {
+        try {
+          const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
+          if (isSupabaseConfigured()) {
+            const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+            const { count } = await supabase
+              .from('stone_reports')
+              .select('*', { count: 'exact', head: true })
+              .eq('stone_id', stoneId)
+              .gte('created_at', ninetyDaysAgo);
+            if (!cancelled && count !== null) setReportCount(count);
+          }
+        } catch (e) {
+          console.warn('load report count', e);
+        }
+      }
 
       setLoading(false);
     })();
@@ -406,6 +438,96 @@ export default function StoneDetailScreen() {
     }
   };
 
+  // ───────────────────────────────
+  // "Камня здесь нет" report (migration 017)
+  // ───────────────────────────────
+  const handleReportMissing = async () => {
+    if (!stone || !stoneId) return;
+    if (!(await requireAuth(t('stone.report_auth') || 'отметить что камня нет'))) return;
+
+    modal.show({
+      title: t('stone.report_title') || 'Камня здесь нет?',
+      message:
+        t('stone.report_text') ||
+        'Подойди к точке на карте. Если реально ничего не нашли, мы запишем твой репорт. После нескольких подтверждений от разных юзеров камень уедет с карты.',
+      buttons: [
+        { label: t('common.cancel') || 'Отмена', style: 'cancel' },
+        {
+          label: t('stone.report_confirm') || 'Да, камня здесь нет',
+          style: 'destructive',
+          onPress: async () => {
+            setReportingMissing(true);
+            try {
+              const loc = await getCurrentLocation();
+              if (!loc) {
+                Alert.alert(
+                  t('common.error') || 'Ошибка',
+                  'Нужен доступ к GPS чтобы подтвердить что ты рядом',
+                );
+                return;
+              }
+              const res = await reportStoneMissing(
+                stoneId,
+                loc.coords.lat,
+                loc.coords.lng,
+              );
+              if (res.ok) {
+                void haptics.success();
+                setReportCount((n) => n + 1);
+                modal.show({
+                  title: t('stone.report_thanks') || 'Спасибо!',
+                  message:
+                    t('stone.report_thanks_text') ||
+                    'Если ещё несколько людей подтвердят, камень уедет с карты.',
+                  buttons: [{ label: t('common.understood') || 'Понятно', style: 'cancel' }],
+                });
+              } else {
+                Alert.alert(
+                  t('common.error') || 'Ошибка',
+                  res.error ?? 'Не получилось',
+                );
+              }
+            } finally {
+              setReportingMissing(false);
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  const handleAuthorConfirm = async () => {
+    if (!stone || !stoneId) return;
+    setAuthorConfirming(true);
+    try {
+      const loc = await getCurrentLocation();
+      if (!loc) {
+        Alert.alert(
+          t('common.error') || 'Ошибка',
+          'Нужен GPS чтобы подтвердить что камень на месте',
+        );
+        return;
+      }
+      const res = await authorConfirmStone(stoneId, loc.coords.lat, loc.coords.lng);
+      if (res.ok) {
+        void haptics.success();
+        setReportCount(0);
+        modal.show({
+          title: t('stone.author_confirmed') || 'Камень оживлён',
+          message:
+            (t('stone.author_confirmed_text') ||
+              'Репорты сброшены, камень снова на карте.') +
+            ` (${res.reportsCleared ?? 0})`,
+          buttons: [{ label: t('common.understood') || 'Понятно', style: 'cancel' }],
+        });
+      } else {
+        Alert.alert(t('common.error') || 'Ошибка', res.error ?? 'Не получилось');
+      }
+    } finally {
+      setAuthorConfirming(false);
+    }
+  };
+
   // Pick the best photo: prefer real URI, then bundled photo key
   const actWithPhoto = history.find((a) => a.photoUri || a.photo);
   const heroPhotoUri = actWithPhoto?.photoUri;
@@ -537,6 +659,38 @@ export default function StoneDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Author revive banner — shown when stone has pending reports */}
+          {isOwnStone && reportCount > 0 && (
+            <View style={styles.reportBanner}>
+              <Text style={styles.reportBannerEmoji}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.reportBannerTitle}>
+                  {t('stone.author_banner_title') || `${reportCount} юзер${reportCount === 1 ? '' : 'а'} сообщили что камня нет`}
+                </Text>
+                <Text style={styles.reportBannerSub}>
+                  {t('stone.author_banner_sub') ||
+                    'Подойди к камню и подтверди — репорты сбросятся, камень останется на карте.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.reportBannerBtn}
+                onPress={handleAuthorConfirm}
+                disabled={authorConfirming}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('stone.author_banner_btn') || 'Камень на месте'}
+              >
+                {authorConfirming ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.reportBannerBtnText}>
+                    {t('stone.author_banner_btn') || 'Он там'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Artist / creator card */}
           {creator && (
@@ -694,21 +848,38 @@ export default function StoneDetailScreen() {
             </Text>
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.findBtn}
-            activeOpacity={0.85}
-            onPress={handleFound}
-            disabled={claiming}
-            accessibilityRole="button"
-            accessibilityLabel={t('stone.found_button')}
-            accessibilityState={{ disabled: claiming, busy: claiming }}
-          >
-            {claiming ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.findBtnText}>{t('stone.found_button')}</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.findBtn, { flex: 1 }]}
+              activeOpacity={0.85}
+              onPress={handleFound}
+              disabled={claiming}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.found_button')}
+              accessibilityState={{ disabled: claiming, busy: claiming }}
+            >
+              {claiming ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.findBtnText}>{t('stone.found_button')}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reportMissingBtn}
+              onPress={handleReportMissing}
+              disabled={reportingMissing}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.report_btn') || 'Камня здесь нет'}
+              accessibilityHint={t('stone.report_btn_hint') || 'Сообщить что камня на месте нет'}
+            >
+              {reportingMissing ? (
+                <ActivityIndicator color={Colors.text2} />
+              ) : (
+                <Text style={styles.reportMissingBtnText}>🫥</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </SafeAreaView>
 
@@ -991,6 +1162,64 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   findBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  // Row with "Я нашёл" + "Камня нет" side-by-side
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  reportMissingBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: Colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  reportMissingBtnText: {
+    fontSize: 22,
+  },
+
+  // Author revive banner (when юзеры репортнули что камня нет)
+  reportBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.warningBg,
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: Colors.warningBorder,
+  },
+  reportBannerEmoji: {
+    fontSize: 22,
+  },
+  reportBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  reportBannerSub: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  reportBannerBtn: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  reportBannerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
 
   // Share button — next to "already_found" pill
   foundRow: {

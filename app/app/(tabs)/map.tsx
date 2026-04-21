@@ -17,6 +17,7 @@ import {
   Globe,
   MapPinArea,
   CheckCircle,
+  Sparkle,
 } from 'phosphor-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -714,6 +715,21 @@ export default function MapScreen() {
         <Crosshair size={22} color={Colors.accent} weight="bold" />
       </TouchableOpacity>
 
+      {/* "Нашла камень где-то ещё" — AI-scanner entry point.
+          Основной CTA для сценария "нашла дома без GPS". */}
+      <TouchableOpacity
+        style={styles.scanAnywhereBtn}
+        onPress={() => router.push('/find-anywhere')}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={t('map.scan_anywhere') || 'Найти камень по фото'}
+      >
+        <Sparkle size={16} color="#FFFFFF" weight="fill" />
+        <Text style={styles.scanAnywhereText}>
+          {t('map.scan_anywhere_short') || 'Нашла камень'}
+        </Text>
+      </TouchableOpacity>
+
       {/* Bottom card */}
       <View style={styles.bottomCard} pointerEvents="box-none">
         <View style={styles.card}>
@@ -1051,6 +1067,29 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 10,
+  },
+  // Prominent CTA для AI-сканера ("нашла камень где-то ещё")
+  scanAnywhereBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 205,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 22,
+    backgroundColor: Colors.accent,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  scanAnywhereText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   card: {
     flexDirection: 'row',
