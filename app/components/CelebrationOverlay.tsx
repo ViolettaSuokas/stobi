@@ -237,10 +237,10 @@ export function CelebrationOverlay({
             <View style={styles.shareBonusCard}>
               <View style={styles.shareBonusBadge}>
                 <Sparkle size={14} color="#FFFFFF" weight="fill" />
-                <Text style={styles.shareBonusBadgeText}>+2 💎</Text>
+                <Text style={styles.shareBonusBadgeText}>+5 💎</Text>
               </View>
               <Text style={styles.shareBonusText}>
-                {t('celebration.share_offer') || 'Поделись находкой в соцсетях — получи ещё +2 алмазика'}
+                {t('celebration.share_offer') || 'Поделись находкой в соцсетях — получи ещё +5 алмазиков'}
               </Text>
             </View>
           )}
@@ -271,7 +271,7 @@ export function CelebrationOverlay({
               <Text style={styles.shareText}>
                 {shareBonus
                   ? (t('celebration.share_again') || 'Поделиться ещё')
-                  : `${t('stone.share')} +2 💎`}
+                  : `${t('stone.share')} +5 💎`}
               </Text>
             </TouchableOpacity>
           )}

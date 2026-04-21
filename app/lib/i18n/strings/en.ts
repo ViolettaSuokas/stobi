@@ -575,7 +575,7 @@ export const en: Record<string, string> = {
     'chat.photo_rejected_title': 'Photo rejected',
     'chat.photo_rejected_text': 'AI didn\'t allow this photo. Pick another.',
 
-    'celebration.share_offer': 'Share your find on socials — get +2 diamonds',
+    'celebration.share_offer': 'Share your find on socials — get +5 diamonds',
     'celebration.share_thanks': 'Thanks! Bonus added',
     'celebration.share_again': 'Share more',
 };
