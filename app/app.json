@@ -132,7 +132,8 @@
       },
       "supportUrl": "https://stobi.app/support",
       "privacyPolicyUrl": "https://stobi.app/privacy",
-      "termsOfServiceUrl": "https://stobi.app/terms"
+      "termsOfServiceUrl": "https://stobi.app/terms",
+      "sentryDsn": "https://5fed19e818f10e54452355f5c775ab51@o4511253158035456.ingest.de.sentry.io/4511253164261456"
     },
     "owner": "letta",
     "runtimeVersion": {
