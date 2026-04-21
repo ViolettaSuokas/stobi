@@ -82,6 +82,9 @@ export default function FindAnywhereScreen() {
     similarity: number | null;
   } | null>(null);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
+  // Превью последнего снимка — показываем в error view даже когда
+  // processing не дошёл до embedding (network fail, edge function 5xx).
+  const [lastScanUri, setLastScanUri] = useState<string | null>(null);
 
   // Guest check — если не авторизован, вернуть обратно.
   useEffect(() => {
@@ -128,6 +131,7 @@ export default function FindAnywhereScreen() {
   const processScan = async (rawUri: string) => {
     setPhase('processing');
     setFriendlyError(null);
+    setLastScanUri(rawUri);                 // превью на случай ошибки
     try {
       // 0. Client-side quick quality check (стены/темнота/размытость)
       const quality = await checkSceneQuality(rawUri);
@@ -284,12 +288,13 @@ export default function FindAnywhereScreen() {
         {phase === 'failed' && (
           <FriendlyFailView
             error={friendlyError ?? translateScanError('unknown', 'find-anywhere')}
-            previewUri={processed?.localUri ?? null}
+            previewUri={processed?.localUri ?? lastScanUri}
             onRetry={() => {
               setPhase('camera');
               setProcessed(null);
               setSelected(null);
               setFriendlyError(null);
+              setLastScanUri(null);
             }}
             onBack={() => router.back()}
             t={t}
