@@ -1076,10 +1076,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   // Prominent CTA для AI-сканера ("нашла камень где-то ещё")
+  // Позиция: над recenter, значительно выше нижней карточки, чтобы
+  // не слипалось визуально. На iPhone со статус-баром 392px → есть воздух.
   scanAnywhereBtn: {
     position: 'absolute',
     right: 16,
-    bottom: 205,
+    bottom: 380,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
