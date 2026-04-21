@@ -88,39 +88,26 @@ function escapeHtml(str: string): string {
     .replace(/\\/g, '\\\\');
 }
 
-function buildMapHTML(
-  userLat: number,
-  userLng: number,
-  stones: NearbyStone[],
-): string {
-  const stoneMarkers = stones
-    .map((s) => {
-      const fuzz = fuzzCoords(s.coords, s.id);
-      return `
-      L.circleMarker([${fuzz.lat}, ${fuzz.lng}], {
-        radius: 12,
-        fillColor: '${s.colors[0]}',
-        color: '${s.colors[1]}',
-        weight: 2.5,
-        opacity: 0.9,
-        fillOpacity: 0.85,
-      })
-      .addTo(map)
-      .bindTooltip('${escapeHtml(s.emoji)} ${escapeHtml(s.name)}', {
-        direction: 'top',
-        offset: [0, -12],
-        className: 'stone-tooltip',
-      })
-      .on('click', function() {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'stoneTap',
-          stoneId: '${s.id}',
-        }));
-      });
-    `;
-    })
-    .join('\n');
+/**
+ * Pre-compute stone marker data for the WebView.
+ * fuzzCoords applied here (stable — based on stoneId hash) so the WebView
+ * script receives render-ready positions.
+ */
+function stoneMarkerPayload(stones: NearbyStone[]) {
+  return stones.map((s) => {
+    const fuzz = fuzzCoords(s.coords, s.id);
+    return {
+      id: s.id,
+      lat: fuzz.lat,
+      lng: fuzz.lng,
+      fill: s.colors[0],
+      stroke: s.colors[1],
+      label: `${s.emoji} ${s.name}`,
+    };
+  });
+}
 
+function buildMapHTML(userLat: number, userLng: number): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -230,15 +217,59 @@ function buildMapHTML(
       iconSize: [44, 44],
       iconAnchor: [22, 22],
     });
-    L.marker([${userLat}, ${userLng}], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+    var userMarker = L.marker([${userLat}, ${userLng}], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+    var userPos = [${userLat}, ${userLng}];
 
-    // Stone markers
-    ${stoneMarkers}
+    // Stone layer — updated via window.renderStones(json) from React Native
+    // so that tab focus no longer recreates the WebView.
+    var stoneLayer = L.layerGroup().addTo(map);
+
+    window.renderStones = function(stonesJson) {
+      try {
+        var stones = typeof stonesJson === 'string' ? JSON.parse(stonesJson) : stonesJson;
+        stoneLayer.clearLayers();
+        stones.forEach(function(s) {
+          L.circleMarker([s.lat, s.lng], {
+            radius: 12,
+            fillColor: s.fill,
+            color: s.stroke,
+            weight: 2.5,
+            opacity: 0.9,
+            fillOpacity: 0.85,
+          })
+          .bindTooltip(s.label, {
+            direction: 'top',
+            offset: [0, -12],
+            className: 'stone-tooltip',
+          })
+          .on('click', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'stoneTap',
+              stoneId: s.id,
+            }));
+          })
+          .addTo(stoneLayer);
+        });
+      } catch (e) {
+        // ignore parse errors
+      }
+      return true;
+    };
 
     // Recenter function — called from React Native
     window.recenterMap = function() {
-      map.flyTo([${userLat}, ${userLng}], 14, { duration: 0.8 });
+      map.flyTo(userPos, 14, { duration: 0.8 });
     };
+
+    // Update user marker position (e.g. when GPS fix changes)
+    window.updateUserMarker = function(lat, lng) {
+      userPos = [lat, lng];
+      userMarker.setLatLng(userPos);
+      return true;
+    };
+
+    // Signal ready so React Native can inject the initial stones payload
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
   </script>
 </body>
 </html>
@@ -254,7 +285,7 @@ export default function MapScreen() {
   // Показываем sticky-notice сверху чтобы напомнить про GPS.
   const [dismissedPermissionOverlay, setDismissedPermissionOverlay] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [mapKey, setMapKey] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
   const [filter, setFilter] = useState<'nearby' | 'country' | 'world'>('country');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [foundIds, setFoundIds] = useState<string[]>([]);
@@ -304,10 +335,7 @@ export default function MapScreen() {
             setPermissionUndetermined(true);
             setLoading(false);
             const fallback = await getNearbyStones({ lat: 60.2934, lng: 25.0378 }).catch(() => []);
-            if (!cancelled) {
-              setStones(fallback);
-              setMapKey((k) => k + 1);
-            }
+            if (!cancelled) setStones(fallback);
             // Параллельно грузим не-location данные
             const [fIds, trial, user] = await Promise.all([
               getFoundStoneIds().catch(() => [] as string[]),
@@ -329,7 +357,6 @@ export default function MapScreen() {
           ]);
           if (cancelled) return;
 
-          const prevStoneCount = stones.length;
           setFoundIds(fIds);
           setTrialActive(trial.active);
           if (user) setCurrentUserId(user.id);
@@ -340,7 +367,6 @@ export default function MapScreen() {
             if (!cancelled) {
               setStones(fallback);
               setLoading(false);
-              if (fallback.length !== prevStoneCount) setMapKey((k) => k + 1);
             }
             return;
           }
@@ -350,7 +376,6 @@ export default function MapScreen() {
           if (!cancelled) {
             setStones(nearby);
             setLoading(false);
-            if (nearby.length !== prevStoneCount) setMapKey((k) => k + 1);
           }
         } catch (e) {
           console.warn('map load error', e);
@@ -370,6 +395,10 @@ export default function MapScreen() {
   const handleWebViewMessage = async (event: { nativeEvent: { data: string } }) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'mapReady') {
+        setMapReady(true);
+        return;
+      }
       if (data.type === 'stoneTap') {
         if (!(await requireAuth())) return;
         router.push(`/stone/${data.stoneId}`);
@@ -397,12 +426,39 @@ export default function MapScreen() {
     ? allCountryStones.filter((s) => s.city === myCity)
     : allCountryStones;
 
-  const visibleStones = [...allCountryStones].sort((a, b) => a.distanceMeters - b.distanceMeters);
-
-  const mapHtml = useMemo(
-    () => buildMapHTML(userLat, userLng, visibleStones),
-    [userLat, userLng, visibleStones.length, mapKey],
+  const visibleStones = useMemo(
+    () => [...allCountryStones].sort((a, b) => a.distanceMeters - b.distanceMeters),
+    [allCountryStones],
   );
+
+  // HTML стабилен по userLat/userLng — WebView больше не пересоздаётся при
+  // каждом focus таба. Маркеры обновляются через injectJavaScript ниже.
+  const mapHtml = useMemo(
+    () => buildMapHTML(userLat, userLng),
+    [userLat, userLng],
+  );
+
+  // При смене source WebView перезагружает страницу → window-скриптовое
+  // состояние обнуляется, дождаться mapReady заново.
+  useEffect(() => {
+    setMapReady(false);
+  }, [mapHtml]);
+
+  // Инжект камней в существующий WebView — без пересоздания контекста.
+  // Срабатывает и на первичную готовность карты, и на любое обновление списка.
+  useEffect(() => {
+    if (!mapReady) return;
+    const payload = stoneMarkerPayload(visibleStones);
+    const js = `window.renderStones(${JSON.stringify(payload)}); true;`;
+    webViewRef.current?.injectJavaScript(js);
+  }, [mapReady, visibleStones]);
+
+  // Поддерживаем маркер пользователя в актуальной позиции без перестройки карты.
+  useEffect(() => {
+    if (!mapReady) return;
+    const js = `window.updateUserMarker(${userLat}, ${userLng}); true;`;
+    webViewRef.current?.injectJavaScript(js);
+  }, [mapReady, userLat, userLng]);
 
   const totalStones = allCountryStones.length;       // top chip: вся Финляндия
   const cityStonesCount = myCityStones.length;       // bottom card: твой город
@@ -437,7 +493,6 @@ export default function MapScreen() {
                   setLocation(loc);
                   const nearby = await getNearbyStones(loc.coords);
                   setStones(nearby);
-                  setMapKey((k) => k + 1);
                 } else {
                   setPermissionUndetermined(false);
                   setPermissionDenied(true);
@@ -488,7 +543,6 @@ export default function MapScreen() {
       {/* Real map via WebView + Leaflet */}
       {!loading && (!permissionDenied || dismissedPermissionOverlay) ? (
         <WebView
-          key={mapKey}
           ref={webViewRef}
           source={{ html: mapHtml }}
           style={styles.webview}
@@ -587,7 +641,6 @@ export default function MapScreen() {
                   onPress={() => {
                     setFilter(opt.key);
                     setShowFilterMenu(false);
-                    setMapKey((k) => k + 1);
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}

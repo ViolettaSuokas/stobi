@@ -117,35 +117,47 @@ export default function ProfileScreen() {
       let active = true;
       (async () => {
         try {
-          const [u, state, trial, equipped] = await Promise.all([
+          // Wave 1 — критический путь для первого paint: юзер, баланс,
+          // экипировка маскота. Это то, что должно появиться сразу при
+          // возврате на таб.
+          const [u, state, equipped] = await Promise.all([
             getCurrentUser(),
             getState(),
-            getTrialInfo(),
             getEquippedIds(),
           ]);
           if (!active) return;
           setUser(u);
           setBalance(state.balance);
           setOwnedIds(state.ownedItemIds);
-          setTrialActive(trial.active);
-          if (trial.active) setTrialRemaining(formatRemaining(trial.msRemaining));
           if (equipped.color) setSelectedColorId(equipped.color);
           if (equipped.eye) setSelectedEyeId(equipped.eye);
           if (equipped.shape) setSelectedShapeId(equipped.shape);
           if (equipped.decor) setSelectedDecorId(equipped.decor);
 
-          // Load activities + counts in parallel (only if logged in)
+          // Wave 2 — trial info и списки активностей. Не блокируют render:
+          // экран уже виден, эти данные дорисуют вторичные блоки.
+          getTrialInfo()
+            .then((trial) => {
+              if (!active) return;
+              setTrialActive(trial.active);
+              if (trial.active) setTrialRemaining(formatRemaining(trial.msRemaining));
+            })
+            .catch((e) => console.warn('profile: trial load failed', e));
+
           if (u) {
             const seedUserId = DEMO_SEED_USER_MAP[u.email] ?? u.id;
-            const [acts, hides, finds] = await Promise.all([
+            Promise.all([
               getUserActivities(seedUserId, myStonesTab),
               getUserActivities(seedUserId, 'hide'),
               getUserActivities(seedUserId, 'find'),
-            ]);
-            if (!active) return;
-            setMyActivities(acts);
-            setHiddenCount(hides.length);
-            setFoundCount(finds.length);
+            ])
+              .then(([acts, hides, finds]) => {
+                if (!active) return;
+                setMyActivities(acts);
+                setHiddenCount(hides.length);
+                setFoundCount(finds.length);
+              })
+              .catch((e) => console.warn('profile: activities load failed', e));
           }
         } catch (e) {
           console.warn('profile load error', e);
@@ -297,10 +309,14 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.mascotWrap}>
-              {/* key форсит перерендер при любой смене preview — защита
-                  от memo stale в некоторых RN-версиях. */}
+              {/* key форсит перерендер только в customize-сабтабе, чтобы preview
+                  обновлялся при смене косметики. На overview key стабилен —
+                  иначе MascotScene ремаунтится на каждом возврате в профиль
+                  и таб переключается с задержкой ~300мс. */}
               <MascotScene
-                key={`${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                key={mainTab === 'customize'
+                  ? `${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`
+                  : 'profile-mascot-stable'}
                 size={180}
                 color={selectedColor}
                 variant={selectedVariant}

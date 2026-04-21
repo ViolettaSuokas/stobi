@@ -59,28 +59,37 @@ export default function FeedScreen() {
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const { t } = useI18n();
 
-  // Initial load on focus — refresh timestamps when user returns to tab
+  // Initial load on focus — refresh timestamps when user returns to tab.
+  // 2-волновая загрузка: critical path (stats+recent+feed) сначала, чтобы
+  // экран показал контент как можно быстрее. Вторичные данные (location,
+  // user, style) грузятся в фоне и не блокируют первый пиксель.
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
         setLoading(true);
-        const [statsRes, recentRes, feedRes, locRes, usr, style] = await Promise.all([
+        const [statsRes, recentRes, feedRes] = await Promise.all([
           getDayStats(),
           getRecentlyHidden(8),
           getActivityFeed(10),
-          getCurrentLocation(),
-          getCurrentUser(),
-          getMyStyle(),
         ]);
         if (!active) return;
         setStats(statsRes);
         setRecent(recentRes);
         setFeed(feedRes);
-        setCity(locRes?.city ?? locRes?.region ?? null);
-        setCurrentUser(usr);
-        setMyStyle(style);
         setLoading(false);
+
+        // Вторая волна — не блокирует UI
+        Promise.all([
+          getCurrentLocation(),
+          getCurrentUser(),
+          getMyStyle(),
+        ]).then(([locRes, usr, style]) => {
+          if (!active) return;
+          setCity(locRes?.city ?? locRes?.region ?? null);
+          setCurrentUser(usr);
+          setMyStyle(style);
+        }).catch((e) => console.warn('feed: secondary load failed', e));
       })();
       return () => {
         active = false;

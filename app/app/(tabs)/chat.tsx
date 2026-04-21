@@ -168,8 +168,13 @@ export default function ChatScreen() {
           const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
           if (!isSupabaseConfigured()) return;
           const { data: { user: authUser } } = await supabase.auth.getUser();
+          // Fire-and-forget: не блокируем возврат на таб на UPDATE round-trip.
           if (authUser) {
-            await supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', authUser.id);
+            supabase
+              .from('profiles')
+              .update({ last_active_at: new Date().toISOString() })
+              .eq('id', authUser.id)
+              .then(() => {}, (e) => console.warn('chat: last_active update failed', e));
           }
           const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
           if (active && count !== null) setMemberCount(count);
