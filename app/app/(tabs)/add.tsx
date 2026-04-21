@@ -49,12 +49,33 @@ export default function AddScreen() {
   const [saving, setSaving] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
 
-  // AI scanner v2: если юзер просканировал камень, у нас есть
-  // embedding + signed photo URL готовый для create_stone RPC.
-  const [scanEmbedding, setScanEmbedding] = useState<number[] | null>(null);
-  const [scanPhotoUrl, setScanPhotoUrl] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
+  // AI scanner v2: multi-angle capture (3 ракурса) для устойчивости AI-матчинга.
+  // Каждый снимок обрабатывается параллельно в фоне (upload + edge function),
+  // готовые embeddings и photoUrls собираются в массивы и передаются в
+  // create_stone RPC одним батчем — сервер усредняет их в один reference.
+  type ScanCapture = {
+    localUri: string;
+    photoUrl?: string;
+    embedding?: number[];
+    status: 'pending' | 'done' | 'failed';
+  };
+  const SCAN_STEPS = [
+    'Общий вид',
+    'Сверху',
+    'Сбоку или в руке',
+  ];
+  const SCAN_TOTAL = SCAN_STEPS.length;
+  const [scanCaptures, setScanCaptures] = useState<ScanCapture[]>([]);
   const [showScanCamera, setShowScanCamera] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  // Производные значения для совместимости с существующим create_stone call
+  const scanEmbedding = scanCaptures.length > 0
+    ? scanCaptures.map((c) => c.embedding).filter((e): e is number[] => Array.isArray(e))
+    : null;
+  const scanPhotoUrl = scanCaptures[0]?.photoUrl ?? null;
+  const scanAllDone = scanCaptures.length === SCAN_TOTAL
+    && scanCaptures.every((c) => c.status === 'done');
 
   const modal = useModal();
   const { t } = useI18n();
@@ -103,43 +124,77 @@ export default function AddScreen() {
   };
 
   // AI-scanner для hide flow — показываем live-camera со scan-frame.
-  // После снимка: processPhoto → upload → edge function → embedding.
+  // Каждый из 3 ракурсов обрабатывается в фоне параллельно.
   const handleOpenScanCamera = () => {
+    setScanCaptures([]);
     setShowScanCamera(true);
   };
 
   const handleScanCapture = async (uri: string) => {
-    setShowScanCamera(false);
-    setScanning(true);
-    try {
-      const processed = await processPhoto(uri);
-      // Локальное превью — photoUri, чтоб юзер видел картинку сразу
-      setPhotoUri(processed.uri);
-
-      const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'stone');
-      const moderation = await moderateAndEmbedPhoto(signedUrl, 'stone');
-
-      if (!moderation.safe) {
-        modal.show({
-          title: t('find_anywhere.error_nsfw') || 'Фото не прошло проверку',
-          message: 'Сфотографируй именно камень.',
-          buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
-        });
-        return;
-      }
-
-      setScanEmbedding(moderation.embedding);
-      setScanPhotoUrl(signedUrl);
-    } catch (e: any) {
-      console.warn('handleScanCapture error', e);
-      modal.show({
-        title: t('common.error') || 'Ошибка',
-        message: e?.message ?? String(e),
-        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
-      });
-    } finally {
-      setScanning(false);
+    // Сразу добавляем capture в список (pending) — UI обновится с прогрессом.
+    const index = scanCaptures.length;
+    const processed = await processPhoto(uri);
+    if (index === 0) {
+      setPhotoUri(processed.uri);         // первое фото идёт в photo area
     }
+    setScanCaptures((prev) => [...prev, { localUri: processed.uri, status: 'pending' }]);
+
+    // Если собрали все — закрываем камеру.
+    if (index + 1 >= SCAN_TOTAL) {
+      setShowScanCamera(false);
+      setScanning(true);
+    }
+
+    // Фоново: upload + edge function. Не блокируем следующий shutter.
+    (async () => {
+      try {
+        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'stone');
+        const moderation = await moderateAndEmbedPhoto(signedUrl, 'stone');
+        if (!moderation.safe) {
+          setScanCaptures((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], status: 'failed' };
+            return next;
+          });
+          modal.show({
+            title: t('find_anywhere.error_nsfw') || 'Фото не прошло проверку',
+            message: 'Один из снимков не прошёл проверку. Сфотографируй заново.',
+            buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+          });
+          return;
+        }
+        setScanCaptures((prev) => {
+          const next = [...prev];
+          next[index] = {
+            ...next[index],
+            photoUrl: signedUrl,
+            embedding: moderation.embedding,
+            status: 'done',
+          };
+          return next;
+        });
+      } catch (e: any) {
+        console.warn('scan capture process failed', e);
+        setScanCaptures((prev) => {
+          const next = [...prev];
+          next[index] = { ...next[index], status: 'failed' };
+          return next;
+        });
+      } finally {
+        // После последнего обработанного — снимаем общий spinner.
+        setScanCaptures((prev) => {
+          if (prev.every((c) => c.status !== 'pending')) {
+            setScanning(false);
+          }
+          return prev;
+        });
+      }
+    })();
+  };
+
+  const handleResetScan = () => {
+    setScanCaptures([]);
+    setPhotoUri(null);
   };
 
   const handlePickFromGallery = async () => {
@@ -224,17 +279,24 @@ export default function AddScreen() {
         lng: coords.lng + (Math.random() - 0.5) * 0.0012,
       };
 
-      // Persist the stone — appears on map + profile after this.
-      // Если юзер сделал AI-скан — передаём embedding + signed URL в
-      // addUserStone, который вызовет create_stone RPC и сохранит
-      // камень с visual fingerprint'ом для будущих AI-сканов.
+      // Если multi-angle скан прошёл — собираем все embeddings + photoUrls
+      // и передаём в addUserStone, который вызовет create_stone RPC.
+      // Сервер усреднит векторы в один reference vector(768).
+      const doneCaptures = scanCaptures.filter((c) => c.status === 'done' && c.embedding && c.photoUrl);
+      const embeddingsForRpc = doneCaptures.length >= 1
+        ? doneCaptures.map((c) => c.embedding!)
+        : null;
+      const photoUrlsForRpc = doneCaptures.length >= 1
+        ? doneCaptures.map((c) => c.photoUrl!)
+        : null;
+
       const saved = await addUserStone(
         {
           name: name.trim(),
           emoji,
           description: description.trim() || undefined,
           tags: [],
-          photoUri: scanPhotoUrl ?? photoUri ?? undefined,
+          photoUri: photoUrlsForRpc?.[0] ?? photoUri ?? undefined,
           coords: offsetCoords,
           city: city ?? 'Finland',
           authorUserId,
@@ -242,8 +304,8 @@ export default function AddScreen() {
           authorAvatar,
           isArtist: user?.isArtist,
         },
-        scanEmbedding && scanPhotoUrl
-          ? { embeddings: [scanEmbedding], photoUrls: [scanPhotoUrl] }
+        embeddingsForRpc && photoUrlsForRpc
+          ? { embeddings: embeddingsForRpc, photoUrls: photoUrlsForRpc }
           : {},
       );
 
@@ -330,14 +392,25 @@ export default function AddScreen() {
     );
   }
 
-  // Full-screen scan camera overlay (hides all UI underneath)
+  // Full-screen scan camera overlay (hides all UI underneath).
+  // Multi-angle: 3 снимка подряд. current index + stepLabel передаются
+  // в camera через progress prop — юзер видит "Фото 2 из 3 — Сверху".
   if (showScanCamera) {
+    const currentStep = Math.min(scanCaptures.length + 1, SCAN_TOTAL);
     return (
       <StoneScanCamera
         title={t('scan.title_hide')}
-        subtitle={t('scan.sub_hide')}
+        subtitle={SCAN_STEPS[scanCaptures.length] ?? t('scan.sub_hide')}
+        progress={{
+          current: currentStep,
+          total: SCAN_TOTAL,
+          stepLabel: `Фото ${currentStep} из ${SCAN_TOTAL}`,
+        }}
         onCapture={handleScanCapture}
-        onCancel={() => setShowScanCamera(false)}
+        onCancel={() => {
+          setShowScanCamera(false);
+          setScanCaptures([]);
+        }}
         ctaLabel={t('scan.btn_capture')}
       />
     );
@@ -401,17 +474,19 @@ export default function AddScreen() {
 
           {/* AI Scanner — регистрирует визуальный fingerprint камня.
               Без него камень не будет найтись другими по фото (только GPS). */}
-          {scanEmbedding ? (
+          {scanAllDone ? (
             <View style={styles.scanDoneCard}>
               <View style={styles.scanDoneBadge}>
                 <CheckCircle size={18} color="#FFFFFF" weight="fill" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.scanDoneTitle}>{t('add.scan_done')}</Text>
-                <Text style={styles.scanDoneSub}>{t('add.scan_done_sub')}</Text>
+                <Text style={styles.scanDoneSub}>
+                  {`${SCAN_TOTAL} ракурса сохранены. ` + (t('add.scan_done_sub') || '')}
+                </Text>
               </View>
               <TouchableOpacity
-                onPress={handleAIScan}
+                onPress={handleResetScan}
                 disabled={scanning}
                 style={styles.scanRetakeBtn}
                 activeOpacity={0.7}
@@ -420,6 +495,20 @@ export default function AddScreen() {
                   {t('scan.btn_retake') || 'Переснять'}
                 </Text>
               </TouchableOpacity>
+            </View>
+          ) : scanCaptures.length > 0 ? (
+            <View style={styles.scanCtaCard}>
+              <View style={styles.scanCtaIcon}>
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scanCtaTitle}>
+                  {t('scan.processing') || 'AI анализирует...'}
+                </Text>
+                <Text style={styles.scanCtaSub}>
+                  {`Обработано ${scanCaptures.filter((c) => c.status === 'done').length} из ${scanCaptures.length}`}
+                </Text>
+              </View>
             </View>
           ) : (
             <TouchableOpacity

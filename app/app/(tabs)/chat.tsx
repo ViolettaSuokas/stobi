@@ -202,7 +202,27 @@ export default function ChatScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       const processed = await processPhoto(result.assets[0].uri);
+      // Optimistic local preview — юзер сразу видит что фото прикрепилось.
       setPendingPhoto(processed.uri);
+
+      // NSFW модерация в фоне. Если AWS Rekognition сконфигурирован
+      // и фото непотреб — отменяем attach + показываем ошибку.
+      try {
+        const { uploadPhotoToStorage, moderateAndEmbedPhoto } = await import('../../lib/photo');
+        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'find');
+        const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
+        if (!moderation.safe) {
+          setPendingPhoto(null);
+          Alert.alert(
+            t('chat.photo_rejected_title') || 'Фото отклонено',
+            t('chat.photo_rejected_text') || 'AI не разрешил это фото. Выбери другое.',
+          );
+        }
+      } catch (e) {
+        // Модерация упала — не блокируем attach (fail-open для dev),
+        // но лог для отладки.
+        console.warn('chat: photo moderation skipped', e);
+      }
     }
   };
 

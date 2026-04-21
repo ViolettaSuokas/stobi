@@ -45,6 +45,8 @@ type Props = {
   onCapture: (uri: string) => void;
   onCancel: () => void;
   ctaLabel?: string;
+  /** Для multi-angle потока в hide: "Ракурс 1 из 3" и подсказка этапа. */
+  progress?: { current: number; total: number; stepLabel?: string };
 };
 
 export function StoneScanCamera({
@@ -53,6 +55,7 @@ export function StoneScanCamera({
   onCapture,
   onCancel,
   ctaLabel,
+  progress,
 }: Props) {
   const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
@@ -158,6 +161,25 @@ export function StoneScanCamera({
           </TouchableOpacity>
 
           <View style={styles.instructionCard}>
+            {progress && progress.total > 1 && (
+              <View style={styles.progressWrap}>
+                <View style={styles.progressPips}>
+                  {Array.from({ length: progress.total }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.progressPip,
+                        i < progress.current - 1 && styles.progressPipDone,
+                        i === progress.current - 1 && styles.progressPipActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.progressText}>
+                  {progress.stepLabel ?? `Фото ${progress.current} из ${progress.total}`}
+                </Text>
+              </View>
+            )}
             <Text style={styles.instructionTitle}>
               {title ?? t('scan.title_find') ?? 'Поднеси камень к камере'}
             </Text>
@@ -304,6 +326,35 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: '92%',
   },
+  progressWrap: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressPips: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 6,
+  },
+  progressPip: {
+    width: 22,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  progressPipActive: {
+    backgroundColor: ACCENT,
+  },
+  progressPipDone: {
+    backgroundColor: '#FFFFFF',
+  },
+  progressText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+
   instructionTitle: {
     color: '#FFFFFF',
     fontSize: 17,

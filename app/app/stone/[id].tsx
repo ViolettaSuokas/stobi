@@ -660,6 +660,27 @@ export default function StoneDetailScreen() {
             </View>
           </View>
 
+          {/* Freshness — last successful find / author confirm.
+              Зелёный если < 7 дней, обычный серый иначе. Не показываем
+              если нет данных (старые seed-камни). */}
+          {stone.lastConfirmedAt && (() => {
+            const ms = Date.parse(stone.lastConfirmedAt);
+            if (!Number.isFinite(ms)) return null;
+            const daysAgo = Math.floor((Date.now() - ms) / (24 * 3600 * 1000));
+            const fresh = daysAgo < 7;
+            const label = daysAgo < 1
+              ? (t('stone.confirmed_today') || 'Подтверждён сегодня')
+              : daysAgo < 7
+                ? (t('stone.confirmed_recent') || `Подтверждён ${daysAgo} ${pluralize(daysAgo, 'день', 'дня', 'дней')} назад`)
+                : (t('stone.confirmed_stale') || `Давно не подтверждался (${daysAgo} дн)`);
+            return (
+              <View style={[styles.freshnessPill, fresh && styles.freshnessPillFresh]}>
+                <View style={[styles.freshnessDot, { backgroundColor: fresh ? Colors.green : Colors.text2 }]} />
+                <Text style={[styles.freshnessText, fresh && { color: Colors.green }]}>{label}</Text>
+              </View>
+            );
+          })()}
+
           {/* Author revive banner — shown when stone has pending reports */}
           {isOwnStone && reportCount > 0 && (
             <View style={styles.reportBanner}>
@@ -968,6 +989,33 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   metaText: { fontSize: 13, color: Colors.text2, fontWeight: '600' },
+
+  // Freshness pill (last_confirmed_at)
+  freshnessPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: Colors.surface2,
+    marginTop: -10,
+    marginBottom: 14,
+  },
+  freshnessPillFresh: {
+    backgroundColor: Colors.greenLight,
+  },
+  freshnessDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  freshnessText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.text2,
+  },
   metaDot: {
     width: 3,
     height: 3,

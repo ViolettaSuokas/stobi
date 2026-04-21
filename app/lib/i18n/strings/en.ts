@@ -558,4 +558,20 @@ export const en: Record<string, string> = {
     'add.photo_btn': 'Add photo',
     'add.scan_done': 'AI ready! Stone remembered',
     'add.scan_done_sub': 'Now when someone finds it, they just snap a photo and AI confirms the find.',
+
+    'pending.title': 'Approve finds',
+    'pending.intro': 'AI isn\'t 100% sure these are your stones. Review the photos and decide.',
+    'pending.empty_title': 'No finds waiting for approval',
+    'pending.empty_sub': 'When someone finds your stone and AI isn\'t 100% sure — a request lands here.',
+    'pending.yours': 'Your stone',
+    'pending.theirs': 'What they sent',
+    'pending.approve': 'Approve find',
+    'settings.my_stones': 'MY STONES',
+
+    'stone.confirmed_today': 'Confirmed today',
+    'stone.confirmed_recent': 'Confirmed {days} ago',
+    'stone.confirmed_stale': 'Not confirmed recently',
+
+    'chat.photo_rejected_title': 'Photo rejected',
+    'chat.photo_rejected_text': 'AI didn\'t allow this photo. Pick another.',
 };

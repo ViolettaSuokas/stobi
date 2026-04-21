@@ -574,4 +574,20 @@ export const fi: Record<string, string> = {
     'add.photo_btn': 'Lisää kuva',
     'add.scan_done': 'Tekoäly valmis! Kivi muistissa',
     'add.scan_done_sub': 'Kun joku löytää kiven, tekoäly vahvistaa löydön.',
+
+    'pending.title': 'Hyväksy löydöt',
+    'pending.intro': 'Tekoäly ei ole 100% varma että nämä ovat kiviäsi. Katso kuvat ja päätä.',
+    'pending.empty_title': 'Ei hyväksyntää odottavia löytöjä',
+    'pending.empty_sub': 'Kun joku löytää kivesi eikä tekoäly ole 100% varma — pyyntö tulee tänne.',
+    'pending.yours': 'Kivesi',
+    'pending.theirs': 'Lähetetty kuva',
+    'pending.approve': 'Hyväksy löytö',
+    'settings.my_stones': 'KIVENI',
+
+    'stone.confirmed_today': 'Vahvistettu tänään',
+    'stone.confirmed_recent': 'Vahvistettu {days} sitten',
+    'stone.confirmed_stale': 'Ei vahvistettu pitkään aikaan',
+
+    'chat.photo_rejected_title': 'Kuva hylätty',
+    'chat.photo_rejected_text': 'Tekoäly ei sallinut tätä kuvaa. Valitse toinen.',
 };

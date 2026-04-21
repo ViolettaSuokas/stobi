@@ -17,6 +17,18 @@ export function translateScanError(
 ): FriendlyError {
   const msg = (raw ?? '').toLowerCase();
 
+  // ── Replicate timeout — модель думает дольше 30 сек ──
+  if (msg.includes('replicate timeout') || (msg.includes('timeout') && msg.includes('replicate'))) {
+    return {
+      title: 'AI долго думает',
+      message: 'Нейросеть сейчас перегружена. Ненадолго.',
+      tips: [
+        'Попробуй ещё раз через минуту',
+        'Если повторяется — у тебя может быть нестабильное соединение',
+      ],
+    };
+  }
+
   // ── Network / offline ──
   if (msg.includes('network') || msg.includes('fetch') || msg.includes('failed to fetch')) {
     return {

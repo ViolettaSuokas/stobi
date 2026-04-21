@@ -573,4 +573,23 @@ export const ru: Record<string, string> = {
     'add.photo_btn': 'Добавить фото',
     'add.scan_done': 'AI готов! Камень запомнен',
     'add.scan_done_sub': 'Теперь тот, кто найдёт — просто сфоткает и AI подтвердит находку.',
+
+    // Pending approvals — автор одобряет находки
+    'pending.title': 'Одобрить находки',
+    'pending.intro': 'AI не уверен на 100% что это твои камни. Посмотри фото и реши — одобрить или оставить ждать.',
+    'pending.empty_title': 'Нет находок ожидающих одобрения',
+    'pending.empty_sub': 'Когда кто-то найдёт твой камень и AI не будет уверен на 100% — запрос придёт сюда.',
+    'pending.yours': 'Твой камень',
+    'pending.theirs': 'Что прислали',
+    'pending.approve': 'Одобрить находку',
+    'settings.my_stones': 'МОИ КАМНИ',
+
+    // Stone detail — freshness
+    'stone.confirmed_today': 'Подтверждён сегодня',
+    'stone.confirmed_recent': 'Подтверждён {days} назад',
+    'stone.confirmed_stale': 'Давно не подтверждался',
+
+    // Chat — photo moderation rejection
+    'chat.photo_rejected_title': 'Фото отклонено',
+    'chat.photo_rejected_text': 'AI не разрешил это фото. Выбери другое.',
 };
