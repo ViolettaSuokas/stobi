@@ -3,3 +3,8 @@ node_modules/
 dist/
 *.log
 .DS_Store
+
+# Local credentials / secrets — never commit
+SETUP.md
+.env
+.env.local
