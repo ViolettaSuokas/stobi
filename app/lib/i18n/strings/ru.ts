@@ -506,4 +506,71 @@ export const ru: Record<string, string> = {
     'mascot.finds_today_2': '{finds} камня сегодня! Продолжаем?',
     'mascot.veteran_1': 'Легенда! Ты нашёл уже 100+ камней 👑',
     'mascot.veteran_2': 'Мастер камней — у тебя есть чему поучиться.',
+
+    // ═══ Stone Verification v2 ═══
+
+    // Map — AI scanner entry point
+    'map.scan_anywhere_short': 'Нашла камень',
+    'map.scan_anywhere': 'Найти камень по фото',
+
+    // Find Anywhere screen
+    'find_anywhere.title': 'Нашла камень',
+    'find_anywhere.hero_title': 'Сфотографируй найденный камень',
+    'find_anywhere.hero_sub': 'AI узнаёт камень по рисунку — даже если ты уже дома. Не обязательно быть рядом.',
+    'find_anywhere.tip_1': 'Снимай при хорошем свете',
+    'find_anywhere.tip_2': 'Камень должен занимать бо́льшую часть кадра',
+    'find_anywhere.tip_3': 'Фокус на рисунок, без бликов',
+    'find_anywhere.btn_camera': 'Открыть камеру',
+    'find_anywhere.btn_library': 'Выбрать из галереи',
+    'find_anywhere.auth_reason': 'отметить находку',
+    'find_anywhere.claiming': 'Фиксируем находку…',
+    'find_anywhere.error_nsfw': 'Фото не прошло проверку. Сфотографируй именно камень.',
+    'find_anywhere.error_no_match': 'Не нашли похожий камень. Возможно, он ещё не зарегистрирован в Stobi или фото плохого качества.',
+    'find_anywhere.auto_title': 'Нашли с высокой уверенностью',
+    'find_anywhere.auto_sub': 'Если это не твой — выбери другой вариант ниже',
+    'find_anywhere.pick_title': 'Похожие камни — выбери свой',
+    'find_anywhere.pick_sub': 'AI нашёл несколько похожих. Выбери тот, что у тебя в руках.',
+    'find_anywhere.btn_claim': 'Это мой камень',
+    'find_anywhere.btn_select_first': 'Выбери камень выше',
+    'find_anywhere.success_title': 'Находка засчитана!',
+    'find_anywhere.success_sub': 'Камень твой! Алмазики пришли на баланс.',
+    'find_anywhere.pending_title': 'Ждём подтверждения автора',
+    'find_anywhere.pending_sub': 'AI не на 100% уверен, но похоже на правду. Автор подтвердит в течение 48 часов — алмазики придут тогда.',
+    'find_anywhere.fail_title': 'Что-то пошло не так',
+    'find_anywhere.fail_sub': 'Попробуй ещё раз с другим ракурсом',
+    'find_anywhere.btn_retry': 'Попробовать ещё раз',
+
+    // Scan modal — universal (hide + find)
+    'scan.title_find': 'Поднеси камень к камере',
+    'scan.sub_find': 'AI проверит что это тот самый камень',
+    'scan.title_hide': 'Сфотографируй свой камень',
+    'scan.sub_hide': 'AI запомнит его по рисунку, чтобы потом узнать',
+    'scan.btn_capture': 'Сканировать',
+    'scan.btn_retake': 'Переснять',
+    'scan.processing': 'AI анализирует…',
+    'scan.blur_warning': 'Фото размыто — сфотографируй ещё раз чётко',
+    'scan.no_permission_title': 'Нужен доступ к камере',
+    'scan.no_permission_text': 'Разреши в Настройки → Stobi → Camera',
+
+    // Stone detail — report missing + author confirm
+    'stone.report_btn': 'Камня здесь нет',
+    'stone.report_btn_hint': 'Сообщить что камня на месте нет',
+    'stone.report_auth': 'отметить что камня нет',
+    'stone.report_title': 'Камня здесь нет?',
+    'stone.report_text': 'Подойди к точке на карте. Если реально ничего не нашли, мы запишем твой репорт. После нескольких подтверждений от разных юзеров камень уедет с карты.',
+    'stone.report_confirm': 'Да, камня здесь нет',
+    'stone.report_thanks': 'Спасибо!',
+    'stone.report_thanks_text': 'Если ещё несколько людей подтвердят, камень уедет с карты.',
+    'stone.author_banner_title': 'Люди сообщили что камня нет',
+    'stone.author_banner_sub': 'Подойди к камню и подтверди — репорты сбросятся, камень останется на карте.',
+    'stone.author_banner_btn': 'Он там',
+    'stone.author_confirmed': 'Камень оживлён',
+    'stone.author_confirmed_text': 'Репорты сброшены, камень снова на карте.',
+
+    // Add flow — scan button
+    'add.scan_btn': 'Сканировать камень (AI)',
+    'add.scan_btn_sub': 'AI запомнит рисунок, чтобы потом узнать',
+    'add.photo_btn': 'Добавить фото',
+    'add.scan_done': 'AI готов! Камень запомнен',
+    'add.scan_done_sub': 'Теперь тот, кто найдёт — просто сфоткает и AI подтвердит находку.',
 };

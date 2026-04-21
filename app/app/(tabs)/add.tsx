@@ -19,10 +19,11 @@ import {
   Camera,
   MapPin,
   Sparkle,
+  CheckCircle,
 } from 'phosphor-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { processPhoto } from '../../lib/photo';
+import { processPhoto, uploadPhotoToStorage, moderateAndEmbedPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { Colors } from '../../constants/Colors';
@@ -46,6 +47,13 @@ export default function AddScreen() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
+
+  // AI scanner v2: если юзер просканировал камень, у нас есть
+  // embedding + signed photo URL готовый для create_stone RPC.
+  const [scanEmbedding, setScanEmbedding] = useState<number[] | null>(null);
+  const [scanPhotoUrl, setScanPhotoUrl] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+
   const modal = useModal();
   const { t } = useI18n();
 
@@ -89,6 +97,56 @@ export default function AddScreen() {
     if (!result.canceled && result.assets[0]) {
       const processed = await processPhoto(result.assets[0].uri);
       setPhotoUri(processed.uri);
+    }
+  };
+
+  // AI-scanner для hide flow: камера → processPhoto → upload → edge function
+  // → получаем embedding + signed URL. UX говорит "AI запомнил" как подтверждение.
+  const handleAIScan = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      modal.show({
+        title: t('scan.no_permission_title') || 'Нужен доступ к камере',
+        message: t('scan.no_permission_text') || 'Разреши в Настройки → Stobi → Camera',
+        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+      });
+      return;
+    }
+    const pick = await ImagePicker.launchCameraAsync({
+      quality: 1,
+      allowsEditing: false,
+    });
+    if (pick.canceled || !pick.assets?.[0]) return;
+
+    setScanning(true);
+    try {
+      const processed = await processPhoto(pick.assets[0].uri);
+      // Локальное превью — photoUri, чтоб юзер видел картинку сразу
+      setPhotoUri(processed.uri);
+
+      const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'stone');
+      const moderation = await moderateAndEmbedPhoto(signedUrl, 'stone');
+
+      if (!moderation.safe) {
+        modal.show({
+          title: t('find_anywhere.error_nsfw') || 'Фото не прошло проверку',
+          message: 'Сфотографируй именно камень.',
+          buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+        });
+        return;
+      }
+
+      setScanEmbedding(moderation.embedding);
+      setScanPhotoUrl(signedUrl);
+    } catch (e: any) {
+      console.warn('handleAIScan error', e);
+      modal.show({
+        title: t('common.error') || 'Ошибка',
+        message: e?.message ?? String(e),
+        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+      });
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -328,6 +386,58 @@ export default function AddScreen() {
             )}
           </TouchableOpacity>
 
+          {/* AI Scanner — регистрирует визуальный fingerprint камня.
+              Без него камень не будет найтись другими по фото (только GPS). */}
+          {scanEmbedding ? (
+            <View style={styles.scanDoneCard}>
+              <View style={styles.scanDoneBadge}>
+                <CheckCircle size={18} color="#FFFFFF" weight="fill" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scanDoneTitle}>{t('add.scan_done')}</Text>
+                <Text style={styles.scanDoneSub}>{t('add.scan_done_sub')}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleAIScan}
+                disabled={scanning}
+                style={styles.scanRetakeBtn}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.scanRetakeText}>
+                  {t('scan.btn_retake') || 'Переснять'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.scanCtaCard}
+              onPress={handleAIScan}
+              disabled={scanning}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('add.scan_btn') || 'Сканировать камень'}
+            >
+              <View style={styles.scanCtaIcon}>
+                {scanning ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Sparkle size={22} color="#FFFFFF" weight="fill" />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scanCtaTitle}>
+                  {scanning
+                    ? (t('scan.processing') || 'AI анализирует...')
+                    : (t('add.scan_btn') || 'Сканировать камень (AI)')}
+                </Text>
+                <Text style={styles.scanCtaSub}>
+                  {t('add.scan_btn_sub') || 'AI запомнит рисунок, чтобы потом узнать'}
+                </Text>
+              </View>
+              <Camera size={22} color={Colors.accent} weight="bold" />
+            </TouchableOpacity>
+          )}
+
           {/* Name input */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('add.stone_name')}</Text>
@@ -507,6 +617,83 @@ const styles = StyleSheet.create({
   photoSub: {
     fontSize: 13,
     color: Colors.text2,
+  },
+
+  // AI-scanner CTA card (under photo area)
+  scanCtaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.accentLight,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+  },
+  scanCtaIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanCtaTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  scanCtaSub: {
+    fontSize: 12,
+    color: Colors.text2,
+    lineHeight: 16,
+  },
+
+  // "AI запомнил" done state
+  scanDoneCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.greenLight,
+    borderWidth: 1,
+    borderColor: Colors.green,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 12,
+  },
+  scanDoneBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanDoneTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  scanDoneSub: {
+    fontSize: 12,
+    color: Colors.text2,
+    lineHeight: 16,
+  },
+  scanRetakeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.green,
+  },
+  scanRetakeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.green,
   },
 
   section: { marginBottom: 22 },

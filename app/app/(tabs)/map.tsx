@@ -422,7 +422,14 @@ export default function MapScreen() {
       }
       if (data.type === 'stoneTap') {
         if (!(await requireAuth())) return;
-        router.push(`/stone/${data.stoneId}`);
+        // Проверяем — уже найден? Если да — идём в stone detail
+        // для просмотра истории. Иначе — сразу в scanner.
+        const foundAlready = foundIds.includes(data.stoneId);
+        if (foundAlready) {
+          router.push(`/stone/${data.stoneId}`);
+        } else {
+          router.push(`/scan-stone?id=${data.stoneId}` as any);
+        }
       }
     } catch {
       // ignore
