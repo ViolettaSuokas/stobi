@@ -13,6 +13,16 @@ Numbered SQL migrations. Apply in order in Supabase SQL Editor (supabase.com →
 6. `006_server_rate_limits.sql` — триггеры rate-limit на messages и stones
 7. `007_moderation_trigger.sql` — серверная модерация сообщений и bio/username
 8. `008_storage_policies.sql` — политики Supabase Storage для bucket `photos`
+9. `010_push_notifications.sql` — таблицы push_tokens, push_queue + triggers
+10. `011_feedback_table.sql` — feedback (in-app issue report)
+11. `012_referral_program.sql` — referral codes + redeem RPCs
+12. `013_expanded_cosmetics.sql` — seed новых косметик
+13. `014_security_polish.sql` — webhook_events dedup (RC) + rate-limit doc
+14. `015_security_hardening.sql` — analytics_events lock + record_find глобальный лимит + COPPA strict
+15. `016_welcome_bonus.sql` — +20💎 новым юзерам (handle_new_user trigger + backfill)
+16. `017_stone_verification.sql` — **v2 find flow**: pgvector + AI-embedding matching + stone_reports auto-hide + find_proofs аудит. **Требует Supabase Pro**.
+17. `018_moderation_pipeline.sql` — moderation_events + автоматический upload-shadowban после 3 reject/30д
+18. `019_pgvector_maintenance.sql` — pg_cron ежемесячный REINDEX IVFFLAT с адаптивным `lists`
 
 ## Как применять
 

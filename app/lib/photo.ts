@@ -1,4 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 // Обработка фото перед загрузкой:
 //   1. Ресайз до 1600 px (длинная сторона) — в 4-6 раз уменьшает вес.
@@ -72,4 +74,91 @@ export async function pickAndProcessPhoto(
   });
   if (result.canceled || !result.assets?.[0]) return null;
   return processPhoto(result.assets[0].uri);
+}
+
+// ────────────────────────────────────────────
+// V2: NSFW + CLIP embedding pipeline (migrations 017/018)
+// ────────────────────────────────────────────
+
+export type ModerationOutcome =
+  | { safe: true; embedding: number[] }
+  | { safe: false; labels: unknown[] };
+
+/**
+ * Sends a photo URL to an Edge Function that runs AWS Rekognition NSFW
+ * and Replicate CLIP in one hop. Returns `{safe, embedding}` or `{safe: false, labels}`.
+ *
+ * Callers should:
+ *   - On `safe: false` → drop upload, log a moderation_event (handled internally), show friendly error
+ *   - On `safe: true` → pass embedding into create_stone / record_find_v2
+ *
+ * `kind` decides which Edge Function to hit:
+ *   - 'stone' → /process-stone-photo (hide flow)
+ *   - 'find'  → /process-find-photo (find flow)
+ */
+export async function moderateAndEmbedPhoto(
+  photoUrl: string,
+  kind: 'stone' | 'find',
+): Promise<ModerationOutcome> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  const functionName = kind === 'stone' ? 'process-stone-photo' : 'process-find-photo';
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body: { photo_url: photoUrl },
+  });
+
+  if (error) {
+    throw new Error(`Edge function ${functionName} failed: ${error.message}`);
+  }
+
+  if (!data || typeof data !== 'object') {
+    throw new Error(`Edge function ${functionName} returned invalid payload`);
+  }
+
+  const result = data as { safe?: boolean; embedding?: number[]; labels?: unknown[] };
+
+  if (result.safe === true && Array.isArray(result.embedding) && result.embedding.length === 512) {
+    return { safe: true, embedding: result.embedding };
+  }
+
+  if (result.safe === false) {
+    // Log moderation event so the shadowban trigger can count this.
+    await logModerationEvent(photoUrl, result.labels ?? [], kind === 'stone' ? 'stone_reference' : 'find_proof');
+    return { safe: false, labels: result.labels ?? [] };
+  }
+
+  throw new Error(`Edge function ${functionName} returned unexpected shape`);
+}
+
+async function logModerationEvent(
+  photoUrl: string,
+  labels: unknown[],
+  source: 'stone_reference' | 'find_proof' | 'avatar' | 'chat_photo',
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('moderation_events').insert({
+      user_id: user.id,
+      photo_url: photoUrl,
+      labels,
+      source,
+    });
+  } catch (e) {
+    console.warn('logModerationEvent failed', e);
+  }
+}
+
+/**
+ * Exposed explicitly for paths that do their own upload (e.g. avatar).
+ * Most callers should use `moderateAndEmbedPhoto` which covers the full pipeline.
+ */
+export async function logAvatarModerationReject(
+  photoUrl: string,
+  labels: unknown[],
+): Promise<void> {
+  await logModerationEvent(photoUrl, labels, 'avatar');
 }

@@ -175,6 +175,229 @@ export async function clearFinds(): Promise<void> {
 }
 
 // ────────────────────────────────────────────
+// V2: AI-based find flow (migration 017)
+// ────────────────────────────────────────────
+
+export type FindStatus = 'verified' | 'pending' | 'rejected';
+
+export type FindResultV2 =
+  | {
+      ok: true;
+      status: FindStatus;
+      reason: string;
+      reward: number;
+      similarity: number | null;
+      balance: number | null;
+      findId?: string;
+      proofId?: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+      detail?: string;
+    };
+
+/**
+ * Records a find via server RPC `record_find_v2` (migration 017).
+ *
+ * Accepts a scanned photo (already moderated + embedded via edge function),
+ * its 512-dim CLIP embedding, and optional GPS coordinates.
+ *
+ * Server decision:
+ *   - AI similarity ≥0.82 → verified
+ *   - 0.60–0.82 + GPS ≤30m → verified
+ *   - 0.60–0.82 + no GPS → pending (author approves)
+ *   - <0.60 → rejected
+ *   - NSFW labels present → rejected + moderation_event on client side
+ */
+export async function markStoneFoundV2(args: {
+  stoneId: string;
+  photoUrl: string;
+  embedding: number[];
+  lat?: number | null;
+  lng?: number | null;
+  nsfwLabels?: unknown[] | null;
+}): Promise<FindResultV2> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, reason: 'supabase_not_configured' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('record_find_v2', {
+      p_stone_id: args.stoneId,
+      p_photo_url: args.photoUrl,
+      p_embedding: args.embedding,
+      p_proof_lat: args.lat ?? null,
+      p_proof_lng: args.lng ?? null,
+      p_nsfw_labels: args.nsfwLabels ?? null,
+    });
+    if (error) {
+      console.warn('record_find_v2 rpc error', error.message);
+      return { ok: false, reason: 'rpc_error', detail: error.message };
+    }
+    const parsed = data as {
+      status: FindStatus;
+      reason: string;
+      reward: number;
+      similarity: number | null;
+      balance: number | null;
+      find_id?: string;
+      proof_id?: string;
+    };
+    if (parsed.status === 'verified') {
+      await trackEvent('stone_find', { stone_id: args.stoneId, path: 'v2_verified' });
+    } else if (parsed.status === 'pending') {
+      await trackEvent('stone_find_pending', { stone_id: args.stoneId });
+    } else {
+      await trackEvent('stone_find_rejected', {
+        stone_id: args.stoneId,
+        reason: parsed.reason,
+      });
+    }
+    return {
+      ok: true,
+      status: parsed.status,
+      reason: parsed.reason,
+      reward: parsed.reward,
+      similarity: parsed.similarity,
+      balance: parsed.balance,
+      findId: parsed.find_id,
+      proofId: parsed.proof_id,
+    };
+  } catch (e: any) {
+    console.warn('record_find_v2 exception', e);
+    return { ok: false, reason: 'exception', detail: e?.message ?? String(e) };
+  }
+}
+
+/** Top-3 nearest stones by cosine similarity — used for "найти где-то ещё". */
+export type StoneSearchHit = {
+  stoneId: string;
+  name: string;
+  photoUrl: string | null;
+  similarity: number;
+  authorId: string;
+  city: string | null;
+};
+
+export async function searchStoneByEmbedding(
+  embedding: number[],
+  limit = 3,
+): Promise<StoneSearchHit[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase.rpc('search_stone_by_embedding', {
+      p_embedding: embedding,
+      p_limit: limit,
+    });
+    if (error || !Array.isArray(data)) {
+      if (error) console.warn('search_stone_by_embedding error', error.message);
+      return [];
+    }
+    return (data as Array<{
+      stone_id: string;
+      name: string;
+      photo_url: string | null;
+      similarity: number;
+      author_id: string;
+      city: string | null;
+    }>).map((row) => ({
+      stoneId: row.stone_id,
+      name: row.name,
+      photoUrl: row.photo_url,
+      similarity: row.similarity,
+      authorId: row.author_id,
+      city: row.city,
+    }));
+  } catch (e) {
+    console.warn('search_stone_by_embedding exception', e);
+    return [];
+  }
+}
+
+/** Author approves a pending find → reward + adaptive learning. */
+export async function authorApprovePendingFind(proofId: string): Promise<{
+  ok: boolean;
+  balance?: number | null;
+  error?: string;
+}> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'not_configured' };
+  try {
+    const { data, error } = await supabase.rpc('author_approve_pending_find', {
+      p_proof_id: proofId,
+    });
+    if (error) return { ok: false, error: error.message };
+    const parsed = data as { balance: number | null };
+    return { ok: true, balance: parsed?.balance ?? null };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+// ────────────────────────────────────────────
+// Stone missing report + author confirm (migration 017)
+// ────────────────────────────────────────────
+
+export async function reportStoneMissing(
+  stoneId: string,
+  lat: number,
+  lng: number,
+  reason?: string,
+): Promise<{ ok: boolean; distance?: number; error?: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'not_configured' };
+  try {
+    const { data, error } = await supabase.rpc('report_stone_missing', {
+      p_stone_id: stoneId,
+      p_lat: lat,
+      p_lng: lng,
+      p_reason: reason ?? null,
+    });
+    if (error) return { ok: false, error: error.message };
+    const parsed = data as { ok: boolean; distance_m: number };
+    await trackEvent('stone_report_missing', { stone_id: stoneId });
+    return { ok: true, distance: parsed?.distance_m };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+export async function authorConfirmStone(
+  stoneId: string,
+  lat: number,
+  lng: number,
+): Promise<{ ok: boolean; reportsCleared?: number; error?: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'not_configured' };
+  try {
+    const { data, error } = await supabase.rpc('author_confirm_stone', {
+      p_stone_id: stoneId,
+      p_lat: lat,
+      p_lng: lng,
+    });
+    if (error) return { ok: false, error: error.message };
+    const parsed = data as { ok: boolean; reports_cleared: number };
+    await trackEvent('stone_author_confirm', { stone_id: stoneId });
+    return { ok: true, reportsCleared: parsed?.reports_cleared };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+export async function requestReferenceRecapture(
+  stoneId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'not_configured' };
+  try {
+    const { error } = await supabase.rpc('request_reference_recapture', {
+      p_stone_id: stoneId,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+// ────────────────────────────────────────────
 // Anti-fraud: max finds per author per day
 // ────────────────────────────────────────────
 

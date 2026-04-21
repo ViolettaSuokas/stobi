@@ -21,6 +21,35 @@
   npx eas-cli env:create production --name SENTRY_DSN --value https://xxx@sentry.io/yyy
   ```
 
+### Stone Verification v2 (AI scanner) — внешние шаги
+Реализация в коде готова: миграции 017/018/019 + Edge Functions + клиентские libs.
+Чтобы включить, нужно:
+
+- [ ] **Supabase Pro upgrade** ($25/мес) — без этого нет pgvector и неограниченных Edge Function вызовов. https://supabase.com/dashboard/project/zlnkzyvtxaksvilujdwu/settings/billing
+- [ ] **Применить миграции**:
+  - `app/lib/migrations/017_stone_verification.sql` (pgvector + новые RPCs + триггеры)
+  - `app/lib/migrations/018_moderation_pipeline.sql` (NSFW shadowban)
+  - `app/lib/migrations/019_pgvector_maintenance.sql` (pg_cron reindex)
+- [ ] **AWS Rekognition** (для NSFW) — создать IAM user, права `rekognition:DetectModerationLabels`, регион `eu-central-1` (Frankfurt, EU data residency). Положить в Supabase Function secrets:
+  ```
+  supabase secrets set AWS_ACCESS_KEY_ID=AKIA...
+  supabase secrets set AWS_SECRET_ACCESS_KEY=...
+  supabase secrets set AWS_REGION=eu-central-1
+  ```
+- [ ] **Replicate API token** (для CLIP embedding) — https://replicate.com/account/api-tokens → free tier (bootstrap) → Pay-as-you-go когда понадобится. Секрет:
+  ```
+  supabase secrets set REPLICATE_API_TOKEN=r8_...
+  supabase secrets set REPLICATE_CLIP_MODEL_VERSION=<sha256 ver hash>
+  ```
+  (Взять актуальный version hash с https://replicate.com/pharmapsychotic/clip-interrogator или аналогичной CLIP ViT-B/32 модели.)
+- [ ] **Deploy Edge Functions**:
+  ```
+  supabase functions deploy process-stone-photo
+  supabase functions deploy process-find-photo
+  ```
+- [ ] **Backfill embeddings для существующих 46 seed-камней** — one-shot скрипт (я напишу по запросу)
+- [ ] Expected cost: **~$34/мес на 1000 MAU** (Pro + Rekognition + Replicate)
+
 ### App Store Connect / Google Play
 - [ ] **App Store metadata** — описание, ключевые слова, категория, возрастной рейтинг 4+
 - [ ] **Скриншоты** — 5× iPhone (6.5" + 5.5"): карта/чат/профиль/камень/онбординг
