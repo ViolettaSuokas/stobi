@@ -23,6 +23,9 @@
     "production": {
       "android": {},
       "ios": {}
+    },
+    "preview": {
+      "ios": {}
     }
   }
 }

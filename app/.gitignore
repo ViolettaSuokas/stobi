@@ -49,3 +49,4 @@ GoogleService-Info.plist
 
 # Jest coverage output
 coverage/
+credentials/
