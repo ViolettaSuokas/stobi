@@ -13,7 +13,7 @@
 //   success   — celebration
 //   failed    — сообщение + retry
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -69,7 +69,8 @@ export default function FindAnywhereScreen() {
   const { t } = useI18n();
   const modal = useModal();
 
-  const [phase, setPhase] = useState<Phase>('idle');
+  // Стартуем сразу в камере — как и scan-stone: никаких intro-экранов.
+  const [phase, setPhase] = useState<Phase>('camera');
   const [processed, setProcessed] = useState<ProcessedScan | null>(null);
   const [selected, setSelected] = useState<StoneSearchHit | null>(null);
   const [claimResult, setClaimResult] = useState<{
@@ -79,6 +80,16 @@ export default function FindAnywhereScreen() {
     similarity: number | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Guest check — если не авторизован, вернуть обратно.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const ok = await requireAuth(t('find_anywhere.auth_reason') || 'отметить находку');
+      if (mounted && !ok) router.back();
+    })();
+    return () => { mounted = false; };
+  }, [t]);
 
   // ─────────────────────────────────────
   // Step 1: Take photo → upload → embed → search
@@ -205,6 +216,22 @@ export default function FindAnywhereScreen() {
   // Render
   // ─────────────────────────────────────
 
+  // Camera mode — полноэкранная live-камера со scan-frame (как на карте
+  // при тапе на stone). Стартуем сразу отсюда, без idle-экрана.
+  if (phase === 'camera') {
+    return (
+      <StoneScanCamera
+        title={t('scan.title_find')}
+        subtitle={t('scan.sub_find')}
+        onCapture={async (uri) => {
+          await processScan(uri);
+        }}
+        onCancel={() => router.back()}
+        ctaLabel={t('scan.btn_capture')}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
@@ -251,7 +278,7 @@ export default function FindAnywhereScreen() {
           <FailedView
             error={error}
             onRetry={() => {
-              setPhase('idle');
+              setPhase('camera');
               setProcessed(null);
               setSelected(null);
               setError(null);
