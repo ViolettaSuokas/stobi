@@ -280,7 +280,9 @@ export default function MapScreen() {
             AsyncStorage.setItem('stobi:map_info_seen', '1');
           }, 1000);
         }
-      } catch {}
+      } catch (e) {
+        console.warn('map: approx-location modal failed', e);
+      }
     })();
   }, []);
 

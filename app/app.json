@@ -17,6 +17,9 @@
       "bundleIdentifier": "com.stobi.app",
       "usesAppleSignIn": true,
       "associatedDomains": ["applinks:stobi.app"],
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "Stobi uses an anonymous identifier to measure app performance and improve stone discovery. We never sell your data.",

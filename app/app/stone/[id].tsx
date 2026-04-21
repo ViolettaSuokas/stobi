@@ -45,7 +45,7 @@ import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import * as ImagePicker from 'expo-image-picker';
 import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
-import { ShareTapped, StoneTapped, FirstFindCelebrated } from '../../lib/analytics';
+import { ShareTapped, StoneTapped, FirstFindCelebrated, StoneFound } from '../../lib/analytics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { SafeImage } from '../../components/SafeImage';
 import { PencilSimple, Trash } from 'phosphor-react-native';
@@ -345,6 +345,7 @@ export default function StoneDetailScreen() {
       setAlreadyFound(true);
       const newBalance = findRes.balance ?? (await getPoints());
       const reward = findRes.reward;
+      void StoneFound(stoneId, reward);
 
       // Check daily challenge: 5 finds → 7-day premium trial
       const todayFinds = await getFindsToday();

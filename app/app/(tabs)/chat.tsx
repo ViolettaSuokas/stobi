@@ -49,6 +49,7 @@ import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
+import { ChatMessageSent } from '../../lib/analytics';
 import { useModal } from '../../lib/modal';
 import { StoneMascot } from '../../components/StoneMascot';
 import { SkeletonRow } from '../../components/Skeleton';
@@ -178,7 +179,9 @@ export default function ChatScreen() {
             .select('*', { count: 'exact', head: true })
             .gte('last_active_at', fiveMinAgo);
           if (active && online !== null) setOnlineCount(online);
-        } catch {}
+        } catch (e) {
+          console.warn('chat: member counts load failed', e);
+        }
       })();
       return () => {
         active = false;
@@ -240,6 +243,7 @@ export default function ChatScreen() {
       } else {
         await sendMessage(trimmed, undefined, replyingTo?.id, pendingPhoto ?? undefined, channel);
         void haptics.tap();
+        void ChatMessageSent(channel, !!pendingPhoto);
         setReplyingTo(null);
         setPendingPhoto(null);
         await updateChallengeProgress('chat');
@@ -333,7 +337,9 @@ export default function ChatScreen() {
     try {
       const { trackEvent } = await import('../../lib/analytics');
       await trackEvent('report_message', { message_id: item.id, author_id: item.authorId });
-    } catch {}
+    } catch (e) {
+      console.warn('chat: report analytics failed', e);
+    }
     // Hide message locally
     const updated = new Set(reportedIds);
     updated.add(item.id);
