@@ -105,13 +105,24 @@ export async function moderateAndEmbedPhoto(
   }
 
   const functionName = kind === 'stone' ? 'process-stone-photo' : 'process-find-photo';
+  console.info('[moderateAndEmbedPhoto] invoking', functionName, 'photo_url:', photoUrl.slice(0, 120));
+
   const { data, error } = await supabase.functions.invoke(functionName, {
     body: { photo_url: photoUrl },
   });
 
   if (error) {
+    console.warn('[moderateAndEmbedPhoto] edge function error:', error);
+    // supabase-js даёт FunctionsHttpError с body; попробуем достать детали
+    const details = (error as any)?.context?.body
+      ?? (error as any)?.context
+      ?? (error as any)?.message
+      ?? String(error);
+    console.warn('[moderateAndEmbedPhoto] error details:', JSON.stringify(details).slice(0, 400));
     throw new Error(`Edge function ${functionName} failed: ${error.message}`);
   }
+
+  console.info('[moderateAndEmbedPhoto] response keys:', data ? Object.keys(data as any) : 'null');
 
   if (!data || typeof data !== 'object') {
     throw new Error(`Edge function ${functionName} returned invalid payload`);
@@ -124,11 +135,11 @@ export async function moderateAndEmbedPhoto(
   }
 
   if (result.safe === false) {
-    // Log moderation event so the shadowban trigger can count this.
     await logModerationEvent(photoUrl, result.labels ?? [], kind === 'stone' ? 'stone_reference' : 'find_proof');
     return { safe: false, labels: result.labels ?? [] };
   }
 
+  console.warn('[moderateAndEmbedPhoto] unexpected shape:', JSON.stringify(data).slice(0, 300));
   throw new Error(`Edge function ${functionName} returned unexpected shape`);
 }
 
@@ -163,6 +174,7 @@ export async function uploadPhotoToStorage(
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
   const path = `${user.id}/${kind}/${filename}`;
 
+  console.info('[uploadPhotoToStorage] uploading blob size=', blob.size, 'path=', path);
   const { error: uploadError } = await supabase.storage
     .from('photos')
     .upload(path, blob, {
@@ -170,6 +182,7 @@ export async function uploadPhotoToStorage(
       upsert: false,
     });
   if (uploadError) {
+    console.warn('[uploadPhotoToStorage] upload failed:', uploadError);
     throw new Error(`Upload failed: ${uploadError.message}`);
   }
 
@@ -177,9 +190,11 @@ export async function uploadPhotoToStorage(
     .from('photos')
     .createSignedUrl(path, 600);
   if (signError || !signed?.signedUrl) {
+    console.warn('[uploadPhotoToStorage] sign failed:', signError);
     throw new Error(`Signed URL failed: ${signError?.message ?? 'unknown'}`);
   }
 
+  console.info('[uploadPhotoToStorage] OK, signed URL host:', new URL(signed.signedUrl).host);
   return { path, signedUrl: signed.signedUrl };
 }
 
