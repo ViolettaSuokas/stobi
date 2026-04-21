@@ -54,6 +54,14 @@ export default function LoginScreen() {
       setError('Supabase not configured');
       return;
     }
+    // Expo Go не содержит native-модуль @react-native-google-signin
+    // → вызов configure / hasPlayServices / signIn падает с Invariant
+    // Violation (красный экран). Показываем понятный alert вместо краша.
+    // В dev-build / production всё работает как обычно.
+    if (isExpoGo) {
+      setError('Google Sign-In доступен только в установленной версии приложения. В Expo Go используй Apple или Email.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -161,12 +169,10 @@ export default function LoginScreen() {
                   <Text style={styles.socialText}>{t('auth.apple')}</Text>
                 </TouchableOpacity>
               )}
-              {!isExpoGo && (
-                <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading}>
-                  <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
-                  <Text style={styles.socialText}>{t('auth.google')}</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading}>
+                <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
+                <Text style={styles.socialText}>{t('auth.google')}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.divider}>
