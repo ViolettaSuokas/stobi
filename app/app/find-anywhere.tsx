@@ -38,6 +38,7 @@ import {
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
 import { StoneScanCamera } from '../components/StoneScanCamera';
+import { CelebrationOverlay } from '../components/CelebrationOverlay';
 import {
   processPhoto,
   moderateAndEmbedPhoto,
@@ -277,7 +278,7 @@ export default function FindAnywhereScreen() {
           />
         )}
         {phase === 'claiming' && <ProcessingView label={t('find_anywhere.claiming') || 'Фиксируем находку...'} />}
-        {phase === 'success' && claimResult && (
+        {phase === 'success' && claimResult && claimResult.status === 'pending' && (
           <SuccessView
             result={claimResult}
             stoneName={selected?.name}
@@ -301,6 +302,25 @@ export default function FindAnywhereScreen() {
           />
         )}
       </ScrollView>
+
+      {/* Verified-путь — конфетти-праздник через CelebrationOverlay.
+          Pending всё ещё через SuccessView (он подходит — ожидаем автора). */}
+      {phase === 'success' && claimResult && claimResult.status === 'verified' && (
+        <CelebrationOverlay
+          visible={true}
+          title={t('stone.congrats') || 'Ты нашла камень!'}
+          reward={claimResult.reward}
+          balance={0}
+          extraLines={
+            claimResult.similarity !== null
+              ? [`AI similarity: ${Math.round(claimResult.similarity * 100)}%`]
+              : []
+          }
+          stoneName={selected?.name}
+          stoneId={selected?.stoneId}
+          onClose={() => router.back()}
+        />
+      )}
     </View>
   );
 }

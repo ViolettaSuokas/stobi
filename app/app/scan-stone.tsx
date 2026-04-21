@@ -31,6 +31,7 @@ import {
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
 import { StoneScanCamera } from '../components/StoneScanCamera';
+import { CelebrationOverlay, type CelebrationPayload } from '../components/CelebrationOverlay';
 import {
   processPhoto,
   moderateAndEmbedPhoto,
@@ -233,26 +234,6 @@ export default function ScanStoneScreen() {
           </View>
         )}
 
-        {phase === 'success' && result && (
-          <View style={styles.centerBlock}>
-            <View style={styles.mascotRing}>
-              <StoneMascot size={140} color={Colors.mascot} variant="sparkle" showSparkles />
-            </View>
-            <Text style={styles.successTitle}>{t('find_anywhere.success_title')}</Text>
-            <Text style={styles.successSub}>
-              {t('find_anywhere.success_sub')}  +{result.reward} 💎
-            </Text>
-            {result.similarity !== null && (
-              <Text style={styles.similarityText}>
-                AI: {Math.round(result.similarity * 100)}%
-              </Text>
-            )}
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => router.back()} activeOpacity={0.85}>
-              <Text style={styles.primaryBtnText}>{t('common.understood')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {phase === 'pending' && result && (
           <View style={styles.centerBlock}>
             <View style={{ marginBottom: 16 }}>
@@ -276,6 +257,24 @@ export default function ScanStoneScreen() {
           />
         )}
       </ScrollView>
+
+      {/* Celebration — конфетти, маскот, haptics — полноэкранный overlay
+          когда AI подтвердил находку. */}
+      {phase === 'success' && result && (
+        <CelebrationOverlay
+          visible={true}
+          title={t('stone.congrats') || 'Ты нашёл камень!'}
+          reward={result.reward}
+          balance={result.balance ?? 0}
+          extraLines={
+            result.similarity !== null
+              ? [`AI similarity: ${Math.round(result.similarity * 100)}%`]
+              : []
+          }
+          stoneId={stoneId}
+          onClose={() => router.back()}
+        />
+      )}
     </View>
   );
 }
