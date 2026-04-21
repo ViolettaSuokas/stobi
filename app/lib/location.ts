@@ -399,9 +399,13 @@ export async function getNearbyStones(
   if (isSupabaseConfigured()) {
     try {
       const { supabase } = await import('./supabase');
+      // Фильтр is_hidden (migration 017): камни авто-скрываются после
+      // 3+ community reports + 30 дней без find. Показываем только
+      // NULL (старые seed-stones до v2) или false.
       const { data: dbStones } = await supabase
         .from('stones')
-        .select('*');
+        .select('*')
+        .or('is_hidden.is.null,is_hidden.eq.false');
 
       if (dbStones && dbStones.length > 0) {
         const supabaseStones: NearbyStone[] = dbStones.map((s: Record<string, any>) => {

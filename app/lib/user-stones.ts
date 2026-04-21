@@ -82,9 +82,57 @@ export async function getUserStones(): Promise<UserStone[]> {
   return read();
 }
 
-export async function addUserStone(input: Omit<UserStone, 'id' | 'createdAt'>): Promise<UserStone> {
+export type AddStoneExtras = {
+  /** CLIP embedding из AI-сканера. Если есть — вызываем create_stone RPC
+   *  который усредняет массив embeddings и сохраняет в stones.embedding.
+   *  Без него новый камень будет без AI-fingerprint'а (legacy GPS-only). */
+  embeddings?: number[][];
+  /** Signed URLs загруженных фото (parallel с embeddings). */
+  photoUrls?: string[];
+};
+
+export async function addUserStone(
+  input: Omit<UserStone, 'id' | 'createdAt'>,
+  extras: AddStoneExtras = {},
+): Promise<UserStone> {
   if (isSupabaseConfigured()) {
     try {
+      // AI-path: есть embedding → create_stone RPC (migration 017, 020)
+      // усредняет embeddings в один reference vector(768) и сохраняет.
+      if (extras.embeddings && extras.embeddings.length > 0 && extras.photoUrls && extras.photoUrls.length > 0) {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('create_stone', {
+          p_name: input.name,
+          p_description: input.description ?? null,
+          p_tags: input.tags ?? [],
+          p_photo_urls: extras.photoUrls,
+          p_embeddings: extras.embeddings,
+          p_lat: input.coords.lat,
+          p_lng: input.coords.lng,
+          p_city: input.city ?? null,
+        });
+        if (!rpcError && rpcData) {
+          const parsed = rpcData as { stone_id: string };
+          await trackEvent('stone_hide', { stone_id: parsed.stone_id, path: 'ai_v2' });
+          return {
+            id: parsed.stone_id,
+            name: input.name,
+            emoji: input.emoji,
+            description: input.description,
+            tags: input.tags,
+            photoUri: extras.photoUrls[0],
+            coords: input.coords,
+            city: input.city,
+            createdAt: Date.now(),
+            authorUserId: input.authorUserId,
+            authorName: input.authorName,
+            authorAvatar: input.authorAvatar,
+            isArtist: input.isArtist,
+          };
+        }
+        console.warn('create_stone RPC failed, falling back to direct insert', rpcError?.message);
+      }
+
+      // Legacy path: без embedding → прямой insert (для старых клиентов)
       const { data, error } = await supabase
         .from('stones')
         .insert({
@@ -101,7 +149,7 @@ export async function addUserStone(input: Omit<UserStone, 'id' | 'createdAt'>): 
         .select()
         .single();
       if (error || !data) throw error;
-      await trackEvent('stone_hide', { stone_id: data.id });
+      await trackEvent('stone_hide', { stone_id: data.id, path: 'legacy' });
       return {
         id: data.id,
         name: data.name,

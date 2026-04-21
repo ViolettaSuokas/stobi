@@ -220,6 +220,22 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Мои камни — author management */}
+        <Text style={styles.sectionTitle}>{t('settings.my_stones') || 'МОИ КАМНИ'}</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/pending-approvals' as any)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('pending.title') || 'Одобрить находки'}
+          >
+            <Info size={20} color={Colors.accent} weight="regular" />
+            <Text style={styles.rowLabel}>{t('pending.title') || 'Одобрить находки'}</Text>
+            <CaretRight size={16} color={Colors.text2} weight="bold" />
+          </TouchableOpacity>
+        </View>
+
         {/* Платежи */}
         <Text style={styles.sectionTitle}>{t('settings.payments')}</Text>
         <View style={styles.card}>

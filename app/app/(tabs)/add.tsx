@@ -224,20 +224,28 @@ export default function AddScreen() {
         lng: coords.lng + (Math.random() - 0.5) * 0.0012,
       };
 
-      // Persist the stone — appears on map + profile after this
-      const saved = await addUserStone({
-        name: name.trim(),
-        emoji,
-        description: description.trim() || undefined,
-        tags: [],
-        photoUri: photoUri ?? undefined,
-        coords: offsetCoords,
-        city: city ?? 'Finland',
-        authorUserId,
-        authorName,
-        authorAvatar,
-        isArtist: user?.isArtist,
-      });
+      // Persist the stone — appears on map + profile after this.
+      // Если юзер сделал AI-скан — передаём embedding + signed URL в
+      // addUserStone, который вызовет create_stone RPC и сохранит
+      // камень с visual fingerprint'ом для будущих AI-сканов.
+      const saved = await addUserStone(
+        {
+          name: name.trim(),
+          emoji,
+          description: description.trim() || undefined,
+          tags: [],
+          photoUri: scanPhotoUrl ?? photoUri ?? undefined,
+          coords: offsetCoords,
+          city: city ?? 'Finland',
+          authorUserId,
+          authorName,
+          authorAvatar,
+          isArtist: user?.isArtist,
+        },
+        scanEmbedding && scanPhotoUrl
+          ? { embeddings: [scanEmbedding], photoUrls: [scanPhotoUrl] }
+          : {},
+      );
 
       void haptics.success();
       void StoneHidden(saved?.id ?? 'unknown');

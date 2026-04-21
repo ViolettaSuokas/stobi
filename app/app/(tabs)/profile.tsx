@@ -76,7 +76,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
 import * as haptics from '../../lib/haptics';
-import { processPhoto } from '../../lib/photo';
+import { processPhoto, uploadPhotoToStorage } from '../../lib/photo';
 import { updateProfilePhoto, updateCharacterName } from '../../lib/auth';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
@@ -252,7 +252,6 @@ export default function ProfileScreen() {
 
   const handleChangePhoto = async () => {
     try {
-      // Request photo permission first so we fail fast with a useful error.
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         modal.show({
@@ -271,17 +270,32 @@ export default function ProfileScreen() {
 
       const processed = await processPhoto(result.assets[0].uri);
 
-      // Optimistic update — показываем новое фото сразу, не ждём сервер.
-      // Иначе если supabase update молча падает (stale JWT → RLS), getCurrentUser
-      // вернул бы серверное значение (null) и затёр бы локальный кеш.
+      // Optimistic UI сразу — юзер видит фото без ожидания.
       setUser((prev) => (prev ? { ...prev, photoUrl: processed.uri } : prev));
 
-      // Persist — серверный update + обновление AsyncStorage. Ошибки не
-      // фатальны: локально фото уже показано.
+      // Server sync: upload → NSFW moderation → update profile.
+      // Если что-то падает — локально фото уже показано, ошибка не
+      // фатальна, но и не пишем на сервер (чтобы не получить отклонённое фото).
       try {
-        await updateProfilePhoto(processed.uri);
+        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'avatar');
+        const { moderateAndEmbedPhoto } = await import('../../lib/photo');
+        // Для avatar нам нужен только NSFW-check, embedding не используем.
+        // Если небезопасно — откатываем локальный URI.
+        const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
+        if (!moderation.safe) {
+          setUser((prev) => (prev ? { ...prev, photoUrl: undefined } : prev));
+          modal.show({
+            title: t('find_anywhere.error_nsfw') || 'Фото не прошло проверку',
+            message: 'Попробуй другое фото без людей или посторонних предметов.',
+            buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+          });
+          return;
+        }
+        await updateProfilePhoto(signedUrl);
       } catch (e) {
-        console.warn('updateProfilePhoto failed', e);
+        console.warn('avatar upload/moderate failed', e);
+        // Не откатываем — юзер хотя бы видит локально. Server sync упадёт
+        // при re-login, тогда получит дефолт.
       }
     } catch (e: any) {
       console.warn('handleChangePhoto error', e);
