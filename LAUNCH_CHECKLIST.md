@@ -79,7 +79,7 @@
 
 ### Beta testers
 - [ ] Зарегистрировать UDID 5-10 устройств beta-тестеров через EAS: `eas device:create`
-- [ ] Разослать TestFlight ссылку (iOS) или APK (Android) 20-30 людям в Helsinki metro из FinStones группы
+- [ ] Разослать TestFlight ссылку (iOS) или APK (Android) 20-30 знакомым / друзьям в Helsinki metro (коллеги, семья, знакомые painter'ы)
 - [ ] Попросить спрятать 2-3 камня каждый → **к launch у нас ~60 real stones в Хельсинки**
 - [ ] Попросить native-speaker прочитать финские строки и дать фидбек на 5-10 переводов
 
@@ -93,7 +93,7 @@
 
 - [ ] Финальный билд: `eas build --platform all --profile production`
 - [ ] Submit в App Store + Google Play
-- [ ] Подготовить launch пост для FinStones Facebook группы (на финском)
+- [ ] Подготовить launch-пост для профильных FB-групп (FinStones и аналоги) на финском — описать Stobi как новое приложение для этого хобби, не claim'я их аудиторию
 - [ ] Instagram-анонс с мескотом (использовать Claude Design для картинки)
 - [ ] Email теплому кругу (~50 человек) с TestFlight ссылкой
 
@@ -101,7 +101,7 @@
 
 ## 🚀 Launch Day (T = 0)
 
-- [ ] Apple одобрил → App goes live → делай Launch Post в FinStones группе
+- [ ] Apple одобрил → App goes live → опубликуй Launch-пост в FB-группах painter'ов + Instagram/TikTok
 - [ ] Готовься отвечать на комменты / DM — первые 48 часов критичны
 - [ ] Открой **SQL-дашборд ниже** и обновляй каждый час первые сутки
 

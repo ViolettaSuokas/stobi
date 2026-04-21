@@ -21,7 +21,7 @@ npx eas-cli build --platform all --profile preview
 ## Репозиторий
 
 ```
-finstones/
+stobi/
 ├── app/                 ← Expo приложение (всё что ниже — под app/)
 │   ├── app/             ← expo-router screens (routes)
 │   │   ├── _layout.tsx  ← root layout + providers
