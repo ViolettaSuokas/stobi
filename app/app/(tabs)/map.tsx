@@ -295,27 +295,47 @@ export default function MapScreen() {
   const { t } = useI18n();
   const modal = useModal();
 
-  // Show approximate location info popup on first map visit
+  // "Примерное место" info popup — показываем ТОЛЬКО после того как:
+  //  - закончилась первичная загрузка карты,
+  //  - оверлей запроса permission не активен
+  //    (permission granted ИЛИ юзер скипнул и смотрит Helsinki-fallback),
+  //  - юзер ещё не видел этот инфо-попап раньше.
+  // Раньше popup стрелял через 1 сек после mount вместе с rationale-overlay
+  // → получался "венегрет" из трёх overlay одновременно на первом визите.
+  const [approxInfoSeen, setApproxInfoSeen] = useState<boolean | null>(null);
+
   useEffect(() => {
     (async () => {
       try {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         const seen = await AsyncStorage.getItem('stobi:map_info_seen');
-        if (!seen) {
-          setTimeout(() => {
-            modal.show({
-              title: t('map.approx_title'),
-              message: t('map.approx_message'),
-              buttons: [{ label: t('common.understood'), style: 'cancel' }],
-            });
-            AsyncStorage.setItem('stobi:map_info_seen', '1');
-          }, 1000);
-        }
-      } catch (e) {
-        console.warn('map: approx-location modal failed', e);
+        setApproxInfoSeen(!!seen);
+      } catch {
+        setApproxInfoSeen(true);
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (approxInfoSeen !== false) return;
+    if (loading) return;
+    // Ждём пока либо разрешение получено, либо юзер сам скипнул rationale.
+    const rationaleVisible =
+      !dismissedPermissionOverlay && (permissionDenied || permissionUndetermined);
+    if (rationaleVisible) return;
+
+    const timer = setTimeout(() => {
+      modal.show({
+        title: t('map.approx_title'),
+        message: t('map.approx_message'),
+        buttons: [{ label: t('common.understood'), style: 'cancel' }],
+      });
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.setItem('stobi:map_info_seen', '1').catch(() => {});
+      setApproxInfoSeen(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [approxInfoSeen, loading, permissionDenied, permissionUndetermined, dismissedPermissionOverlay, modal, t]);
 
   // Reload stones every time the Map tab gains focus
   // (so newly hidden stones appear immediately)
