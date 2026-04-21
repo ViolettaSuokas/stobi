@@ -58,20 +58,21 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
     const poll = await pollRes.json();
     if (poll.status === "succeeded") {
       // andreasjansson/clip-features возвращает:
-      //   [{ input: "url", embedding: [512 floats] }, ...]
-      // Для single-image запроса берём первый element.
+      //   [{ input: "url", embedding: [768 floats] }, ...]
+      // Модель использует ViT-L/14 → 768-мерный embedding.
+      // Схема БД приведена к vector(768).
       const out = poll.output;
       if (Array.isArray(out) && out.length > 0) {
         const first = out[0];
-        if (Array.isArray(first?.embedding) && first.embedding.length === 512) {
+        if (Array.isArray(first?.embedding) && first.embedding.length === 768) {
           return first.embedding as number[];
         }
         // Fallback: если модель вернула массив чисел напрямую
-        if (out.length === 512 && typeof out[0] === "number") {
+        if (out.length === 768 && typeof out[0] === "number") {
           return out as number[];
         }
       }
-      if (Array.isArray(out?.embedding) && out.embedding.length === 512) {
+      if (Array.isArray(out?.embedding) && out.embedding.length === 768) {
         return out.embedding;
       }
       throw new Error(`Unexpected Replicate output shape: ${JSON.stringify(out).slice(0, 300)}`);

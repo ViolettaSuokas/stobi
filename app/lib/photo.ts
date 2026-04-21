@@ -119,7 +119,7 @@ export async function moderateAndEmbedPhoto(
 
   const result = data as { safe?: boolean; embedding?: number[]; labels?: unknown[] };
 
-  if (result.safe === true && Array.isArray(result.embedding) && result.embedding.length === 512) {
+  if (result.safe === true && Array.isArray(result.embedding) && result.embedding.length === 768) {
     return { safe: true, embedding: result.embedding };
   }
 

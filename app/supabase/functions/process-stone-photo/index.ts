@@ -53,7 +53,7 @@ serve(async (req: Request) => {
 
     // 2. Embedding
     const embedding = await embedImage(photoUrl);
-    if (!Array.isArray(embedding) || embedding.length !== 512) {
+    if (!Array.isArray(embedding) || embedding.length !== 768) {
       return json({ error: "Unexpected embedding shape" }, 502);
     }
 
