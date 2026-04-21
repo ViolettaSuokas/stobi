@@ -251,16 +251,45 @@ export default function ProfileScreen() {
       (id) => { setSelectedDecorId(id); setEquippedIds({ decor: id }); });
 
   const handleChangePhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 1,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-    if (!result.canceled && result.assets[0]) {
+    try {
+      // Request photo permission first so we fail fast with a useful error.
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        modal.show({
+          title: t('profile.photo_permission_title') || 'Нет доступа к фото',
+          message: t('profile.photo_permission_text') || 'Открой Настройки → Stobi → Photos и разреши доступ.',
+          buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+        });
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        quality: 1,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+      if (result.canceled || !result.assets[0]) return;
+
       const processed = await processPhoto(result.assets[0].uri);
-      await updateProfilePhoto(processed.uri);
-      const fresh = await getCurrentUser();
-      setUser(fresh);
+
+      // Optimistic update — показываем новое фото сразу, не ждём сервер.
+      // Иначе если supabase update молча падает (stale JWT → RLS), getCurrentUser
+      // вернул бы серверное значение (null) и затёр бы локальный кеш.
+      setUser((prev) => (prev ? { ...prev, photoUrl: processed.uri } : prev));
+
+      // Persist — серверный update + обновление AsyncStorage. Ошибки не
+      // фатальны: локально фото уже показано.
+      try {
+        await updateProfilePhoto(processed.uri);
+      } catch (e) {
+        console.warn('updateProfilePhoto failed', e);
+      }
+    } catch (e: any) {
+      console.warn('handleChangePhoto error', e);
+      modal.show({
+        title: t('common.error') || 'Ошибка',
+        message: e?.message ?? 'Не удалось загрузить фото',
+        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+      });
     }
   };
 
