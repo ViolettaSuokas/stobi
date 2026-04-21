@@ -12,6 +12,7 @@ import { initSentry, identifySentryUser } from '../lib/sentry';
 import { registerPushToken, attachResponseListener } from '../lib/push';
 import { AppOpened, NotificationOpened } from '../lib/analytics';
 import { savePendingReferralCode } from '../lib/referral';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // Init crash reporter как можно раньше — до первого useState/useEffect.
 initSentry();
@@ -32,6 +33,17 @@ export default function RootLayout() {
         }
       }),
     ]).catch(() => {});
+
+    // Auth state listener — перерегистрируем push-токен после SIGNED_IN,
+    // иначе первый логин в сессии не получает токен до cold-restart.
+    // Guard inside registerPushToken проверит session/userId match.
+    const authSub = isSupabaseConfigured()
+      ? supabase.auth.onAuthStateChange((event, session) => {
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+            void registerPushToken(session.user.id);
+          }
+        })
+      : null;
 
     // Notification tap → navigate to stone detail + track event
     let cleanup: (() => void) | null = null;
@@ -67,6 +79,7 @@ export default function RootLayout() {
     return () => {
       cleanup?.();
       linkSub.remove();
+      authSub?.data.subscription.unsubscribe();
     };
   }, []);
   return (

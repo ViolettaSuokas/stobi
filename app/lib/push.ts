@@ -81,8 +81,21 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     const token = tokenRes?.data;
     if (!token || typeof token !== 'string') return null;
 
-    // Upsert в push_tokens
+    // Upsert в push_tokens.
+    // Guard: Supabase должен иметь живую сессию, и её user.id должен
+    // совпадать с переданным userId. Иначе auth.uid() в postgres = NULL
+    // (или ≠ userId), и RLS-политика `auth.uid() = user_id` рубит запрос
+    // с warning "new row violates row-level security policy (USING expression)".
+    // Это случается когда getCurrentUser вернул кэшированного юзера из
+    // AsyncStorage, но JWT истёк / не совпал с cached id.
     if (isSupabaseConfigured()) {
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      const session = sessionData?.session;
+      if (sessionErr || !session || session.user.id !== userId) {
+        // Тихо пропускаем — попробуем на следующий cold-start или после login.
+        console.info('push: no valid session for userId, skipping upsert');
+        return token;
+      }
       const platform = Platform.OS === 'ios' ? 'ios'
         : Platform.OS === 'android' ? 'android'
         : 'web';

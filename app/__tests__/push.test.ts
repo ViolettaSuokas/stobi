@@ -18,12 +18,20 @@ jest.mock('expo-notifications', () => ({
   AndroidImportance: { HIGH: 4 },
 }));
 
+const mockUpsert = jest.fn(async () => ({ error: null }));
+let mockSession: any = {
+  session: { user: { id: 'user-1' } },
+};
+
 jest.mock('../lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
-      upsert: jest.fn(async () => ({ error: null })),
+      upsert: mockUpsert,
       delete: jest.fn(() => ({ eq: jest.fn().mockReturnThis() })),
     })),
+    auth: {
+      getSession: jest.fn(async () => ({ data: mockSession, error: null })),
+    },
   },
   isSupabaseConfigured: () => true,
 }));
@@ -41,6 +49,8 @@ import { registerPushToken, attachResponseListener, unregisterPushToken } from '
 describe('push — registerPushToken (simulator/denied paths)', () => {
   beforeEach(() => {
     mockIsDevice = true;
+    mockUpsert.mockClear();
+    mockSession = { session: { user: { id: 'user-1' } } };
   });
 
   test('returns null на симуляторе', async () => {
@@ -58,6 +68,21 @@ describe('push — registerPushToken (simulator/denied paths)', () => {
 
   test('не throws независимо от результата', async () => {
     await expect(registerPushToken('user-1')).resolves.toBeDefined();
+  });
+});
+
+describe('push — session guard (permission-denied path)', () => {
+  // С мокнутыми permission=denied registerPushToken ранне возвращается до
+  // ветки upsert, так что upsert не должен вызываться вовсе. Это подтверждает
+  // что guard не стреляет false-positive при normal denied flow.
+  beforeEach(() => {
+    mockUpsert.mockClear();
+    mockIsDevice = true;
+  });
+
+  test('upsert не вызывается когда permission denied', async () => {
+    await registerPushToken('user-1');
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 });
 
