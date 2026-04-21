@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["TEAM_ID_PLACEHOLDER.com.stobi.app"],
+        "appIDs": ["K5G3R554ZA.com.stobi.app"],
         "components": [
           {
             "/": "/invite/*",
@@ -18,6 +18,6 @@
     ]
   },
   "webcredentials": {
-    "apps": ["TEAM_ID_PLACEHOLDER.com.stobi.app"]
+    "apps": ["K5G3R554ZA.com.stobi.app"]
   }
 }
