@@ -592,4 +592,9 @@ export const ru: Record<string, string> = {
     // Chat — photo moderation rejection
     'chat.photo_rejected_title': 'Фото отклонено',
     'chat.photo_rejected_text': 'AI не разрешил это фото. Выбери другое.',
+
+    // Celebration — social share bonus
+    'celebration.share_offer': 'Поделись находкой в соцсетях — получи ещё +2 алмазика',
+    'celebration.share_thanks': 'Спасибо! Бонус начислен',
+    'celebration.share_again': 'Поделиться ещё',
 };

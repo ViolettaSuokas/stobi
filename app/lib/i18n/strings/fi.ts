@@ -590,4 +590,8 @@ export const fi: Record<string, string> = {
 
     'chat.photo_rejected_title': 'Kuva hylätty',
     'chat.photo_rejected_text': 'Tekoäly ei sallinut tätä kuvaa. Valitse toinen.',
+
+    'celebration.share_offer': 'Jaa löytösi somessa — saat +2 timanttia',
+    'celebration.share_thanks': 'Kiitos! Bonus lisätty',
+    'celebration.share_again': 'Jaa lisää',
 };

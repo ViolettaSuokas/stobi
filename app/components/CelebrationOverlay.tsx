@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, ShareNetwork } from 'phosphor-react-native';
+import { CheckCircle, ShareNetwork, Sparkle } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from './StoneMascot';
 import { useI18n } from '../lib/i18n';
 import { ShareTapped } from '../lib/analytics';
+import { rewardSocialShare } from '../lib/finds';
 import * as haptics from '../lib/haptics';
 
 /**
@@ -128,6 +129,8 @@ export function CelebrationOverlay({
   const { t } = useI18n();
   const rewardScale = useRef(new Animated.Value(0)).current;
   const mascotScale = useRef(new Animated.Value(0)).current;
+  const [shareBonus, setShareBonus] = useState<{ amount: number; balance: number } | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -156,16 +159,32 @@ export function CelebrationOverlay({
   }, [visible, rewardScale, mascotScale]);
 
   const handleShare = async () => {
-    if (!stoneId) return;
+    if (!stoneId || sharing) return;
+    setSharing(true);
     void ShareTapped('stone', stoneId);
     const url = `https://stobi.app/stone/${stoneId}`;
     const message = t('stone.share_message')
       .replace('{name}', stoneName ?? 'stone')
       .replace('{city}', stoneCity ?? 'Finland');
     try {
-      await Share.share({ message: `${message}\n${url}`, url, title: t('stone.share_title') });
+      const result = await Share.share({
+        message: `${message}\n${url}`,
+        url,
+        title: t('stone.share_title'),
+      });
+      // Начисляем bonus только если действительно поделились
+      // (не dismiss или cancel — на iOS Share.share возвращает action).
+      if (result.action === Share.sharedAction) {
+        const bonus = await rewardSocialShare(stoneId);
+        if (bonus.rewarded && bonus.amount) {
+          setShareBonus({ amount: bonus.amount, balance: bonus.balance });
+          void haptics.success();
+        }
+      }
     } catch (e) {
       console.warn('share failed', e);
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -212,6 +231,30 @@ export function CelebrationOverlay({
               ))}
             </View>
           )}
+
+          {/* Share-bonus CTA: до шейра — предложение, после — подтверждение. */}
+          {stoneId && !shareBonus && (
+            <View style={styles.shareBonusCard}>
+              <View style={styles.shareBonusBadge}>
+                <Sparkle size={14} color="#FFFFFF" weight="fill" />
+                <Text style={styles.shareBonusBadgeText}>+2 💎</Text>
+              </View>
+              <Text style={styles.shareBonusText}>
+                {t('celebration.share_offer') || 'Поделись находкой в соцсетях — получи ещё +2 алмазика'}
+              </Text>
+            </View>
+          )}
+          {shareBonus && (
+            <View style={styles.shareBonusCard}>
+              <View style={[styles.shareBonusBadge, { backgroundColor: Colors.green }]}>
+                <CheckCircle size={14} color="#FFFFFF" weight="fill" />
+                <Text style={styles.shareBonusBadgeText}>+{shareBonus.amount} 💎</Text>
+              </View>
+              <Text style={styles.shareBonusText}>
+                {t('celebration.share_thanks') || 'Спасибо! Бонус начислен'}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.ctaRow}>
@@ -220,11 +263,16 @@ export function CelebrationOverlay({
               style={styles.shareBtn}
               onPress={handleShare}
               activeOpacity={0.85}
+              disabled={sharing}
               accessibilityRole="button"
               accessibilityLabel={t('stone.share')}
             >
               <ShareNetwork size={20} color="#FFFFFF" weight="bold" />
-              <Text style={styles.shareText}>{t('stone.share')}</Text>
+              <Text style={styles.shareText}>
+                {shareBonus
+                  ? (t('celebration.share_again') || 'Поделиться ещё')
+                  : `${t('stone.share')} +2 💎`}
+              </Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -310,6 +358,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+
+  // Share-bonus — "поделись и получи +2 💎" CTA на оверлее
+  shareBonusCard: {
+    marginTop: 16,
+    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  shareBonusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: '#FCD34D',
+  },
+  shareBonusBadgeText: {
+    color: '#1A1A2E',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  shareBonusText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+
   ctaRow: {
     flexDirection: 'row',
     gap: 10,

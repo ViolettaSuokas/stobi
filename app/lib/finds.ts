@@ -382,6 +382,31 @@ export async function authorConfirmStone(
   }
 }
 
+/**
+ * Bonus за шейр находки в соцсетях (+2 💎). Dedup-guarded — один stone_id
+ * может быть одобрен ровно один раз для юзера. migration 210000.
+ */
+export async function rewardSocialShare(
+  stoneId: string,
+): Promise<{ rewarded: boolean; balance: number; amount?: number; error?: string }> {
+  if (!isSupabaseConfigured()) return { rewarded: false, balance: 0, error: 'not_configured' };
+  try {
+    const { data, error } = await supabase.rpc('reward_social_share', { p_stone_id: stoneId });
+    if (error) return { rewarded: false, balance: 0, error: error.message };
+    const parsed = data as { rewarded: boolean; balance: number; amount?: number };
+    if (parsed?.rewarded) {
+      await trackEvent('social_share_bonus', { stone_id: stoneId, amount: parsed.amount });
+    }
+    return {
+      rewarded: !!parsed?.rewarded,
+      balance: parsed?.balance ?? 0,
+      amount: parsed?.amount,
+    };
+  } catch (e: any) {
+    return { rewarded: false, balance: 0, error: e?.message ?? String(e) };
+  }
+}
+
 export async function requestReferenceRecapture(
   stoneId: string,
 ): Promise<{ ok: boolean; error?: string }> {
