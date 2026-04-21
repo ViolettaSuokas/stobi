@@ -34,6 +34,7 @@ import { StoneHidden } from '../../lib/analytics';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import { StoneMascot } from '../../components/StoneMascot';
+import { StoneScanCamera } from '../../components/StoneScanCamera';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
 import { gatherAchievementStats, checkAchievements, ACHIEVEMENT_DEFS } from '../../lib/achievements';
@@ -53,6 +54,7 @@ export default function AddScreen() {
   const [scanEmbedding, setScanEmbedding] = useState<number[] | null>(null);
   const [scanPhotoUrl, setScanPhotoUrl] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [showScanCamera, setShowScanCamera] = useState(false);
 
   const modal = useModal();
   const { t } = useI18n();
@@ -100,27 +102,17 @@ export default function AddScreen() {
     }
   };
 
-  // AI-scanner для hide flow: камера → processPhoto → upload → edge function
-  // → получаем embedding + signed URL. UX говорит "AI запомнил" как подтверждение.
-  const handleAIScan = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      modal.show({
-        title: t('scan.no_permission_title') || 'Нужен доступ к камере',
-        message: t('scan.no_permission_text') || 'Разреши в Настройки → Stobi → Camera',
-        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
-      });
-      return;
-    }
-    const pick = await ImagePicker.launchCameraAsync({
-      quality: 1,
-      allowsEditing: false,
-    });
-    if (pick.canceled || !pick.assets?.[0]) return;
+  // AI-scanner для hide flow — показываем live-camera со scan-frame.
+  // После снимка: processPhoto → upload → edge function → embedding.
+  const handleOpenScanCamera = () => {
+    setShowScanCamera(true);
+  };
 
+  const handleScanCapture = async (uri: string) => {
+    setShowScanCamera(false);
     setScanning(true);
     try {
-      const processed = await processPhoto(pick.assets[0].uri);
+      const processed = await processPhoto(uri);
       // Локальное превью — photoUri, чтоб юзер видел картинку сразу
       setPhotoUri(processed.uri);
 
@@ -139,7 +131,7 @@ export default function AddScreen() {
       setScanEmbedding(moderation.embedding);
       setScanPhotoUrl(signedUrl);
     } catch (e: any) {
-      console.warn('handleAIScan error', e);
+      console.warn('handleScanCapture error', e);
       modal.show({
         title: t('common.error') || 'Ошибка',
         message: e?.message ?? String(e),
@@ -330,6 +322,19 @@ export default function AddScreen() {
     );
   }
 
+  // Full-screen scan camera overlay (hides all UI underneath)
+  if (showScanCamera) {
+    return (
+      <StoneScanCamera
+        title={t('scan.title_hide')}
+        subtitle={t('scan.sub_hide')}
+        onCapture={handleScanCapture}
+        onCancel={() => setShowScanCamera(false)}
+        ctaLabel={t('scan.btn_capture')}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
@@ -411,7 +416,7 @@ export default function AddScreen() {
           ) : (
             <TouchableOpacity
               style={styles.scanCtaCard}
-              onPress={handleAIScan}
+              onPress={handleOpenScanCamera}
               disabled={scanning}
               activeOpacity={0.85}
               accessibilityRole="button"

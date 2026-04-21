@@ -9,7 +9,7 @@
 //
 // States: idle → scanning → claiming → success | pending | rejected
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,21 +18,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import {
   CaretLeft,
   Camera,
-  CheckCircle,
   Sparkle,
   Info,
   WarningCircle,
 } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
+import { StoneScanCamera } from '../components/StoneScanCamera';
 import {
   processPhoto,
   moderateAndEmbedPhoto,
@@ -41,19 +39,18 @@ import {
 import { markStoneFoundV2 } from '../lib/finds';
 import { getCurrentLocation } from '../lib/location';
 import { requireAuth } from '../lib/auth-gate';
-import { useModal } from '../lib/modal';
 import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
 
-type Phase = 'idle' | 'scanning' | 'claiming' | 'success' | 'pending' | 'rejected' | 'error';
+type Phase = 'camera' | 'scanning' | 'claiming' | 'success' | 'pending' | 'rejected' | 'error';
 
 export default function ScanStoneScreen() {
   const { t } = useI18n();
-  const modal = useModal();
   const params = useLocalSearchParams();
   const stoneId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [phase, setPhase] = useState<Phase>('idle');
+  // Стартуем сразу в камере — никаких дополнительных экранов.
+  const [phase, setPhase] = useState<Phase>('camera');
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [result, setResult] = useState<{
     status: 'verified' | 'pending' | 'rejected';
@@ -64,33 +61,26 @@ export default function ScanStoneScreen() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleOpenCamera = async () => {
+  // Auth gate (one-shot на mount). Если guest — router.back + модалка.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const ok = await requireAuth(t('find_anywhere.auth_reason'));
+      if (mounted && !ok) router.back();
+    })();
+    return () => { mounted = false; };
+  }, [t]);
+
+  const handleCapture = async (uri: string) => {
     if (!stoneId) return;
-    if (!(await requireAuth(t('find_anywhere.auth_reason')))) return;
 
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      modal.show({
-        title: t('scan.no_permission_title'),
-        message: t('scan.no_permission_text'),
-        buttons: [{ label: t('common.understood'), style: 'cancel' }],
-      });
-      return;
-    }
-
-    const pick = await ImagePicker.launchCameraAsync({
-      quality: 1,
-      allowsEditing: false,
-    });
-    if (pick.canceled || !pick.assets?.[0]) return;
-
-    setPreviewUri(pick.assets[0].uri);
+    setPreviewUri(uri);
     setPhase('scanning');
     setError(null);
 
     try {
       // 1. Process (resize, EXIF strip)
-      const processed = await processPhoto(pick.assets[0].uri);
+      const processed = await processPhoto(uri);
 
       // 2. Upload to storage
       const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'find');
@@ -150,6 +140,13 @@ export default function ScanStoneScreen() {
     }
   };
 
+  const handleRetry = () => {
+    setPhase('camera');
+    setPreviewUri(null);
+    setError(null);
+    setResult(null);
+  };
+
   // ─────────────────────────────────
   // Render
   // ─────────────────────────────────
@@ -162,6 +159,20 @@ export default function ScanStoneScreen() {
     );
   }
 
+  // Camera mode — live-preview со сканер-рамкой
+  if (phase === 'camera') {
+    return (
+      <StoneScanCamera
+        title={t('scan.title_find')}
+        subtitle={t('scan.sub_find')}
+        onCapture={handleCapture}
+        onCancel={() => router.back()}
+        ctaLabel={t('scan.btn_capture')}
+      />
+    );
+  }
+
+  // Результаты — обычный экран с хедером и контентом
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
@@ -189,28 +200,6 @@ export default function ScanStoneScreen() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {phase === 'idle' && (
-          <View style={styles.centerBlock}>
-            <View style={styles.mascotRing}>
-              <StoneMascot size={130} color={Colors.mascot} variant="sparkle" showSparkles />
-            </View>
-
-            <Text style={styles.heroTitle}>{t('scan.title_find')}</Text>
-            <Text style={styles.heroSub}>{t('scan.sub_find')}</Text>
-
-            <View style={styles.tipsCard}>
-              <TipRow emoji="💡" text={t('find_anywhere.tip_1')} />
-              <TipRow emoji="🔍" text={t('find_anywhere.tip_2')} />
-              <TipRow emoji="📸" text={t('find_anywhere.tip_3')} />
-            </View>
-
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleOpenCamera} activeOpacity={0.85}>
-              <Camera size={20} color="#FFFFFF" weight="fill" />
-              <Text style={styles.primaryBtnText}>{t('scan.btn_capture')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {(phase === 'scanning' || phase === 'claiming') && (
           <View style={styles.centerBlock}>
             {previewUri && (
@@ -277,12 +266,7 @@ export default function ScanStoneScreen() {
             </Text>
             <TouchableOpacity
               style={styles.primaryBtn}
-              onPress={() => {
-                setPhase('idle');
-                setPreviewUri(null);
-                setError(null);
-                setResult(null);
-              }}
+              onPress={handleRetry}
               activeOpacity={0.85}
             >
               <Camera size={20} color="#FFFFFF" weight="fill" />
@@ -301,11 +285,7 @@ export default function ScanStoneScreen() {
             <Text style={styles.failSub}>{error ?? ''}</Text>
             <TouchableOpacity
               style={styles.primaryBtn}
-              onPress={() => {
-                setPhase('idle');
-                setPreviewUri(null);
-                setError(null);
-              }}
+              onPress={handleRetry}
               activeOpacity={0.85}
             >
               <Text style={styles.primaryBtnText}>{t('find_anywhere.btn_retry')}</Text>

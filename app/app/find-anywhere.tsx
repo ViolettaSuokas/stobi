@@ -37,6 +37,7 @@ import {
 } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
+import { StoneScanCamera } from '../components/StoneScanCamera';
 import {
   processPhoto,
   moderateAndEmbedPhoto,
@@ -52,7 +53,7 @@ import { useModal } from '../lib/modal';
 import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
 
-type Phase = 'idle' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
+type Phase = 'idle' | 'camera' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
 
 type ProcessedScan = {
   photoUrl: string;                 // signed URL для Edge Function (уже uploaded)
@@ -85,27 +86,8 @@ export default function FindAnywhereScreen() {
 
   const handleTakePhoto = async () => {
     if (!(await requireAuth(t('find_anywhere.auth_reason') || 'отметить находку'))) return;
-
     setError(null);
-
-    // Permission
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      modal.show({
-        title: 'Нет доступа к камере',
-        message: 'Разреши доступ в Настройки → Stobi → Camera.',
-        buttons: [{ label: 'OK', style: 'cancel' }],
-      });
-      return;
-    }
-
-    const pick = await ImagePicker.launchCameraAsync({
-      quality: 1,
-      allowsEditing: false,
-    });
-    if (pick.canceled || !pick.assets?.[0]) return;
-
-    await processScan(pick.assets[0].uri);
+    setPhase('camera');
   };
 
   const handlePickFromLibrary = async () => {
