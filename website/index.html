@@ -3,13 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stobi — Painted stones that connect people</title>
-<meta name="description" content="Find and hide painted stones across Finland. Join 178k FinStones community. Earn diamonds, collect mascots, make strangers smile.">
-<meta property="og:title" content="Stobi — Painted stones that connect people">
-<meta property="og:description" content="Find and hide painted stones across Finland. Join the FinStones community of 178k people making strangers smile.">
-<meta property="og:image" content="https://stobi.app/assets/og-image.png">
+<title>Stobi — A creative hobby you can hold</title>
+<meta name="description" content="Paint a stone, hide it on a walk, follow its journey as strangers find it and pass it forward. A real-world creative hobby — not a game, not pixels. Real art you can hold.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Stobi — A creative hobby you can hold">
+<meta property="og:description" content="Paint, hide, and find painted stones across Finland. Every stone has a story — and yours is waiting to begin.">
+<!-- TODO: add og-image.png 1200×630 to /assets, then uncomment -->
+<!-- <meta property="og:image" content="https://stobi.app/assets/og-image.png"> -->
 <meta property="og:url" content="https://stobi.app">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#5B4FF0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 </head>
@@ -21,211 +29,455 @@
       <span class="brand-stone"></span>
       Stobi
     </a>
-    <div class="nav-links">
+    <div class="nav-pill">
+      <a href="#features">App</a>
       <a href="#features">Features</a>
       <a href="#community">Community</a>
       <a href="/support.html">Support</a>
-      <a href="#download" class="btn btn-dark">Download</a>
+      <a href="#download" class="nav-pill-cta">Download</a>
     </div>
+    <div class="nav-right"></div>
   </div>
 </nav>
 
-<!-- ──── HERO ──── -->
+<!-- ──── HERO — 3 column: text | phone | accent ──── -->
 <section class="hero">
   <div class="container">
-    <div class="hero-left">
-      <h1>Stones that <span class="accent">connect</span> people.</h1>
+    <div class="hero-left reveal">
+      <h1>Not just a game.<br>It's your hobby.</h1>
       <p class="lead">
-        Paint a stone. Hide it in your favourite spot. A stranger finds it,
-        smiles, and hides another one somewhere new. Stobi is the map of
-        all those smiles across Finland.
+        Paint a stone. Hide it on a walk. Follow its journey as strangers find it, keep it, or set it free again.
+        <b>Real art. Real hands. Real stories.</b>
       </p>
-      <div class="hero-cta">
-        <a href="#download" class="btn btn-primary btn-lg">Download free</a>
-        <a href="#features" class="btn btn-light btn-lg">How it works</a>
+      <div class="hero-cta-row">
+        <a href="#download" class="btn-hero">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.04c-.01-2.5 2.04-3.7 2.13-3.76-1.16-1.7-2.97-1.93-3.61-1.96-1.54-.16-3 .9-3.79.9-.79 0-1.98-.88-3.26-.86-1.68.02-3.22.98-4.08 2.48-1.74 3.02-.44 7.48 1.25 9.93.83 1.2 1.82 2.54 3.11 2.49 1.25-.05 1.72-.81 3.23-.81s1.94.81 3.26.78c1.35-.02 2.2-1.21 3.03-2.42.95-1.39 1.34-2.74 1.37-2.81-.03-.01-2.62-1.01-2.64-3.96zM14.54 4.67c.69-.84 1.16-2 1.03-3.17-1 .04-2.21.66-2.93 1.5-.64.74-1.2 1.93-1.05 3.07 1.11.09 2.25-.57 2.95-1.4z"/></svg>
+          App Store
+        </a>
+        <a href="#download" class="btn-hero btn-hero-outline">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#32BBFF" d="M3.6 2.2C3.22 2.6 3 3.22 3 4.03v15.94c0 .81.22 1.43.6 1.83l.07.06 8.93-8.92v-.21L3.67 2.14l-.07.06z"/>
+            <path fill="#FFD93E" d="M15.6 15.95l-2.98-2.98v-.21l2.98-2.98.07.04 3.52 2c1 .57 1 1.5 0 2.08l-3.52 2-.07.05z"/>
+            <path fill="#FF4531" d="M15.67 15.9L12.6 12.84 3.6 21.83c.33.35.87.39 1.48.04l10.59-5.97z"/>
+            <path fill="#00D26A" d="M15.67 8.1L5.08 2.13c-.61-.35-1.15-.3-1.48.04l9 9 3.07-3.07z"/>
+          </svg>
+          Google Play
+        </a>
       </div>
       <div class="hero-meta">
-        <span>🇫🇮 Made for Finland</span>
+        <span>🇫🇮 Made in Finland</span>
         <span class="dot"></span>
-        <span>178k community</span>
+        <span>A real-world hobby</span>
         <span class="dot"></span>
-        <span>Free to play</span>
+        <span>Free to start</span>
       </div>
     </div>
 
-    <div class="hero-right">
+    <div class="hero-center reveal delay-1">
       <div class="phone-mockup">
         <div class="phone-notch"></div>
-        <div class="phone-screen">
-          <div class="phone-mascot"></div>
-          <div class="phone-greeting">Good morning, Letta!</div>
-          <div class="phone-sub">Your first stone is waiting ✨</div>
-          <div class="phone-pills">
-            <span class="phone-pill">💎 125</span>
-            <span class="phone-pill">🔥 7 day streak</span>
-            <span class="phone-pill">🪨 3 found</span>
-          </div>
-        </div>
+        <div class="phone-screen phone-blank"></div>
       </div>
+    </div>
+
+    <div class="hero-right reveal delay-2">
       <div class="hero-accent">
-        <div class="badge-label">V1 · Now live</div>
-        <h3>iOS + Android</h3>
-        <p>Free on App Store and Google Play</p>
+        <span class="play-btn"></span>
+      </div>
+      <div class="hero-socials">
+        <a href="#" aria-label="Instagram" class="soc-ico"><i class="ph-bold ph-instagram-logo"></i></a>
+        <a href="#" aria-label="TikTok" class="soc-ico"><i class="ph-bold ph-tiktok-logo"></i></a>
+        <a href="#" aria-label="Facebook" class="soc-ico"><i class="ph-bold ph-facebook-logo"></i></a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ──── Section 2: "full picture" ──── -->
-<section class="section" id="features">
+<!-- ──── Value proposition — centered statement with floating chips ──── -->
+<section class="value-prop">
   <div class="container">
-    <div class="section-label">How it works</div>
-    <h2>Stobi shows you the full picture of painted stones across Finland.</h2>
+    <div class="value-chip vp-chip-1"><span>🎨</span></div>
+    <div class="value-chip vp-chip-2"><span>⏰</span></div>
+    <div class="value-chip vp-chip-3"><span>💎</span></div>
+    <div class="value-chip vp-chip-4"><span>🗺️</span></div>
+    <div class="value-grid-bg"></div>
 
-    <div class="feature-grid-2">
-      <div class="feature-card">
-        <div class="badge">Discover</div>
-        <h3>Every painted stone on the map.</h3>
-        <p>See hidden stones near you, check who painted them, and walk there. GPS-verified finds so nobody cheats.</p>
-        <div class="visual">
-          <div class="blob-stones">🪨</div>
-        </div>
+    <div class="value-content reveal">
+      <h2 class="value-title">
+        Every stone has a story.
+      </h2>
+      <div class="value-divider">
+        <span class="vd-line"></span>
+        <p class="value-sub">Your brush, your stone, your story. Paint something honest, set it free on a walk, and watch your art pass from hand to hand across Finland.</p>
+        <span class="vd-line"></span>
       </div>
-
-      <div class="feature-card">
-        <div class="badge">Create</div>
-        <h3>Hide your own masterpiece.</h3>
-        <p>Snap a photo, drop a pin, earn 💎 diamonds. Let a stranger find your tiny piece of art and pay it forward.</p>
-        <div class="visual">
-          <div class="blob-pink">🎨</div>
-        </div>
-      </div>
+      <a href="#download" class="value-cta">
+        <span>Get Started Free</span>
+        <span class="value-cta-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 17L17 7M10 7h7v7"/>
+          </svg>
+        </span>
+      </a>
     </div>
   </div>
 </section>
 
-<!-- ──── Section 3: Your super app ──── -->
-<section class="section" style="background: #F9F7F5;">
-  <div class="container">
-    <div class="features-layout">
-      <div class="features-phone">
+<!-- ──── How It Works (spec 7:1682) ──── -->
+<section class="section how-section">
+  <div class="container"><div class="how-card">
+    <div class="section-head-center reveal">
+      <span class="key-feat-pill">
+        <i class="ph ph-play-circle" aria-hidden="true"></i>
+        How It Works
+      </span>
+      <h2 class="headline-split">
+        <span class="hs-line1">How Stobi</span>
+        <span class="hs-line2">works for you.</span>
+      </h2>
+    </div>
+
+    <div class="how-layout">
+      <div class="how-phone reveal">
         <div class="phone-mockup">
           <div class="phone-notch"></div>
-          <div class="phone-screen" style="background: linear-gradient(180deg, #EEF2FF, #fff);">
-            <div class="phone-mascot"></div>
-            <div class="phone-greeting" style="color: #1A1A2E;">Stobi</div>
-            <div class="phone-sub" style="color: #6B6880;">Your painted-stone companion</div>
-            <div class="phone-pills">
-              <span class="phone-pill" style="background: #5B4FF0;">Customize</span>
-              <span class="phone-pill" style="background: #5B4FF0;">Chat</span>
+          <!-- 3 screen layers, active one fades in -->
+          <div class="phone-screen how-screen how-screen-1 is-active">
+            <!-- TODO: replace with <img src="/assets/how-paint.png"> -->
+            <div class="screen-placeholder screen-paint">
+              <div class="sp-emoji">🎨</div>
+              <div class="sp-title">Paint</div>
+              <div class="sp-bar"></div>
+              <div class="sp-chip">✨ Your stone</div>
+            </div>
+          </div>
+          <div class="phone-screen how-screen how-screen-2">
+            <!-- TODO: replace with <img src="/assets/how-hide.png"> -->
+            <div class="screen-placeholder screen-map">
+              <div class="sp-pin"></div>
+              <div class="sp-pin pin-alt"></div>
+              <div class="sp-chip sp-chip-bottom">📍 Drop a pin</div>
+            </div>
+          </div>
+          <div class="phone-screen how-screen how-screen-3">
+            <!-- TODO: replace with <img src="/assets/how-find.png"> -->
+            <div class="screen-placeholder screen-celebrate">
+              <div class="sp-emoji">✨</div>
+              <div class="sp-title">Found!</div>
+              <div class="sp-chip">+3 💎</div>
+              <div class="sp-chip sp-chip-2">🎉 You made<br>someone smile</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div>
-        <div class="section-label">Your super app for stones</div>
-        <h2>Everything stone-hunters need.</h2>
+      <ol class="how-steps reveal delay-1">
+        <li class="how-step how-step-active" data-step="1">
+          <span class="how-step-num">1</span>
+          <div class="how-step-text">
+            <h3>Paint your stone</h3>
+            <p>Grab a stone from your nearest path. Paint something honest — it doesn't need to be museum-worthy, just come from you.</p>
+          </div>
+        </li>
+        <li class="how-step" data-step="2">
+          <span class="how-step-num">2</span>
+          <div class="how-step-text">
+            <h3>Hide it on a walk</h3>
+            <p>Tuck it somewhere a stranger might pause — a park bench, a mossy stump, a library step. Mark the spot in Stobi, and we'll track your stone from there.</p>
+          </div>
+        </li>
+        <li class="how-step" data-step="3">
+          <span class="how-step-num">3</span>
+          <div class="how-step-text">
+            <h3>Follow its journey</h3>
+            <p>Every finder leaves a note. Some keep your stone. Some hide it again somewhere new. You'll see every step it takes — and every smile it collects along the way.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div></div>
+</section>
 
-        <div class="features-list">
-          <div class="feature-row">
-            <div class="icon">🗺️</div>
-            <div>
-              <h4>Live map of Finland</h4>
-              <p>All painted stones — across Helsinki, Tampere, Turku, Oulu and beyond.</p>
-            </div>
-          </div>
-          <div class="feature-row">
-            <div class="icon">💎</div>
-            <div>
-              <h4>Earn diamonds</h4>
-              <p>Every find and every hide earns you 💎. Spend them on mascot cosmetics.</p>
-            </div>
-          </div>
-          <div class="feature-row">
-            <div class="icon">🎨</div>
-            <div>
-              <h4>Customize your mascot</h4>
-              <p>15 colors, 8 expressions, 6 shapes, 9 decorations. Your stone, your look.</p>
-            </div>
-          </div>
-          <div class="feature-row">
-            <div class="icon">💬</div>
-            <div>
-              <h4>Local + global chat</h4>
-              <p>Talk to painters in your country or share stone art worldwide.</p>
-            </div>
-          </div>
-          <div class="feature-row">
-            <div class="icon">🔥</div>
-            <div>
-              <h4>Streaks and achievements</h4>
-              <p>Daily challenges, 15 achievements, milestones for every find.</p>
-            </div>
-          </div>
-          <div class="feature-row">
-            <div class="icon">🌍</div>
-            <div>
-              <h4>3 languages</h4>
-              <p>Finnish, Russian, English — pick what feels right.</p>
-            </div>
+<!-- ──── Section 2: Standout features (2×2 Fizens-style) ──── -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-head-center reveal">
+      <span class="key-feat-pill">
+        <i class="ph ph-sparkle" aria-hidden="true"></i>
+        One of a kind
+      </span>
+      <h2 class="headline-split">
+        <span class="hs-line1">Not a game.</span>
+        <span class="hs-line2">A real-world hobby.</span>
+      </h2>
+      <p class="headline-sub">Real art, painted by real people, left along real paths in Finland — for you to find, hold, and pass on. Every stone carries its own story.</p>
+    </div>
+
+    <div class="feat-grid-22">
+      <article class="feat-card reveal">
+        <div class="feat-visual feat-v-map">
+          <div class="map-card">
+            <div class="map-pin"></div>
+            <div class="map-pin pin-2"></div>
+            <div class="map-pin pin-3"></div>
+            <span class="map-chip">📍 Helsinki</span>
           </div>
         </div>
+        <h3>A living map of Finland</h3>
+        <p>Every painted stone on one map. Tap any one to read its story — who painted it, where it's been, how many smiles it's collected.</p>
+      </article>
+
+      <article class="feat-card reveal delay-1">
+        <div class="feat-visual feat-v-paint">
+          <ul class="paint-list">
+            <li><span class="pl-ico">🎨</span> Your stone <span class="pl-val">+5 💎</span></li>
+            <li><span class="pl-ico">📸</span> Snap & hide <span class="pl-val">+1 💎</span></li>
+            <li><span class="pl-ico">✨</span> Stranger found <span class="pl-val">+3 💎</span></li>
+          </ul>
+        </div>
+        <h3>Every stone, a story</h3>
+        <p>Each stone you release gets its own page, its own travel log, its own circle of finders. You never lose sight of where your art lands.</p>
+      </article>
+
+      <article class="feat-card reveal delay-2">
+        <div class="feat-visual feat-v-mascots">
+          <div class="mascot m-1">
+            <div class="mascot-eyes"></div>
+          </div>
+          <div class="mascot m-2">
+            <div class="mascot-eyes wink"></div>
+            <div class="mascot-hat"></div>
+          </div>
+          <div class="mascot m-3">
+            <div class="mascot-eyes heart"></div>
+            <div class="mascot-blush"></div>
+          </div>
+          <div class="mascot m-4">
+            <div class="mascot-eyes sleepy"></div>
+            <div class="mascot-bow"></div>
+          </div>
+        </div>
+        <h3>Your mascot, your style</h3>
+        <p>Grow your own Stobi character — 15 colors, 8 expressions, 6 shapes, 9 decors. Unlock new looks as you paint, hide, and find.</p>
+      </article>
+
+      <article class="feat-card feat-card-cta reveal delay-3">
+        <div class="feat-cta-shapes">
+          <span class="shape-s1"></span>
+          <span class="shape-s2"></span>
+        </div>
+        <div class="feat-cta-content">
+          <h3>Get the app</h3>
+          <a href="#download" class="feat-cta-btn">Download Stobi</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ──── Addition Section (spec 7:1373) ──── -->
+<section class="section addition-section">
+  <div class="addition-container">
+    <h3 class="addition-heading reveal">Little details that make it yours.</h3>
+
+    <div class="mini-features reveal delay-1">
+      <div class="mini-feat mini-feat-1">
+        <div class="mini-feat-icon icon-blue">
+          <i class="ph-bold ph-lightning" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Streaks &amp; milestones</div>
+          <p class="mini-feat-desc">Daily walks, 15 achievements to celebrate your growth as an artist.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat mini-feat-2">
+        <div class="mini-feat-icon icon-yellow">
+          <i class="ph-bold ph-chat-circle-dots" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Creative community</div>
+          <p class="mini-feat-desc">Share work-in-progress, trade techniques, find walk buddies nearby.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat mini-feat-3">
+        <div class="mini-feat-icon icon-cyan">
+          <i class="ph-bold ph-translate" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Multi-language</div>
+          <p class="mini-feat-desc">Built to speak your language. More being added.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat">
+        <div class="mini-feat-icon icon-orange">
+          <i class="ph-bold ph-map-pin" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Finland-first</div>
+          <p class="mini-feat-desc">Focused locally — so you can actually walk to a find, not just scroll past one.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat">
+        <div class="mini-feat-icon icon-green">
+          <i class="ph-bold ph-shield-check" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Privacy-first</div>
+          <p class="mini-feat-desc">Stones appear on a fuzzy grid. Nothing traces back to your home or walks.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat">
+        <div class="mini-feat-icon icon-pink">
+          <i class="ph-bold ph-heart" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">For every age</div>
+          <p class="mini-feat-desc">Kids, parents, grandparents. Painting stones is a hobby without borders.</p>
+        </div>
+      </div>
+
+      <div class="mini-feat">
+        <div class="mini-feat-icon icon-blue">
+          <i class="ph-bold ph-sparkle" aria-hidden="true"></i>
+        </div>
+        <div class="mini-feat-text">
+          <div class="mini-feat-title">Free to start</div>
+          <p class="mini-feat-desc">Core features always on us. Premium unlocks extra cosmetics and perks.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="addition-phone-wrap reveal delay-2">
+      <span class="bg-word bg-word-1">STOBI</span>
+      <span class="bg-word bg-word-2">APP</span>
+      <div class="phone-mockup addition-phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen phone-blank"></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ──── Social proof ──── -->
-<section class="section" id="community">
-  <div class="container">
-    <div class="social-heading">
-      <div class="section-label">Community</div>
-      <h2>Join the 178,000+ people who paint and hide stones across Finland.</h2>
+<!-- ──── FAQ section (spec 7:2506) ──── -->
+<section class="section faq-section">
+  <div class="faq-container">
+    <div class="section-head-center reveal">
+      <span class="key-feat-pill">
+        <i class="ph ph-question" aria-hidden="true"></i>
+        FAQ
+      </span>
+      <h2 class="headline-split">
+        <span class="hs-line1">Frequently Asked</span>
+        <span class="hs-line2">Questions</span>
+      </h2>
     </div>
-    <div class="social-grid">
-      <div class="social-cell sc-1">
-        <div class="stat">FinStones community</div>
-        <h3>178,000+<br>painters</h3>
-      </div>
-      <div class="social-cell sc-2">
-        <div class="stat">Stones on map</div>
-        <h3>Thousands<br>across Finland</h3>
-      </div>
-      <div class="social-cell sc-3">
-        <div class="stat">Built for</div>
-        <h3>Helsinki, Tampere, Turku, Oulu, Vantaa and every village in between.</h3>
-      </div>
-      <div class="social-cell sc-4">
-        <div class="stat">Privacy-first</div>
-        <h3>Approximate<br>locations only</h3>
-      </div>
-      <div class="social-cell sc-5">
-        <div class="stat">All ages</div>
-        <h3>13+ safe<br>community</h3>
-      </div>
+
+    <div class="faq-list reveal delay-1">
+      <details class="faq-item" open>
+        <summary>
+          <span class="faq-q">What makes Stobi different?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">Stobi is a creative hobby, not a game. You paint real stones, hide them on real walks, and every stone you release keeps its own story — you'll always know where it's been and which smile it's in today. Find a stone? It's yours to keep, display at home, or hide again somewhere new.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">Is Stobi really free?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">Yes — painting, hiding, finding, chatting, following every stone's journey, and customizing your mascot is completely free. Premium (€3.99/mo) is optional and unlocks exclusive cosmetics, streak freezes, and priority support.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">How does Stobi protect my location?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">We store approximate locations only — never your exact coordinates. Stones are placed on a fuzzy grid (~100m) so no one can track you home. Your real-time location never leaves your device.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">What age is Stobi for?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">Stobi is 13+. We verify age on sign-up and apply stricter moderation to keep the community safe. Content is curated to be family-friendly: no harassment, no explicit content, no personal contact details.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">How do I earn diamonds 💎?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">Every find earns 1–3 💎, every hide earns 5 💎, and when a stranger finds your stone you get 3 💎 more. Daily challenges (find 5 stones) unlock a 24-hour Premium taste. Spend diamonds on mascot cosmetics and map boosts.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">Can I use Stobi outside Finland?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">The map is currently focused on Finland — that's where we're launching first. Global chat works everywhere, so you can share stone art and ideas with painters worldwide. More countries coming soon.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">How do I delete my account?</span>
+          <i class="ph-bold ph-caret-down faq-chev" aria-hidden="true"></i>
+        </summary>
+        <div class="faq-divider"></div>
+        <p class="faq-a">Settings → Account → Delete account. Your data is removed within 30 days per GDPR. You can also email hello@stobi.app and we'll handle it for you.</p>
+      </details>
     </div>
   </div>
 </section>
 
-<!-- ──── Final CTA ──── -->
-<section class="final-cta" id="download">
-  <div class="container">
-    <h2>Your first painted stone<br>is waiting on the map.</h2>
-    <div class="phone-mockup">
-      <div class="phone-notch"></div>
-      <div class="phone-screen">
-        <div class="phone-mascot"></div>
-        <div class="phone-greeting">Let's go find it.</div>
-        <div class="phone-pills" style="margin-top: 16px;">
-          <span class="phone-pill">Get Started</span>
-        </div>
+<!-- ──── Final CTA (spec 7:2597) ──── -->
+<section class="final-cta-wrap" id="download">
+  <div class="container"><div class="final-cta-card reveal">
+    <!-- Decorative side illustrations — TODO: replace with real artwork -->
+
+    <div class="final-cta-content">
+      <h2 class="final-cta-heading">
+        Your first painted stone<br>
+        <em>is waiting</em><br>
+        on the map.
+      </h2>
+      <p class="final-cta-sub">
+        Every stone out there has a story — and a new one is always waiting to begin.<br>
+        Be among the first painters, finders, and storytellers on Stobi.
+      </p>
+
+      <div class="hero-cta-row">
+        <a href="#" class="btn-hero">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.04c-.01-2.5 2.04-3.7 2.13-3.76-1.16-1.7-2.97-1.93-3.61-1.96-1.54-.16-3 .9-3.79.9-.79 0-1.98-.88-3.26-.86-1.68.02-3.22.98-4.08 2.48-1.74 3.02-.44 7.48 1.25 9.93.83 1.2 1.82 2.54 3.11 2.49 1.25-.05 1.72-.81 3.23-.81s1.94.81 3.26.78c1.35-.02 2.2-1.21 3.03-2.42.95-1.39 1.34-2.74 1.37-2.81-.03-.01-2.62-1.01-2.64-3.96zM14.54 4.67c.69-.84 1.16-2 1.03-3.17-1 .04-2.21.66-2.93 1.5-.64.74-1.2 1.93-1.05 3.07 1.11.09 2.25-.57 2.95-1.4z"/></svg>
+          App Store
+        </a>
+        <a href="#" class="btn-hero btn-hero-outline">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#32BBFF" d="M3.6 2.2C3.22 2.6 3 3.22 3 4.03v15.94c0 .81.22 1.43.6 1.83l.07.06 8.93-8.92v-.21L3.67 2.14l-.07.06z"/>
+            <path fill="#FFD93E" d="M15.6 15.95l-2.98-2.98v-.21l2.98-2.98.07.04 3.52 2c1 .57 1 1.5 0 2.08l-3.52 2-.07.05z"/>
+            <path fill="#FF4531" d="M15.67 15.9L12.6 12.84 3.6 21.83c.33.35.87.39 1.48.04l10.59-5.97z"/>
+            <path fill="#00D26A" d="M15.67 8.1L5.08 2.13c-.61-.35-1.15-.3-1.48.04l9 9 3.07-3.07z"/>
+          </svg>
+          Google Play
+        </a>
       </div>
     </div>
-    <a href="#" class="btn btn-light btn-lg">Download for iOS</a>
-    &nbsp;
-    <a href="#" class="btn btn-light btn-lg">Download for Android</a>
-  </div>
+  </div></div>
 </section>
 
 <!-- ──── Footer ──── -->
@@ -256,11 +508,14 @@
           <li><a href="/terms.html">Terms of Service</a></li>
         </ul>
       </div>
-      <div>
-        <h5>Community</h5>
-        <ul>
-          <li><a href="https://facebook.com/groups/finstones" target="_blank" rel="noopener">FinStones FB group</a></li>
-        </ul>
+      <div class="footer-social-col">
+        <h5>Follow</h5>
+        <div class="footer-social">
+          <a href="#" aria-label="Instagram" class="soc-ico"><i class="ph-bold ph-instagram-logo"></i></a>
+          <a href="#" aria-label="TikTok" class="soc-ico"><i class="ph-bold ph-tiktok-logo"></i></a>
+          <a href="#" aria-label="Facebook" class="soc-ico"><i class="ph-bold ph-facebook-logo"></i></a>
+          <a href="#" aria-label="YouTube" class="soc-ico"><i class="ph-bold ph-youtube-logo"></i></a>
+        </div>
       </div>
     </div>
 
@@ -274,5 +529,39 @@
   </div>
 </footer>
 
+<script>
+// How It Works — click step to switch phone screen + active state
+(function () {
+  var steps = document.querySelectorAll('.how-step');
+  var screens = document.querySelectorAll('.how-screen');
+  steps.forEach(function (step) {
+    step.addEventListener('click', function () {
+      var n = step.getAttribute('data-step');
+      steps.forEach(function (s) { s.classList.remove('how-step-active'); });
+      screens.forEach(function (s) { s.classList.remove('is-active'); });
+      step.classList.add('how-step-active');
+      var screen = document.querySelector('.how-screen-' + n);
+      if (screen) screen.classList.add('is-active');
+    });
+  });
+})();
+
+(function () {
+  var items = document.querySelectorAll('.reveal');
+  if (!('IntersectionObserver' in window) || !items.length) {
+    items.forEach(function (el) { el.classList.add('is-visible'); });
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('is-visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+  items.forEach(function (el) { io.observe(el); });
+})();
+</script>
 </body>
 </html>
