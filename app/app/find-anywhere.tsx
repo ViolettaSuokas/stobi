@@ -52,6 +52,8 @@ import { requireAuth } from '../lib/auth-gate';
 import { useModal } from '../lib/modal';
 import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
+import { checkSceneQuality } from '../lib/scan-quality';
+import { translateScanError, sceneQualityError, type FriendlyError } from '../lib/scan-errors';
 
 type Phase = 'idle' | 'camera' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
 
@@ -79,7 +81,7 @@ export default function FindAnywhereScreen() {
     reward: number;
     similarity: number | null;
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
 
   // Guest check — если не авторизован, вернуть обратно.
   useEffect(() => {
@@ -97,7 +99,7 @@ export default function FindAnywhereScreen() {
 
   const handleTakePhoto = async () => {
     if (!(await requireAuth(t('find_anywhere.auth_reason') || 'отметить находку'))) return;
-    setError(null);
+    setFriendlyError(null);
     setPhase('camera');
   };
 
@@ -125,8 +127,16 @@ export default function FindAnywhereScreen() {
 
   const processScan = async (rawUri: string) => {
     setPhase('processing');
-    setError(null);
+    setFriendlyError(null);
     try {
+      // 0. Client-side quick quality check (стены/темнота/размытость)
+      const quality = await checkSceneQuality(rawUri);
+      if (quality.reason !== 'ok') {
+        setFriendlyError(sceneQualityError(quality.reason));
+        setPhase('failed');
+        return;
+      }
+
       // 1. Resize + EXIF strip
       const processedPhoto = await processPhoto(rawUri);
 
@@ -136,7 +146,7 @@ export default function FindAnywhereScreen() {
       // 3. Edge Function: NSFW + CLIP embedding
       const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
       if (!moderation.safe) {
-        setError(t('find_anywhere.error_nsfw') || 'Фото не прошло проверку. Сфотографируй именно камень.');
+        setFriendlyError(translateScanError('nsfw', 'find-anywhere'));
         setPhase('failed');
         return;
       }
@@ -150,11 +160,8 @@ export default function FindAnywhereScreen() {
           localUri: processedPhoto.uri,
           hits,
         });
+        setFriendlyError(translateScanError('low_similarity', 'find-anywhere'));
         setPhase('failed');
-        setError(
-          t('find_anywhere.error_no_match') ||
-            'Не нашли похожий камень. Возможно он ещё не зарегистрирован в Stobi или фото плохого качества.',
-        );
         return;
       }
 
@@ -173,7 +180,7 @@ export default function FindAnywhereScreen() {
       void haptics.selection();
     } catch (e: any) {
       console.warn('processScan error', e);
-      setError(e?.message ?? String(e));
+      setFriendlyError(translateScanError(e?.message ?? String(e), 'find-anywhere'));
       setPhase('failed');
     }
   };
@@ -185,7 +192,7 @@ export default function FindAnywhereScreen() {
   const handleClaim = async () => {
     if (!processed || !selected) return;
     setPhase('claiming');
-    setError(null);
+    setFriendlyError(null);
     try {
       const result = await markStoneFoundV2({
         stoneId: selected.stoneId,
@@ -193,7 +200,7 @@ export default function FindAnywhereScreen() {
         embedding: processed.embedding,
       });
       if (!result.ok) {
-        setError(result.detail || result.reason || 'Не получилось зачесть');
+        setFriendlyError(translateScanError(result.detail || result.reason, 'find'));
         setPhase('failed');
         return;
       }
@@ -207,7 +214,7 @@ export default function FindAnywhereScreen() {
       void haptics.success();
     } catch (e: any) {
       console.warn('handleClaim error', e);
-      setError(e?.message ?? String(e));
+      setFriendlyError(translateScanError(e?.message ?? String(e), 'find'));
       setPhase('failed');
     }
   };
@@ -275,13 +282,14 @@ export default function FindAnywhereScreen() {
           />
         )}
         {phase === 'failed' && (
-          <FailedView
-            error={error}
+          <FriendlyFailView
+            error={friendlyError ?? translateScanError('unknown', 'find-anywhere')}
+            previewUri={processed?.localUri ?? null}
             onRetry={() => {
               setPhase('camera');
               setProcessed(null);
               setSelected(null);
-              setError(null);
+              setFriendlyError(null);
             }}
             onBack={() => router.back()}
             t={t}
@@ -527,28 +535,48 @@ function SuccessView({
   );
 }
 
-function FailedView({
+function FriendlyFailView({
   error,
+  previewUri,
   onRetry,
   onBack,
   t,
 }: {
-  error: string | null;
+  error: FriendlyError;
+  previewUri: string | null;
   onRetry: () => void;
   onBack: () => void;
   t: TFn;
 }) {
   return (
     <View style={styles.centerBlock}>
-      <View style={{ marginBottom: 16 }}>
-        <WarningCircle size={80} color={Colors.coral} weight="fill" />
-      </View>
-      <Text style={styles.failTitle}>
-        {t('find_anywhere.fail_title') || 'Что-то пошло не так'}
-      </Text>
-      <Text style={styles.failSub}>
-        {error ?? (t('find_anywhere.fail_sub') || 'Попробуй ещё раз с другим ракурсом')}
-      </Text>
+      {previewUri ? (
+        <View style={[styles.scanPreviewWrap, { borderColor: Colors.coral, marginBottom: 20 }]}>
+          <Image source={{ uri: previewUri }} style={styles.scanPreview} />
+          <View style={[styles.scanBadge, { backgroundColor: Colors.coral, marginLeft: -28 }]}>
+            <WarningCircle size={14} color="#FFFFFF" weight="fill" />
+            <Text style={styles.scanBadgeText}>Не то</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={{ marginBottom: 16 }}>
+          <WarningCircle size={80} color={Colors.coral} weight="fill" />
+        </View>
+      )}
+
+      <Text style={styles.failTitle}>{error.title}</Text>
+      <Text style={styles.failSub}>{error.message}</Text>
+
+      {error.tips.length > 0 && (
+        <View style={styles.tipsCard}>
+          {error.tips.map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <TouchableOpacity style={styles.primaryBtn} onPress={onRetry} activeOpacity={0.85}>
         <Camera size={20} color="#FFFFFF" weight="fill" />
@@ -638,7 +666,7 @@ const styles = StyleSheet.create({
   },
   tipRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
   tipText: {
@@ -646,6 +674,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text,
     fontWeight: '600',
+    lineHeight: 20,
+  },
+  tipBullet: {
+    fontSize: 18,
+    color: Colors.accent,
+    fontWeight: '800',
+    lineHeight: 20,
   },
 
   primaryBtn: {

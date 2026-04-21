@@ -41,6 +41,8 @@ import { getCurrentLocation } from '../lib/location';
 import { requireAuth } from '../lib/auth-gate';
 import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
+import { checkSceneQuality } from '../lib/scan-quality';
+import { translateScanError, sceneQualityError, type FriendlyError } from '../lib/scan-errors';
 
 type Phase = 'camera' | 'scanning' | 'claiming' | 'success' | 'pending' | 'rejected' | 'error';
 
@@ -59,7 +61,7 @@ export default function ScanStoneScreen() {
     similarity: number | null;
     balance: number | null;
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
 
   // Auth gate (one-shot на mount). Если guest — router.back + модалка.
   useEffect(() => {
@@ -76,9 +78,18 @@ export default function ScanStoneScreen() {
 
     setPreviewUri(uri);
     setPhase('scanning');
-    setError(null);
+    setFriendlyError(null);
 
     try {
+      // 0. Client-side quick quality check — отсекаем явные стены/темноту
+      //    до того как потратим серверные вызовы.
+      const quality = await checkSceneQuality(uri);
+      if (quality.reason !== 'ok') {
+        setFriendlyError(sceneQualityError(quality.reason));
+        setPhase('rejected');
+        return;
+      }
+
       // 1. Process (resize, EXIF strip)
       const processed = await processPhoto(uri);
 
@@ -88,7 +99,7 @@ export default function ScanStoneScreen() {
       // 3. NSFW + CLIP embedding
       const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
       if (!moderation.safe) {
-        setError(t('find_anywhere.error_nsfw'));
+        setFriendlyError(translateScanError('nsfw'));
         setPhase('rejected');
         return;
       }
@@ -112,7 +123,7 @@ export default function ScanStoneScreen() {
       });
 
       if (!claim.ok) {
-        setError(claim.detail || claim.reason);
+        setFriendlyError(translateScanError(claim.detail || claim.reason));
         setPhase('error');
         return;
       }
@@ -131,11 +142,13 @@ export default function ScanStoneScreen() {
       } else if (claim.status === 'pending') {
         setPhase('pending');
       } else {
+        // RPC вернул rejected — скорее всего low_similarity
+        setFriendlyError(translateScanError(claim.reason, 'find'));
         setPhase('rejected');
       }
     } catch (e: any) {
       console.warn('scan-stone error', e);
-      setError(e?.message ?? String(e));
+      setFriendlyError(translateScanError(e?.message ?? String(e), 'find'));
       setPhase('error');
     }
   };
@@ -143,7 +156,7 @@ export default function ScanStoneScreen() {
   const handleRetry = () => {
     setPhase('camera');
     setPreviewUri(null);
-    setError(null);
+    setFriendlyError(null);
     setResult(null);
   };
 
@@ -253,44 +266,14 @@ export default function ScanStoneScreen() {
           </View>
         )}
 
-        {phase === 'rejected' && (
-          <View style={styles.centerBlock}>
-            <View style={{ marginBottom: 16 }}>
-              <WarningCircle size={80} color={Colors.coral} weight="fill" />
-            </View>
-            <Text style={styles.failTitle}>
-              {error ?? 'AI не узнал этот камень'}
-            </Text>
-            <Text style={styles.failSub}>
-              {t('find_anywhere.fail_sub')}
-            </Text>
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleRetry}
-              activeOpacity={0.85}
-            >
-              <Camera size={20} color="#FFFFFF" weight="fill" />
-              <Text style={styles.primaryBtnText}>{t('find_anywhere.btn_retry')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.back()} activeOpacity={0.7}>
-              <Text style={styles.secondaryBtnText}>{t('common.back')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {phase === 'error' && (
-          <View style={styles.centerBlock}>
-            <WarningCircle size={80} color={Colors.coral} weight="fill" />
-            <Text style={styles.failTitle}>{t('find_anywhere.fail_title')}</Text>
-            <Text style={styles.failSub}>{error ?? ''}</Text>
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleRetry}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>{t('find_anywhere.btn_retry')}</Text>
-            </TouchableOpacity>
-          </View>
+        {(phase === 'rejected' || phase === 'error') && (
+          <FriendlyErrorView
+            error={friendlyError ?? translateScanError('unknown', 'find')}
+            previewUri={previewUri}
+            onRetry={handleRetry}
+            onBack={() => router.back()}
+            t={t}
+          />
         )}
       </ScrollView>
     </View>
@@ -302,6 +285,56 @@ function TipRow({ emoji, text }: { emoji: string; text: string }) {
     <View style={styles.tipRow}>
       <Text style={{ fontSize: 18 }}>{emoji}</Text>
       <Text style={styles.tipText}>{text}</Text>
+    </View>
+  );
+}
+
+function FriendlyErrorView({
+  error,
+  previewUri,
+  onRetry,
+  onBack,
+  t,
+}: {
+  error: FriendlyError;
+  previewUri: string | null;
+  onRetry: () => void;
+  onBack: () => void;
+  t: (k: string) => string;
+}) {
+  return (
+    <View style={styles.centerBlock}>
+      {previewUri && (
+        <View style={[styles.scanPreviewWrap, { borderColor: Colors.coral, marginBottom: 20 }]}>
+          <Image source={{ uri: previewUri }} style={styles.scanPreview} />
+          <View style={[styles.scanBadge, { backgroundColor: Colors.coral, marginLeft: -28 }]}>
+            <WarningCircle size={14} color="#FFFFFF" weight="fill" />
+            <Text style={styles.scanBadgeText}>Не то</Text>
+          </View>
+        </View>
+      )}
+
+      <Text style={styles.failTitle}>{error.title}</Text>
+      <Text style={styles.failSub}>{error.message}</Text>
+
+      {error.tips.length > 0 && (
+        <View style={styles.tipsCard}>
+          {error.tips.map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.primaryBtn} onPress={onRetry} activeOpacity={0.85}>
+        <Camera size={20} color="#FFFFFF" weight="fill" />
+        <Text style={styles.primaryBtnText}>{t('find_anywhere.btn_retry')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.secondaryBtn} onPress={onBack} activeOpacity={0.7}>
+        <Text style={styles.secondaryBtnText}>{t('common.back')}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -360,8 +393,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     marginBottom: 24,
   },
-  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  tipText: { flex: 1, fontSize: 14, color: Colors.text, fontWeight: '600' },
+  tipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  tipText: { flex: 1, fontSize: 14, color: Colors.text, fontWeight: '600', lineHeight: 20 },
+  tipBullet: { fontSize: 18, color: Colors.accent, fontWeight: '800', lineHeight: 20 },
 
   primaryBtn: {
     flexDirection: 'row',
