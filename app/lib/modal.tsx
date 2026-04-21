@@ -91,6 +91,12 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         transparent
         animationType="fade"
         onRequestClose={close}
+        // iOS: без overFullScreen кастомная модалка не показывается поверх
+        // экранов с presentation:'modal' (settings, premium, stone detail).
+        // Из-за этого язык в settings не был кликабельным — модалка
+        // открывалась за stack-модалкой.
+        presentationStyle="overFullScreen"
+        statusBarTranslucent
       >
         <Pressable style={styles.overlay} onPress={close}>
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
