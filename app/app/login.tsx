@@ -13,8 +13,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Envelope, Lock, WarningCircle, CaretLeft } from 'phosphor-react-native';
 import { router, Link } from 'expo-router';
+import Constants from 'expo-constants';
 import { login, DEMO_ACCOUNTS, configureGoogleSignIn, getGoogleSignin } from '../lib/auth';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+
+// Google Sign-In использует native TurboModule @react-native-google-signin,
+// которого нет в Expo Go → TurboModuleRegistry.getEnforcing падает с
+// invariant violation. Скрываем кнопку в Expo Go — в dev-build / production
+// всё работает.
+const isExpoGo = Constants.appOwnership === 'expo';
 import { StoneMascot } from '../components/StoneMascot';
 import { ArrowRight } from 'phosphor-react-native';
 import { useI18n } from '../lib/i18n';
@@ -154,10 +161,12 @@ export default function LoginScreen() {
                   <Text style={styles.socialText}>{t('auth.apple')}</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading}>
-                <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
-                <Text style={styles.socialText}>{t('auth.google')}</Text>
-              </TouchableOpacity>
+              {!isExpoGo && (
+                <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading}>
+                  <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
+                  <Text style={styles.socialText}>{t('auth.google')}</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.divider}>

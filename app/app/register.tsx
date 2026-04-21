@@ -20,8 +20,13 @@ import {
   WarningCircle,
 } from 'phosphor-react-native';
 import { router, Link } from 'expo-router';
+import Constants from 'expo-constants';
 import { Colors } from '../constants/Colors';
 import { register, login, DEMO_ACCOUNTS, configureGoogleSignIn, getGoogleSignin } from '../lib/auth';
+
+// Google Sign-In requires a native module not bundled in Expo Go.
+// Hide the button there to avoid TurboModule invariant violations.
+const isExpoGo = Constants.appOwnership === 'expo';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StoneMascot } from '../components/StoneMascot';
 import { ArrowRight, Gift } from 'phosphor-react-native';
@@ -245,16 +250,18 @@ export default function RegisterScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* Google Sign-In */}
-                <TouchableOpacity
-                  style={styles.socialBtn}
-                  onPress={handleGoogleSignIn}
-                  activeOpacity={0.85}
-                  disabled={loading}
-                >
-                  <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
-                  <Text style={styles.socialText}>{t('auth.google')}</Text>
-                </TouchableOpacity>
+                {/* Google Sign-In — скрыт в Expo Go (native модуль отсутствует) */}
+                {!isExpoGo && (
+                  <TouchableOpacity
+                    style={styles.socialBtn}
+                    onPress={handleGoogleSignIn}
+                    activeOpacity={0.85}
+                    disabled={loading}
+                  >
+                    <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
+                    <Text style={styles.socialText}>{t('auth.google')}</Text>
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />

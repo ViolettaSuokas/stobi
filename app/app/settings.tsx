@@ -75,15 +75,21 @@ export default function SettingsScreen() {
       setLang(code);
       void LanguageChanged(code);
     };
-    modal.show({
-      title: 'Language / Kieli / Язык',
-      buttons: [
-        { label: `${check('ru')}Русский`, onPress: () => pick('ru') },
-        { label: `${check('fi')}Suomi`, onPress: () => pick('fi') },
-        { label: `${check('en')}English`, onPress: () => pick('en') },
-        { label: t('common.cancel'), style: 'cancel' },
+    // Использую native Alert вместо кастомной модалки: Alert.alert
+    // в iOS — это UIAlertController, он всегда показывается над всем
+    // (включая stack-модалки), не фризится и не требует overFullScreen.
+    // Кастомная модалка внутри settings (которая presentation:'modal')
+    // имела race при закрытии на iOS и могла вешать UI.
+    Alert.alert(
+      'Language / Kieli / Язык',
+      undefined,
+      [
+        { text: `${check('ru')}Русский`, onPress: () => pick('ru') },
+        { text: `${check('fi')}Suomi`, onPress: () => pick('fi') },
+        { text: `${check('en')}English`, onPress: () => pick('en') },
+        { text: t('common.cancel'), style: 'cancel' },
       ],
-    });
+    );
   };
 
   const handlePaymentHistory = () => {
