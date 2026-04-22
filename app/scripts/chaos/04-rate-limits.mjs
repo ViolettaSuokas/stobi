@@ -3,13 +3,13 @@
 //   - report_stone_missing: GPS proximity check, unique reporter, 5/day cap
 //   - Report-driven hide trigger: 3 reports + 30 days no-confirm → is_hidden
 // Run: node scripts/chaos/04-rate-limits.mjs
-import { signUp, suite, section, pass, fail, info, report, rpc, restSelect, fakeEmbedding, vecLiteral } from './_shared.mjs';
+import { signUpAsAdult, suite, section, pass, fail, info, report, rpc, restSelect, fakeEmbedding, vecLiteral } from './_shared.mjs';
 
 async function main() {
   suite('RATE LIMITS & ANTI-ABUSE');
 
-  const A = await signUp('chaos-rate-a'); // stone author
-  const B = await signUp('chaos-rate-b'); // finder
+  const A = await signUpAsAdult('chaos-rate-a'); // stone author (birth_year set)
+  const B = await signUpAsAdult('chaos-rate-b'); // finder (birth_year set)
   if (!A.body.access_token || !B.body.access_token) {
     fail('setup', 'could not create users');
     return report();

@@ -15,15 +15,15 @@
 // Run: node scripts/chaos/07-user-journey.mjs
 
 import {
-  signUp, suite, section, pass, fail, info, report,
+  signUpAsAdult, suite, section, pass, fail, info, report,
   rpc, restSelect, fakeEmbedding, vecLiteral,
 } from './_shared.mjs';
 
 async function main() {
   suite('USER JOURNEY — full happy-path flow');
 
-  const A = await signUp('chaos-journey-a');
-  const B = await signUp('chaos-journey-b');
+  const A = await signUpAsAdult('chaos-journey-a');
+  const B = await signUpAsAdult('chaos-journey-b');
   if (!A.body.access_token || !B.body.access_token) {
     fail('setup', 'users not created');
     return report();

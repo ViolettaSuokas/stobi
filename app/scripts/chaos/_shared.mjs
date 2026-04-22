@@ -39,6 +39,24 @@ export async function signUp(emailPrefix = 'chaos') {
   return { res, body, email, password };
 }
 
+// Sign up and immediately set birth_year on the new profile, mimicking what
+// onboarding does. Required for any test that then calls create_stone or
+// record_find_v2 (which are COPPA-gated).
+export async function signUpAsAdult(emailPrefix = 'chaos-adult') {
+  const s = await signUp(emailPrefix);
+  if (!s.body?.access_token) return s;
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${s.body.user.id}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${s.body.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ birth_year: 1995 }),
+  });
+  return s;
+}
+
 export async function signIn(email, password) {
   const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',

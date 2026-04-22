@@ -186,13 +186,14 @@ export async function uploadPhotoToStorage(
     throw new Error(`Upload failed: ${uploadError.message}`);
   }
 
-  // 7 дней expiry — чтобы pending-approval фото оставались доступны
-  // автору когда он зайдёт на экран через часы/дни.
-  // 10 минут (как было) ломало flow: юзер отсканил → загрузил → embed →
-  // через 20 мин автор открывает pending-approvals → signed URL протух → 403.
+  // 24h expiry — balances two constraints:
+  //   - pending-approval screens need the URL to still resolve when the author
+  //     checks them hours later (was 10 min, too short — author saw 403)
+  //   - a leaked URL shouldn't give a week-long window to enumerate photos
+  // 7 days was flagged in audit 2026-04-22 as too permissive.
   const { data: signed, error: signError } = await supabase.storage
     .from('photos')
-    .createSignedUrl(path, 60 * 60 * 24 * 7);
+    .createSignedUrl(path, 60 * 60 * 24);
   if (signError || !signed?.signedUrl) {
     console.warn('[uploadPhotoToStorage] sign failed:', signError);
     throw new Error(`Signed URL failed: ${signError?.message ?? 'unknown'}`);

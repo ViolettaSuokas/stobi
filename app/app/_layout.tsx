@@ -55,20 +55,25 @@ export default function RootLayout() {
     // Deep-link handler — stobi://stone/<id> или https://stobi.app/stone/<id>.
     // Парсим URL, если это ссылка на stone — навигируем. Apple/Android
     // вызывают listener когда приложение открывается из универсальной ссылки.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const SAFE_CODE_RE = /^[A-Za-z0-9_-]{1,64}$/;
     const handleUrl = (url: string | null) => {
-      if (!url) return;
-      const parsed = Linking.parse(url);
+      if (!url || typeof url !== 'string') return;
+      let parsed: ReturnType<typeof Linking.parse>;
+      try {
+        parsed = Linking.parse(url);
+      } catch (e) {
+        console.warn('deep link parse failed', e);
+        return;
+      }
       const parts = (parsed.path ?? '').replace(/^\//, '').split('/');
-      // stone/ID — открываем детейл
-      if (parts[0] === 'stone' && parts[1]) {
+      // stone/ID — open detail only if ID is a valid UUID.
+      if (parts[0] === 'stone' && parts[1] && UUID_RE.test(parts[1])) {
         router.push(`/stone/${parts[1]}` as any);
       }
-      // invite/CODE — сохраняем pending код, применим после регистрации
-      if (parts[0] === 'invite' && parts[1]) {
+      // invite/CODE — save pending code only if sanitized.
+      if (parts[0] === 'invite' && parts[1] && SAFE_CODE_RE.test(parts[1])) {
         void savePendingReferralCode(parts[1]);
-        // Если юзер залогинен — мы не применяем здесь, так как
-        // redeem_referral_code нужно вызвать руками (может не пройти
-        // из-за already_redeemed). Покажем diff на профиле — потом.
       }
     };
     // Первоначальная ссылка (если app открыт впервые из share)
