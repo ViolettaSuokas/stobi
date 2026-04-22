@@ -110,11 +110,6 @@ export function SafetyGate({ visible, onAcknowledge, onClose, readOnly = false }
             />
             <Rule
               icon={<X size={18} color="#DC2626" />}
-              text={t('safety.gate_bad_2') || 'Возле школ и детских садов (это защита от взрослых с плохими намерениями)'}
-              bad
-            />
-            <Rule
-              icon={<X size={18} color="#DC2626" />}
               text={t('safety.gate_bad_3') || 'В лесу или уединённых местах, где нет людей'}
               bad
             />

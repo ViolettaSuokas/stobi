@@ -20,7 +20,6 @@ const OVERPASS = "https://overpass-api.de/api/interpreter";
 
 // Search radii (meters)
 const POI_RADIUS = 150;
-const SCHOOL_EXCLUSION_RADIUS = 300;
 const RESIDENTIAL_CHECK_RADIUS = 20;
 
 // POI tags that count as "safe public place"
@@ -45,12 +44,15 @@ const SAFE_POI_TAGS = [
   'shop=mall',
 ];
 
-// Places where hiding is NOT safe — pattern of predators targeting kids
-const EXCLUSION_TAGS = [
-  'amenity=school',
-  'amenity=kindergarten',
-  'amenity=childcare',
-];
+// Note: we used to exclude schools / kindergartens / childcare within
+// 300m as an anti-grooming measure, but in Finland school yards and
+// adjacent parks are community-used public space — and that's exactly
+// where painted stones naturally get found by kids. Blocking hides there
+// removed the most organic use case. Dropped per community feedback.
+//
+// Kept: residential private property (trespassing risk), requirement of
+// an actual public POI nearby (bench / park / library / bus stop), and
+// the universal Report system for any actual bad hide.
 
 type Result =
   | { safe: true; nearest_poi: string; distance_m: number }
@@ -98,19 +100,7 @@ serve(async (req: Request) => {
 });
 
 async function validate(lat: number, lng: number): Promise<Result> {
-  // 1. Check exclusion zones first — schools / kindergartens within 300m = hard reject.
-  const exclusionQuery = buildExclusionQuery(lat, lng, SCHOOL_EXCLUSION_RADIUS);
-  const exclusionData = await overpass(exclusionQuery);
-  if (exclusionData.elements && exclusionData.elements.length > 0) {
-    const el = exclusionData.elements[0];
-    return {
-      safe: false,
-      reason: 'near_school',
-      message: `Стоп — это слишком близко к школе/детскому саду (${el.tags?.name ?? 'образовательное учреждение'}). Чтобы защитить детей, Stobi не разрешает прятать камни в таких местах. Выбери парк, площадь или кафе.`,
-    };
-  }
-
-  // 2. Check if inside a residential building polygon (private property).
+  // 1. Check if inside a residential building polygon (private property).
   const resQuery = buildResidentialQuery(lat, lng, RESIDENTIAL_CHECK_RADIUS);
   const resData = await overpass(resQuery);
   if (resData.elements && resData.elements.length > 0) {
@@ -121,7 +111,7 @@ async function validate(lat: number, lng: number): Promise<Result> {
     };
   }
 
-  // 3. Must be near a safe public POI.
+  // 2. Must be near a safe public POI.
   const poiQuery = buildPoiQuery(lat, lng, POI_RADIUS);
   const poiData = await overpass(poiQuery);
   if (!poiData.elements || poiData.elements.length === 0) {
@@ -142,14 +132,6 @@ async function validate(lat: number, lng: number): Promise<Result> {
     nearest_poi: poiName,
     distance_m: Math.round(nearestDistance),
   };
-}
-
-function buildExclusionQuery(lat: number, lng: number, radius: number): string {
-  const clauses = EXCLUSION_TAGS.map((t) => {
-    const [k, v] = t.split('=');
-    return `node["${k}"="${v}"](around:${radius},${lat},${lng});way["${k}"="${v}"](around:${radius},${lat},${lng});`;
-  }).join('');
-  return `[out:json][timeout:10];(${clauses});out center 5;`;
 }
 
 function buildResidentialQuery(lat: number, lng: number, radius: number): string {
