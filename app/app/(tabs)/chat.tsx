@@ -60,6 +60,7 @@ import { gatherAchievementStats, checkAchievements } from '../../lib/achievement
 import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { moderateMessage } from '../../lib/moderation';
 import { SafeImage } from '../../components/SafeImage';
+import { ReportSheet } from '../../components/ReportSheet';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -72,6 +73,7 @@ export default function ChatScreen() {
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [reportTarget, setReportTarget] = useState<{ type: 'message'; id: string } | null>(null);
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
@@ -368,19 +370,31 @@ export default function ChatScreen() {
     });
   };
 
-  const handleReport = async (item: ChatMessage) => {
+  // Open the universal ReportSheet for this message. When the sheet
+  // closes with a result, we hide the message locally and remember it
+  // so the reporter doesn't keep seeing bad content while moderation
+  // reviews. The actual DB write happens inside the sheet.
+  const handleReport = (item: ChatMessage) => {
+    setReportTarget({ type: 'message', id: item.id });
+  };
+
+  const handleReportDone = async (messageId: string, result: 'sent' | 'duplicate') => {
+    // Track for retro analytics; non-blocking.
     try {
       const { trackEvent } = await import('../../lib/analytics');
-      await trackEvent('report_message', { message_id: item.id, author_id: item.authorId });
-    } catch (e) {
-      console.warn('chat: report analytics failed', e);
-    }
-    // Hide message locally
+      await trackEvent('report_message', { message_id: messageId, result });
+    } catch {}
+    // Hide locally regardless of sent/duplicate — user already signalled.
     const updated = new Set(reportedIds);
-    updated.add(item.id);
+    updated.add(messageId);
     setReportedIds(updated);
     await AsyncStorage.setItem('stobi:reported_messages', JSON.stringify([...updated]));
-    Alert.alert(t('chat.report_title'), t('chat.report_sent'));
+    Alert.alert(
+      t('report.sent_title') || t('chat.report_title'),
+      result === 'duplicate'
+        ? (t('report.duplicate') || t('chat.report_sent'))
+        : (t('report.sent_text') || t('chat.report_sent')),
+    );
   };
 
   const showMessageMenu = async (item: ChatMessage) => {
@@ -788,6 +802,19 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      {reportTarget && (
+        <ReportSheet
+          visible={!!reportTarget}
+          targetType="message"
+          targetId={reportTarget.id}
+          onClose={() => setReportTarget(null)}
+          onDone={(result) => {
+            const id = reportTarget.id;
+            setReportTarget(null);
+            handleReportDone(id, result);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

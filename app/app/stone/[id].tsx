@@ -19,6 +19,7 @@ import {
   Footprints,
   Eye,
   ShareNetwork,
+  Flag,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -57,6 +58,7 @@ import { ShareTapped, StoneTapped, FirstFindCelebrated, StoneFound } from '../..
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { SafeImage } from '../../components/SafeImage';
 import { PencilSimple, Trash } from 'phosphor-react-native';
+import { ReportSheet } from '../../components/ReportSheet';
 import { useModal } from '../../lib/modal';
 import { useI18n } from '../../lib/i18n';
 import { StoneMascot } from '../../components/StoneMascot';
@@ -87,6 +89,10 @@ export default function StoneDetailScreen() {
   // "Камня здесь нет" report flow (migration 017)
   const [reportingMissing, setReportingMissing] = useState(false);
   const [reportCount, setReportCount] = useState<number>(0);
+
+  // Universal "pожаловаться на контент" sheet (nsfw / harassment / etc).
+  // Separate from "stone missing" — that's geo-freshness, this is abuse.
+  const [showReportSheet, setShowReportSheet] = useState(false);
   const [authorConfirming, setAuthorConfirming] = useState(false);
 
   // 1-hour lock on freshly-hidden stones (anti-self-find farming).
@@ -599,6 +605,17 @@ export default function StoneDetailScreen() {
             >
               <CaretDown size={22} color={Colors.text} weight="bold" />
             </TouchableOpacity>
+            {stone && !isOwnStone && (
+              <TouchableOpacity
+                style={styles.heroBtn}
+                onPress={() => setShowReportSheet(true)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('report.title') || 'Пожаловаться'}
+              >
+                <Flag size={20} color={Colors.text} weight="bold" />
+              </TouchableOpacity>
+            )}
           </SafeAreaView>
         </View>
 
@@ -906,6 +923,27 @@ export default function StoneDetailScreen() {
 
       {/* Celebration overlay — показывается после успешной находки */}
       {celebration && <CelebrationOverlay {...celebration} />}
+
+      {/* Universal report sheet. Only for stones we don't own. Handles
+          nsfw / harassment / unsafe_location / spam / child_safety. */}
+      {stone && !isOwnStone && (
+        <ReportSheet
+          visible={showReportSheet}
+          targetType="stone"
+          targetId={stone.id}
+          onClose={() => setShowReportSheet(false)}
+          onDone={(result) => {
+            setShowReportSheet(false);
+            modal.show({
+              title: t('report.sent_title') || 'Спасибо',
+              message: result === 'duplicate'
+                ? (t('report.duplicate') || 'Ты уже жаловался на это.')
+                : (t('report.sent_text') || 'Жалоба отправлена.'),
+              buttons: [{ label: t('common.ok') || 'OK' }],
+            });
+          }}
+        />
+      )}
     </View>
   );
 }
