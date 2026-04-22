@@ -251,6 +251,10 @@ export default function ChatScreen() {
         const msgs: Record<string, string> = {
           profanity: t('chat.mod_profanity'),
           link: t('chat.mod_link'),
+          phone: t('chat.mod_phone'),
+          email: t('chat.mod_email'),
+          social: t('chat.mod_social'),
+          grooming: t('chat.mod_grooming'),
           too_short: '',
         };
         if (msgs[check.reason!]) {
