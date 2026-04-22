@@ -66,7 +66,11 @@ type ProcessedScan = {
 };
 
 const AUTO_SELECT_THRESHOLD = 0.82;
-const LIKELY_MATCH_THRESHOLD = 0.60;
+// Chaos-test против prod (2026-04-22): baseline similarity между произвольными
+// CLIP embeddings ≈ 0.69, между семантически близкими фото без общего объекта
+// ≈ 0.75-0.79. Старый порог 0.60 пропускал случайный шум как likely_match.
+// 0.75 ставим чуть выше baseline, но ниже разумного совпадения.
+const LIKELY_MATCH_THRESHOLD = 0.75;
 
 export default function FindAnywhereScreen() {
   const { t } = useI18n();
