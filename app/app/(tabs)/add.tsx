@@ -33,6 +33,7 @@ import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
 import { addUserStone } from '../../lib/user-stones';
 import { checkHideLocationSafe } from '../../lib/safety';
+import { SafetyGate, hasAcknowledgedSafety } from '../../components/SafetyGate';
 import { StoneHidden } from '../../lib/analytics';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
@@ -74,6 +75,7 @@ export default function AddScreen() {
   const [scanCaptures, setScanCaptures] = useState<ScanCapture[]>([]);
   const [showScanCamera, setShowScanCamera] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [showSafetyGate, setShowSafetyGate] = useState(false);
 
   // Производные значения для совместимости с существующим create_stone call
   const scanEmbedding = scanCaptures.length > 0
@@ -131,7 +133,23 @@ export default function AddScreen() {
 
   // AI-scanner для hide flow — показываем live-camera со scan-frame.
   // Каждый из 2 ракурсов обрабатывается в фоне параллельно.
-  const handleOpenScanCamera = () => {
+  //
+  // SAFETY: first time a user tries to hide a stone, block until they've
+  // read + acknowledged the safety rules (hide only in public places, never
+  // near schools, etc). This is critical since painted-rocks users are often
+  // children and unsafe hiding patterns = child-safety hazard.
+  const handleOpenScanCamera = async () => {
+    const acked = await hasAcknowledgedSafety();
+    if (!acked) {
+      setShowSafetyGate(true);
+      return;
+    }
+    setScanCaptures([]);
+    setShowScanCamera(true);
+  };
+
+  const handleSafetyAcknowledge = () => {
+    setShowSafetyGate(false);
     setScanCaptures([]);
     setShowScanCamera(true);
   };
@@ -425,6 +443,17 @@ export default function AddScreen() {
     );
   }
 
+  // Full-screen SafetyGate modal — rendered at top of the tree so it can
+  // appear in front of anything else. Blocks camera from opening until the
+  // user has acknowledged the safe-hiding rules once per install.
+  const safetyGateEl = (
+    <SafetyGate
+      visible={showSafetyGate}
+      onAcknowledge={handleSafetyAcknowledge}
+      onClose={() => setShowSafetyGate(false)}
+    />
+  );
+
   // Full-screen scan camera overlay (hides all UI underneath).
   // Multi-angle: 2 снимка подряд. current index + stepLabel передаются
   // в camera через progress prop — юзер видит "Фото 2 из 3 — Сверху".
@@ -451,6 +480,7 @@ export default function AddScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {safetyGateEl}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
