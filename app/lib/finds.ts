@@ -66,6 +66,11 @@ export type FindResult =
     };
 
 /**
+ * @deprecated Use `markStoneFoundV2` instead. Legacy GPS-only find.
+ * Still used by `app/stone/[id].tsx` as fallback for stones without
+ * embeddings (pre-AI-verification seed data). Remove after 2026-07-01
+ * when all active stones have embeddings.
+ *
  * Records a find via server RPC `record_find` (migration 005).
  *
  * Server enforces atomically (cheat-proof):

@@ -15,8 +15,16 @@ const extra = (Constants.expoConfig?.extra ?? {}) as {
 };
 
 // Sandbox fallback — работает только в dev/staging.
-const RC_IOS_KEY = extra.RC_IOS_KEY ?? 'test_mCIvELpIYugBvVUFNDasZssXuos';
-const RC_ANDROID_KEY = extra.RC_ANDROID_KEY ?? 'test_mCIvELpIYugBvVUFNDasZssXuos';
+// Production: ключи должны прийти через EAS env (RC_IOS_KEY / RC_ANDROID_KEY).
+const SANDBOX_KEY = 'test_mCIvELpIYugBvVUFNDasZssXuos';
+const RC_IOS_KEY = extra.RC_IOS_KEY ?? SANDBOX_KEY;
+const RC_ANDROID_KEY = extra.RC_ANDROID_KEY ?? SANDBOX_KEY;
+
+if (!__DEV__ && (RC_IOS_KEY === SANDBOX_KEY || RC_ANDROID_KEY === SANDBOX_KEY)) {
+  console.warn(
+    '[purchases] SANDBOX KEY IN PRODUCTION BUILD — set RC_IOS_KEY / RC_ANDROID_KEY via EAS env before App Store release.'
+  );
+}
 
 let Purchases: any = null;
 let isInitialized = false;

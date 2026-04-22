@@ -18,7 +18,7 @@ export default function TermsScreen() {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.updated}>Last updated: April 17, 2026</Text>
+        <Text style={styles.updated}>Last updated: April 22, 2026</Text>
 
         <Text style={styles.h2}>1. Acceptance</Text>
         <Text style={styles.p}>
