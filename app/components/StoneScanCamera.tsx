@@ -45,7 +45,7 @@ type Props = {
   onCapture: (uri: string) => void;
   onCancel: () => void;
   ctaLabel?: string;
-  /** Для multi-angle потока в hide: "Ракурс 1 из 3" и подсказка этапа. */
+  /** Для multi-angle потока в hide: "Фото 1 из 2" и подсказка этапа. */
   progress?: { current: number; total: number; stepLabel?: string };
 };
 

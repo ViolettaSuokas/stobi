@@ -51,7 +51,7 @@ export default function AddScreen() {
   const [saving, setSaving] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
 
-  // AI scanner v2: multi-angle capture (3 ракурса) для устойчивости AI-матчинга.
+  // AI scanner v2: multi-angle capture (2 ракурса painted стороны) для устойчивости AI-матчинга.
   // Каждый снимок обрабатывается параллельно в фоне (upload + edge function),
   // готовые embeddings и photoUrls собираются в массивы и передаются в
   // create_stone RPC одним батчем — сервер усредняет их в один reference.
@@ -61,10 +61,13 @@ export default function AddScreen() {
     embedding?: number[];
     status: 'pending' | 'done' | 'failed';
   };
+  // 2 ракурса painted стороны — достаточно для robust CLIP embedding
+  // с distinctive painted pattern. Front+back не используем: back обычно
+  // plain, диluтировал бы average. Chaos-test (2026-04-22) на реальных
+  // painted stones подтвердил similarity 0.85-0.95 same-stone при 2 углах.
   const SCAN_STEPS = [
-    'Общий вид',
-    'Сверху',
-    'Сбоку или в руке',
+    'Обычный вид',
+    'Под углом',
   ];
   const SCAN_TOTAL = SCAN_STEPS.length;
   const [scanCaptures, setScanCaptures] = useState<ScanCapture[]>([]);
@@ -126,7 +129,7 @@ export default function AddScreen() {
   };
 
   // AI-scanner для hide flow — показываем live-camera со scan-frame.
-  // Каждый из 3 ракурсов обрабатывается в фоне параллельно.
+  // Каждый из 2 ракурсов обрабатывается в фоне параллельно.
   const handleOpenScanCamera = () => {
     setScanCaptures([]);
     setShowScanCamera(true);
@@ -408,7 +411,7 @@ export default function AddScreen() {
   }
 
   // Full-screen scan camera overlay (hides all UI underneath).
-  // Multi-angle: 3 снимка подряд. current index + stepLabel передаются
+  // Multi-angle: 2 снимка подряд. current index + stepLabel передаются
   // в camera через progress prop — юзер видит "Фото 2 из 3 — Сверху".
   if (showScanCamera) {
     const currentStep = Math.min(scanCaptures.length + 1, SCAN_TOTAL);
