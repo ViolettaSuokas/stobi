@@ -11,6 +11,8 @@ const SUITES = [
   '02-rls.mjs',
   '03-balance.mjs',
   '04-rate-limits.mjs',
+  '05-nsfw-pipeline.mjs',
+  '06-gdpr.mjs',
 ];
 
 async function runOne(file) {
