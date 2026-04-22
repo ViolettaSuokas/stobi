@@ -1,0 +1,52 @@
+name: Chaos Tests
+
+# Runs the integration-level chaos suite against deployed Supabase on every
+# push/PR that touches the app. Catches regressions in signup, RLS, balance
+# integrity, and rate limits before TestFlight ever sees them.
+#
+# Does NOT run the scanner chaos-test (uses Replicate quota + relies on test
+# photos uploaded outside CI).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/supabase/**'
+      - 'app/lib/**'
+      - 'app/scripts/chaos/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/supabase/**'
+      - 'app/lib/**'
+      - 'app/scripts/chaos/**'
+  workflow_dispatch: {}
+
+jobs:
+  chaos:
+    name: Integration chaos tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run chaos suites
+        working-directory: app
+        run: node scripts/chaos/run-all.mjs
+
+      - name: Cleanup throwaway users
+        if: always()
+        working-directory: app
+        continue-on-error: true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            npx supabase db query --linked "delete from auth.users where email like 'chaos-%@stobi.local';" || true
+          else
+            echo "SUPABASE_ACCESS_TOKEN not set — skipping cleanup. Run locally: node scripts/chaos/cleanup.mjs"
+          fi
