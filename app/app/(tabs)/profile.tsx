@@ -66,6 +66,7 @@ import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
+import { moderateMessage } from '../../lib/moderation';
 import { StoneMascot } from '../../components/StoneMascot';
 import { MascotScene } from '../../components/MascotScene';
 import { SafeImage } from '../../components/SafeImage';
@@ -434,8 +435,22 @@ export default function ProfileScreen() {
                     {
                       label: t('common.save'),
                       onPress: async (newBio) => {
+                        const trimmed = newBio?.trim() ?? '';
+                        // Child-safety: bio is public, block phone/email/social/grooming/profanity.
+                        // Empty bio is allowed (user clearing it).
+                        if (trimmed.length > 0) {
+                          const check = moderateMessage(trimmed);
+                          if (!check.ok) {
+                            modal.show({
+                              title: t('profile.bio_rejected_title') || 'Нельзя сохранить',
+                              message: t(`profile.bio_rejected_${check.reason}`) || t(`chat.mod_${check.reason}`) || 'Это нельзя написать в профиле.',
+                              buttons: [{ label: t('common.ok') || 'OK' }],
+                            });
+                            return;
+                          }
+                        }
                         if (isSupabaseConfigured()) {
-                          await supabase.from('profiles').update({ bio: newBio?.trim() || null }).eq('id', user.id);
+                          await supabase.from('profiles').update({ bio: trimmed || null }).eq('id', user.id);
                         }
                         const fresh = await getCurrentUser();
                         setUser(fresh);
@@ -544,10 +559,21 @@ export default function ProfileScreen() {
                       {
                         label: t('common.save'),
                         onPress: async (newName) => {
-                          if (!newName?.trim()) return;
+                          const trimmed = newName?.trim();
+                          if (!trimmed) return;
+                          // Child-safety: username is public, same rules as bio.
+                          const check = moderateMessage(trimmed);
+                          if (!check.ok) {
+                            modal.show({
+                              title: t('profile.name_rejected_title') || 'Нельзя сохранить',
+                              message: t(`profile.name_rejected_${check.reason}`) || t(`chat.mod_${check.reason}`) || 'Это нельзя использовать как имя.',
+                              buttons: [{ label: t('common.ok') || 'OK' }],
+                            });
+                            return;
+                          }
                           const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
                           if (isSupabaseConfigured()) {
-                            await supabase.from('profiles').update({ username: newName.trim() }).eq('id', user.id);
+                            await supabase.from('profiles').update({ username: trimmed }).eq('id', user.id);
                           }
                           const fresh = await getCurrentUser();
                           setUser(fresh);
