@@ -931,6 +931,7 @@ export default function StoneDetailScreen() {
           visible={showReportSheet}
           targetType="stone"
           targetId={stone.id}
+          authorId={stone.authorId ?? undefined}
           onClose={() => setShowReportSheet(false)}
           onDone={(result) => {
             setShowReportSheet(false);

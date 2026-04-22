@@ -28,9 +28,13 @@ type Props = {
   visible: boolean;
   onAcknowledge: () => void;
   onClose: () => void;
+  // Re-opens the same content from Settings as a reference. Hides the
+  // checkbox/continue CTA — the user already acknowledged once, they're
+  // just reviewing. Close button in the header is the only way out.
+  readOnly?: boolean;
 };
 
-export function SafetyGate({ visible, onAcknowledge, onClose }: Props) {
+export function SafetyGate({ visible, onAcknowledge, onClose, readOnly = false }: Props) {
   const { t } = useI18n();
   const [checked, setChecked] = useState(false);
 
@@ -141,33 +145,37 @@ export function SafetyGate({ visible, onAcknowledge, onClose }: Props) {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => setChecked(!checked)}
-            activeOpacity={0.7}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked }}
-          >
-            <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-              {checked && <CheckCircle size={18} color="#FFFFFF" weight="fill" />}
-            </View>
-            <Text style={styles.checkboxLabel}>
-              {t('safety.gate_ack') || 'Я понимаю правила и буду прятать только в безопасных публичных местах'}
-            </Text>
-          </TouchableOpacity>
+          {!readOnly && (
+            <>
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setChecked(!checked)}
+                activeOpacity={0.7}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked }}
+              >
+                <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                  {checked && <CheckCircle size={18} color="#FFFFFF" weight="fill" />}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  {t('safety.gate_ack') || 'Я понимаю правила и буду прятать только в безопасных публичных местах'}
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.cta, !checked && styles.ctaDisabled]}
-            onPress={handleConfirm}
-            disabled={!checked}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t('safety.gate_continue') || 'Продолжить'}
-          >
-            <Text style={styles.ctaText}>
-              {t('safety.gate_continue') || 'Продолжить'}
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cta, !checked && styles.ctaDisabled]}
+                onPress={handleConfirm}
+                disabled={!checked}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('safety.gate_continue') || 'Продолжить'}
+              >
+                <Text style={styles.ctaText}>
+                  {t('safety.gate_continue') || 'Продолжить'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </View>
     </Modal>

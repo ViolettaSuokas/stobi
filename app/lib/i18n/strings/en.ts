@@ -44,6 +44,7 @@ export const en: Record<string, string> = {
     'settings.version': 'Version',
     'settings.privacy': 'Privacy Policy',
     'settings.terms': 'Terms of Service',
+    'settings.community_rules': 'Community rules',
     'settings.account': 'ACCOUNT',
     'settings.logout': 'Log out',
     'settings.delete_account': 'Delete account',
@@ -101,6 +102,7 @@ export const en: Record<string, string> = {
     'report.sent_title': 'Thanks',
     'report.sent_text': 'Report sent. Moderation will review within an hour.',
     'report.duplicate': 'You already reported this. We remember.',
+    'report.also_block': 'Also block this user',
 
     'chat.report': 'Report',
     'chat.report_title': 'Report sent',

@@ -15,6 +15,9 @@ const SUITES = [
   '06-gdpr.mjs',
   '07-user-journey.mjs',
   '08-safety-tier1.mjs',
+  '09-geo-poi.mjs',
+  '10-content-reports-edges.mjs',
+  '11-block-user.mjs',
 ];
 
 async function runOne(file) {

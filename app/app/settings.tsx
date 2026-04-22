@@ -23,6 +23,7 @@ import {
   Trash,
   SignOut,
   DownloadSimple,
+  Heart,
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
@@ -30,6 +31,7 @@ import { getCurrentUser, logout, deleteAccount, exportMyData } from '../lib/auth
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 import { LanguageChanged, LoggedOut, AccountDeleted } from '../lib/analytics';
+import { SafetyGate } from '../components/SafetyGate';
 
 const NOTIF_KEYS = {
   push: 'stobi:notif:push',
@@ -41,6 +43,7 @@ export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [chatNotifs, setChatNotifs] = useState(true);
+  const [showCommunityRules, setShowCommunityRules] = useState(false);
   const { lang, setLang, t } = useI18n();
   const modal = useModal();
 
@@ -294,6 +297,18 @@ export default function SettingsScreen() {
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
           <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={() => setShowCommunityRules(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.community_rules') || 'Правила сообщества'}
+          >
+            <Heart size={20} color={Colors.accent} weight="regular" />
+            <Text style={styles.rowLabel}>{t('settings.community_rules') || 'Правила сообщества'}</Text>
+            <CaretRight size={16} color={Colors.text2} weight="bold" />
+          </TouchableOpacity>
+          <View style={styles.divider} />
           <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/feedback' as any)} accessibilityRole="button" accessibilityLabel={t('settings.feedback')}>
             <Info size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.feedback')}</Text>
@@ -323,6 +338,17 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Community rules overlay — read-only view of SafetyGate. User
+          has already acknowledged once (that's what unlocked first hide);
+          Settings is for re-reading the rules later. Uses the same
+          content so rules stay in a single source of truth. */}
+      <SafetyGate
+        visible={showCommunityRules}
+        readOnly
+        onClose={() => setShowCommunityRules(false)}
+        onAcknowledge={() => setShowCommunityRules(false)}
+      />
     </View>
   );
 }

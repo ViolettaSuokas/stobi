@@ -375,6 +375,20 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Platform JWT verification on Edge Functions rejects ES256 tokens issued
+# by Supabase's new auth key system. These three functions do their own
+# `Bearer <token>` presence check and gate access by apikey header, so
+# disabling the platform check is safe. Without this, user-scoped calls
+# to hide/find/safety return 401 "Unsupported JWT algorithm ES256".
+[functions.check-hide-location]
+verify_jwt = false
+
+[functions.process-stone-photo]
+verify_jwt = false
+
+[functions.process-find-photo]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

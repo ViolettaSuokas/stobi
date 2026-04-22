@@ -61,6 +61,7 @@ import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { moderateMessage } from '../../lib/moderation';
 import { SafeImage } from '../../components/SafeImage';
 import { ReportSheet } from '../../components/ReportSheet';
+import { getBlockedUserIds, refreshBlockedUsers } from '../../lib/blocks';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -73,7 +74,8 @@ export default function ChatScreen() {
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
-  const [reportTarget, setReportTarget] = useState<{ type: 'message'; id: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<{ type: 'message'; id: string; authorId?: string } | null>(null);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [myStyle, setMyStyle] = useState<UserStoneStyle | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [onlineCount, setOnlineCount] = useState<number>(0);
@@ -158,6 +160,13 @@ export default function ChatScreen() {
       let active = true;
       AsyncStorage.getItem('stobi:reported_messages').then((json) => {
         if (json) setReportedIds(new Set(JSON.parse(json)));
+      });
+      // Refresh blocked-users list from server (cheap — one table scan).
+      // Falls back to AsyncStorage cache if offline.
+      refreshBlockedUsers().then((s) => {
+        if (active) setBlockedIds(s);
+      }).catch(() => {
+        getBlockedUserIds().then((s) => active && setBlockedIds(s));
       });
       getCurrentUser().then((u) => {
         if (active) setUser(u);
@@ -375,7 +384,7 @@ export default function ChatScreen() {
   // so the reporter doesn't keep seeing bad content while moderation
   // reviews. The actual DB write happens inside the sheet.
   const handleReport = (item: ChatMessage) => {
-    setReportTarget({ type: 'message', id: item.id });
+    setReportTarget({ type: 'message', id: item.id, authorId: item.authorId });
   };
 
   const handleReportDone = async (messageId: string, result: 'sent' | 'duplicate') => {
@@ -444,6 +453,11 @@ export default function ChatScreen() {
     const likeCount = messageLikes.length;
     const isLiked = user ? messageLikes.includes(user.id) : false;
     const isReported = reportedIds.has(item.id);
+    const isBlockedAuthor = !!item.authorId && blockedIds.has(item.authorId);
+
+    // Blocked-author messages are hidden silently (no placeholder). Block
+    // is explicit intent, user shouldn't keep seeing these even collapsed.
+    if (isBlockedAuthor) return null;
 
     const replyParent = item.replyToId
       ? messages.find((m) => m.id === item.replyToId)
@@ -807,6 +821,7 @@ export default function ChatScreen() {
           visible={!!reportTarget}
           targetType="message"
           targetId={reportTarget.id}
+          authorId={reportTarget.authorId}
           onClose={() => setReportTarget(null)}
           onDone={(result) => {
             const id = reportTarget.id;

@@ -23,11 +23,16 @@ import { X, Warning, Shield, Prohibit, MapPin, Hand, Question } from 'phosphor-r
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
 import { fileContentReport, type ReportCategory, type ReportTargetType } from '../lib/reports';
+import { blockUser } from '../lib/blocks';
 
 type Props = {
   visible: boolean;
   targetType: ReportTargetType;
   targetId: string;
+  // Optional: author/user behind this content. If provided and user checks
+  // "also block", we call block_user(authorId) in addition to the report.
+  // For target_type='user', pass targetId here too.
+  authorId?: string;
   onClose: () => void;
   onDone?: (result: 'sent' | 'duplicate') => void;
 };
@@ -73,16 +78,18 @@ const CATEGORIES: { key: ReportCategory; icon: (color: string) => ReactNode; tke
   },
 ];
 
-export function ReportSheet({ visible, targetType, targetId, onClose, onDone }: Props) {
+export function ReportSheet({ visible, targetType, targetId, authorId, onClose, onDone }: Props) {
   const { t } = useI18n();
   const [category, setCategory] = useState<ReportCategory | null>(null);
   const [reason, setReason] = useState('');
+  const [alsoBlock, setAlsoBlock] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setCategory(null);
     setReason('');
+    setAlsoBlock(false);
     setSubmitting(false);
     setError(null);
   };
@@ -102,11 +109,18 @@ export function ReportSheet({ visible, targetType, targetId, onClose, onDone }: 
       category,
       reason: reason.trim() || undefined,
     });
-    setSubmitting(false);
     if (!res.ok) {
+      setSubmitting(false);
       setError(res.error);
       return;
     }
+    // If the user opted to also block the author, do it now. Failure here
+    // shouldn't undo the report — block is bonus, report is the primary.
+    if (alsoBlock && authorId) {
+      const b = await blockUser(authorId);
+      if (!b.ok) console.warn('[ReportSheet] block failed after report:', b.error);
+    }
+    setSubmitting(false);
     onDone?.(res.deduped ? 'duplicate' : 'sent');
     reset();
     onClose();
@@ -202,6 +216,21 @@ export function ReportSheet({ visible, targetType, targetId, onClose, onDone }: 
               </View>
             )}
 
+            {category && authorId && (
+              <TouchableOpacity
+                style={styles.blockRow}
+                activeOpacity={0.7}
+                onPress={() => setAlsoBlock(!alsoBlock)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: alsoBlock }}
+              >
+                <View style={[styles.checkbox, alsoBlock && styles.checkboxChecked]} />
+                <Text style={styles.blockText}>
+                  {t('report.also_block') || 'Также заблокировать этого пользователя'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {error && <Text style={styles.errorText}>{error}</Text>}
           </ScrollView>
         </KeyboardAvoidingView>
@@ -291,6 +320,24 @@ const styles = StyleSheet.create({
   },
   emergencyText: { fontSize: 13, color: '#7F1D1D', lineHeight: 18 },
   errorText: { marginTop: 16, color: '#DC2626', fontSize: 13 },
+  blockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.surface2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  checkboxChecked: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  blockText: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '500' },
   footerWrap: {
     paddingHorizontal: 20,
     paddingTop: 12,

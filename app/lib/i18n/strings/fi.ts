@@ -55,6 +55,7 @@ export const fi: Record<string, string> = {
     'settings.version': 'Versio',
     'settings.privacy': 'Tietosuojakäytäntö',
     'settings.terms': 'Käyttöehdot',
+    'settings.community_rules': 'Yhteisön säännöt',
     'settings.account': 'TILI',
     'settings.logout': 'Kirjaudu ulos',
     'settings.delete_account': 'Poista tili',
@@ -114,6 +115,7 @@ export const fi: Record<string, string> = {
     'report.sent_title': 'Kiitos',
     'report.sent_text': 'Ilmianto lähetetty. Moderaattori tarkistaa tunnin sisällä.',
     'report.duplicate': 'Olet jo ilmiantanut tämän. Muistamme.',
+    'report.also_block': 'Estä myös tämä käyttäjä',
 
     'chat.report': 'Ilmianna',
     'chat.report_title': 'Ilmoitus lähetetty',

@@ -30,6 +30,7 @@ import {
   type NearbyStone,
 } from '../../lib/location';
 import { getFoundStoneIds } from '../../lib/finds';
+import { getBlockedUserIds, refreshBlockedUsers } from '../../lib/blocks';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
 import { useI18n } from '../../lib/i18n';
@@ -280,6 +281,7 @@ function buildMapHTML(userLat: number, userLng: number): string {
 export default function MapScreen() {
   const [location, setLocation] = useState<LocationInfo | null>(null);
   const [stones, setStones] = useState<NearbyStone[]>([]);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [permissionUndetermined, setPermissionUndetermined] = useState(false);
   // Юзер может скипнуть permission overlay и посмотреть Helsinki-fallback.
@@ -343,6 +345,11 @@ export default function MapScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      // Refresh block-list — cheap fire-and-forget. Used to filter
+      // nearby stones so blocked-author pins never appear.
+      refreshBlockedUsers()
+        .then((s) => !cancelled && setBlockedIds(s))
+        .catch(() => getBlockedUserIds().then((s) => !cancelled && setBlockedIds(s)));
       (async () => {
         try {
           // Сначала проверяем permission status без OS-prompt.
@@ -444,9 +451,11 @@ export default function MapScreen() {
   const userLat = location?.coords.lat ?? 60.2934;
   const userLng = location?.coords.lng ?? 25.0378;
 
-  // Все камни по стране (за вычетом найденных).
+  // Все камни по стране (за вычетом найденных + скрыть от заблокированных авторов).
   // Новые камни видны сразу, но кнопка «Я нашёл» заблокирована первый час (в stone/[id].tsx).
-  const allCountryStones = stones.filter((s) => !foundIds.includes(s.id));
+  const allCountryStones = stones.filter(
+    (s) => !foundIds.includes(s.id) && !(s.authorId && blockedIds.has(s.authorId)),
+  );
 
   // Камни в моём городе (для нижней карточки)
   const myCity = location?.city ?? null;

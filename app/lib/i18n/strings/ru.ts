@@ -50,6 +50,7 @@ export const ru: Record<string, string> = {
     'settings.version': 'Версия',
     'settings.privacy': 'Политика конфиденциальности',
     'settings.terms': 'Условия использования',
+    'settings.community_rules': 'Правила сообщества',
     'settings.account': 'АККАУНТ',
     'settings.logout': 'Выйти из аккаунта',
     'settings.delete_account': 'Удалить аккаунт',
@@ -109,6 +110,7 @@ export const ru: Record<string, string> = {
     'report.sent_title': 'Спасибо',
     'report.sent_text': 'Жалоба отправлена. Модерация проверит в течение часа.',
     'report.duplicate': 'Ты уже жаловался на это. Мы помним.',
+    'report.also_block': 'Также заблокировать этого пользователя',
 
     'chat.report': 'Пожаловаться',
     'chat.report_title': 'Жалоба отправлена',
