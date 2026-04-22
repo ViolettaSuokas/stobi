@@ -8,3 +8,9 @@ dist/
 SETUP.md
 .env
 .env.local
+app/credentials/*.json
+app/credentials/*.p12
+# Service account keys anywhere under the repo
+**/*-service-account*.json
+**/gcp-*.json
+**/google-credentials*.json
