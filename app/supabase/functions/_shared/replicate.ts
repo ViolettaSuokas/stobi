@@ -62,20 +62,25 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
       // Модель использует ViT-L/14 → 768-мерный embedding.
       // Схема БД приведена к vector(768).
       const out = poll.output;
+      let raw: number[] | null = null;
       if (Array.isArray(out) && out.length > 0) {
         const first = out[0];
         if (Array.isArray(first?.embedding) && first.embedding.length === 768) {
-          return first.embedding as number[];
-        }
-        // Fallback: если модель вернула массив чисел напрямую
-        if (out.length === 768 && typeof out[0] === "number") {
-          return out as number[];
+          raw = first.embedding as number[];
+        } else if (out.length === 768 && typeof out[0] === "number") {
+          raw = out as number[];
         }
       }
-      if (Array.isArray(out?.embedding) && out.embedding.length === 768) {
-        return out.embedding;
+      if (!raw && Array.isArray(out?.embedding) && out.embedding.length === 768) {
+        raw = out.embedding as number[];
       }
-      throw new Error(`Unexpected Replicate output shape: ${JSON.stringify(out).slice(0, 300)}`);
+      if (!raw) {
+        throw new Error(`Unexpected Replicate output shape: ${JSON.stringify(out).slice(0, 300)}`);
+      }
+      // L2-normalize — Replicate модель отдаёт raw CLIP features без нормализации.
+      // pgvector cosine distance (`<=>`) математически корректна только на unit-векторах,
+      // иначе яркое фото с большей magnitude доминирует над тусклым при усреднении.
+      return l2Normalize(raw);
     }
     if (poll.status === "failed" || poll.status === "canceled") {
       throw new Error(`Replicate prediction ${poll.status}: ${poll.error ?? ""}`);
@@ -87,4 +92,14 @@ export async function embedImage(photoUrl: string): Promise<number[]> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function l2Normalize(v: number[]): number[] {
+  let sq = 0;
+  for (let i = 0; i < v.length; i++) sq += v[i] * v[i];
+  const norm = Math.sqrt(sq);
+  if (norm === 0 || !isFinite(norm)) return v;
+  const out = new Array<number>(v.length);
+  for (let i = 0; i < v.length; i++) out[i] = v[i] / norm;
+  return out;
 }

@@ -24,6 +24,8 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { processPhoto, uploadPhotoToStorage, moderateAndEmbedPhoto } from '../../lib/photo';
+import { checkSceneQuality } from '../../lib/scan-quality';
+import { sceneQualityError } from '../../lib/scan-errors';
 import * as haptics from '../../lib/haptics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
 import { Colors } from '../../constants/Colors';
@@ -131,6 +133,19 @@ export default function AddScreen() {
   };
 
   const handleScanCapture = async (uri: string) => {
+    // 0. Client-side quality check — не регистрируем стены/темноту/размытость
+    //    как reference embedding (иначе future finds будут падать).
+    const quality = await checkSceneQuality(uri);
+    if (quality.reason !== 'ok') {
+      const err = sceneQualityError(quality.reason);
+      modal.show({
+        title: err.title,
+        message: err.tips.join('\n'),
+        buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+      });
+      return;
+    }
+
     // Сразу добавляем capture в список (pending) — UI обновится с прогрессом.
     const index = scanCaptures.length;
     const processed = await processPhoto(uri);
