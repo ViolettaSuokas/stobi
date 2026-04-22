@@ -18,6 +18,7 @@ const SUITES = [
   '09-geo-poi.mjs',
   '10-content-reports-edges.mjs',
   '11-block-user.mjs',
+  '12-exif-strip.mjs',
 ];
 
 async function runOne(file) {
