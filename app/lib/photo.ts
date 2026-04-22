@@ -39,41 +39,14 @@ export async function processPhoto(uri: string): Promise<ProcessedPhoto> {
       height: result.height,
     };
   } catch (e) {
-    console.warn('processPhoto failed, using original', e);
-    // Лучше отдать оригинал, чем сломать flow. Сервер всё равно
-    // применит лимит размера через Supabase Storage policy.
-    return { uri, width: 0, height: 0 };
+    // Fail closed — previously returned the original URI so the flow
+    // kept working, but the original often carries EXIF (GPS of user's
+    // home from camera roll). For TestFlight / production we'd rather
+    // block the upload than leak location metadata. Caller must handle
+    // this throw and ask the user to retry / pick a different image.
+    console.warn('processPhoto failed — rejecting upload rather than leaking EXIF', e);
+    throw new Error('photo_processing_failed');
   }
-}
-
-/**
- * Sugar: запустить камеру и сразу обработать результат.
- * Возвращает null если пользователь отменил.
- */
-export async function takeAndProcessPhoto(
-  options: Parameters<typeof import('expo-image-picker').launchCameraAsync>[0] = {}
-): Promise<ProcessedPhoto | null> {
-  const ImagePicker = await import('expo-image-picker');
-  const result = await ImagePicker.launchCameraAsync({
-    allowsEditing: true,
-    quality: 1,  // сжимать будем в processPhoto — сырая картинка качественнее
-    ...options,
-  });
-  if (result.canceled || !result.assets?.[0]) return null;
-  return processPhoto(result.assets[0].uri);
-}
-
-export async function pickAndProcessPhoto(
-  options: Parameters<typeof import('expo-image-picker').launchImageLibraryAsync>[0] = {}
-): Promise<ProcessedPhoto | null> {
-  const ImagePicker = await import('expo-image-picker');
-  const result = await ImagePicker.launchImageLibraryAsync({
-    allowsEditing: true,
-    quality: 1,
-    ...options,
-  });
-  if (result.canceled || !result.assets?.[0]) return null;
-  return processPhoto(result.assets[0].uri);
 }
 
 // ────────────────────────────────────────────
@@ -105,24 +78,14 @@ export async function moderateAndEmbedPhoto(
   }
 
   const functionName = kind === 'stone' ? 'process-stone-photo' : 'process-find-photo';
-  console.info('[moderateAndEmbedPhoto] invoking', functionName, 'photo_url:', photoUrl.slice(0, 120));
 
   const { data, error } = await supabase.functions.invoke(functionName, {
     body: { photo_url: photoUrl },
   });
 
   if (error) {
-    console.warn('[moderateAndEmbedPhoto] edge function error:', error);
-    // supabase-js даёт FunctionsHttpError с body; попробуем достать детали
-    const details = (error as any)?.context?.body
-      ?? (error as any)?.context
-      ?? (error as any)?.message
-      ?? String(error);
-    console.warn('[moderateAndEmbedPhoto] error details:', JSON.stringify(details).slice(0, 400));
     throw new Error(`Edge function ${functionName} failed: ${error.message}`);
   }
-
-  console.info('[moderateAndEmbedPhoto] response keys:', data ? Object.keys(data as any) : 'null');
 
   if (!data || typeof data !== 'object') {
     throw new Error(`Edge function ${functionName} returned invalid payload`);
@@ -174,7 +137,6 @@ export async function uploadPhotoToStorage(
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
   const path = `${user.id}/${kind}/${filename}`;
 
-  console.info('[uploadPhotoToStorage] uploading blob size=', blob.size, 'path=', path);
   const { error: uploadError } = await supabase.storage
     .from('photos')
     .upload(path, blob, {
@@ -182,7 +144,6 @@ export async function uploadPhotoToStorage(
       upsert: false,
     });
   if (uploadError) {
-    console.warn('[uploadPhotoToStorage] upload failed:', uploadError);
     throw new Error(`Upload failed: ${uploadError.message}`);
   }
 
@@ -195,11 +156,9 @@ export async function uploadPhotoToStorage(
     .from('photos')
     .createSignedUrl(path, 60 * 60 * 24);
   if (signError || !signed?.signedUrl) {
-    console.warn('[uploadPhotoToStorage] sign failed:', signError);
     throw new Error(`Signed URL failed: ${signError?.message ?? 'unknown'}`);
   }
 
-  console.info('[uploadPhotoToStorage] OK, signed URL host:', new URL(signed.signedUrl).host);
   return { path, signedUrl: signed.signedUrl };
 }
 

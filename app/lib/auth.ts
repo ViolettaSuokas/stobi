@@ -237,20 +237,39 @@ export async function logout(): Promise<void> {
   if (isSupabaseConfigured()) {
     await supabase.auth.signOut();
   }
-  await AsyncStorage.removeItem(USER_KEY);
+  // Full reset on logout — not just USER_KEY. Block list, safety ack,
+  // reported-messages, etc. are user-specific; leaving them around
+  // leaks the previous user's state into the next signed-in user's
+  // session (e.g. new user inherits an already-acked SafetyGate).
+  await resetAll();
 }
 
 export async function deleteAccount(): Promise<void> {
+  // Order is critical:
+  //   1. RPC first (server cascade of profile + all owned rows).
+  //   2. signOut to revoke the local session (also invalidates refresh
+  //      token, though the access token remains cryptographically valid
+  //      until its JWT exp; server-side RLS fails anyway because
+  //      auth.uid() is no longer a row in auth.users after the cascade).
+  //   3. resetAll runs in `finally` so if signOut throws, local state is
+  //      still wiped and the next login starts clean.
+  //
+  // Do not reorder: signOut before the RPC would strip the JWT and the
+  // RPC would fail with "not_authenticated".
   if (isSupabaseConfigured()) {
-    const { error } = await supabase.rpc('delete_user');
-    if (error) {
-      throw new Error(error.message || 'Не удалось удалить аккаунт. Попробуй ещё раз.');
+    try {
+      const { error } = await supabase.rpc('delete_user');
+      if (error) {
+        throw new Error(error.message || 'Не удалось удалить аккаунт. Попробуй ещё раз.');
+      }
+      await supabase.auth.signOut();
+      await trackEvent('account_deleted');
+    } finally {
+      await resetAll();
     }
-    await supabase.auth.signOut();
-    await trackEvent('account_deleted');
+  } else {
+    await resetAll();
   }
-  // Clear all local data
-  await resetAll();
 }
 
 /** GDPR Article 15: export all personal data tied to the current user. */
@@ -325,5 +344,11 @@ export async function resetAll(): Promise<void> {
     'stobi:notif:email',
     'stobi:notif:chat',
     'stobi:language',
+    // Per-user state added for TestFlight launch. Missing these would
+    // leak state into a freshly-logged-in second user (e.g. new user
+    // bypasses SafetyGate because old user already acked it).
+    'stobi:reported_messages',
+    'stobi:blocked_users_v1',
+    'stobi:safety_acknowledged_v1',
   ]);
 }

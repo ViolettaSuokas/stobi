@@ -67,8 +67,10 @@ export const LoggedIn = (source: 'email' | 'google' | 'apple' | 'demo') =>
   trackEvent('login', { source });
 export const LoggedOut = () => trackEvent('logout');
 export const AccountDeleted = () => trackEvent('account_deleted');
-export const PasswordResetRequested = (email: string) =>
-  trackEvent('password_reset_requested', { email });
+// Do NOT log the email address — GDPR data minimization. Only fire
+// that a reset was attempted; the user id is captured by the trackEvent
+// infrastructure when available.
+export const PasswordResetRequested = () => trackEvent('password_reset_requested');
 
 // Core loop — stone find/hide
 export const StoneTapped = (stoneId: string, distanceM?: number) =>

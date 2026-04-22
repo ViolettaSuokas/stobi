@@ -112,6 +112,13 @@ export const ru: Record<string, string> = {
     'report.duplicate': 'Ты уже жаловался на это. Мы помним.',
     'report.also_block': 'Также заблокировать этого пользователя',
 
+    // Age gate (COPPA)
+    'agegate.title': 'Сколько тебе лет?',
+    'agegate.hero': 'Stobi — для тех, кому 13+',
+    'agegate.subtitle': 'Это нужно для безопасности — приложение не для детей младше 13.',
+    'agegate.pick_year': 'Выбери год',
+    'agegate.too_young': 'Stobi только для 13+. Извини.',
+
     'chat.report': 'Пожаловаться',
     'chat.report_title': 'Жалоба отправлена',
     'chat.report_sent': 'Спасибо! Мы проверим это сообщение.',

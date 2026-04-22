@@ -47,7 +47,7 @@ export default function ForgotPasswordScreen() {
         redirectTo: 'stobi://reset-password',
       });
       if (rpcError) throw rpcError;
-      void PasswordResetRequested(trimmed);
+      void PasswordResetRequested();
       setSent(true);
     } catch (e: any) {
       setError(e?.message ?? t('forgot.error'));

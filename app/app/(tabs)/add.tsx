@@ -33,7 +33,9 @@ import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
 import { addUserStone } from '../../lib/user-stones';
 import { checkHideLocationSafe } from '../../lib/safety';
+import { moderateMessage } from '../../lib/moderation';
 import { SafetyGate, hasAcknowledgedSafety } from '../../components/SafetyGate';
+import { AgeGate, needsAgeGate } from '../../components/AgeGate';
 import { StoneHidden } from '../../lib/analytics';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
@@ -76,6 +78,7 @@ export default function AddScreen() {
   const [showScanCamera, setShowScanCamera] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [showSafetyGate, setShowSafetyGate] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
 
   // Производные значения для совместимости с существующим create_stone call
   const scanEmbedding = scanCaptures.length > 0
@@ -139,6 +142,26 @@ export default function AddScreen() {
   // near schools, etc). This is critical since painted-rocks users are often
   // children and unsafe hiding patterns = child-safety hazard.
   const handleOpenScanCamera = async () => {
+    // Age gate first — birth_year is NULL for Apple/Google sign-ins and
+    // email users who skipped the form. Without it, create_stone RPC
+    // raises 'birth_year_required'. Gate here so the user gets a proper
+    // prompt instead of a cryptic server error.
+    if (await needsAgeGate()) {
+      setShowAgeGate(true);
+      return;
+    }
+    const acked = await hasAcknowledgedSafety();
+    if (!acked) {
+      setShowSafetyGate(true);
+      return;
+    }
+    setScanCaptures([]);
+    setShowScanCamera(true);
+  };
+
+  const handleAgeGateComplete = async () => {
+    setShowAgeGate(false);
+    // Proceed to the next gate in the chain.
     const acked = await hasAcknowledgedSafety();
     if (!acked) {
       setShowSafetyGate(true);
@@ -300,6 +323,31 @@ export default function AddScreen() {
 
     setSaving(true);
     try {
+      // Moderate name + description client-side before we even upload photos.
+      // Server trigger stones_moderation enforces the same rules, but catching
+      // it early saves the user an upload + gives a readable error.
+      const nameCheck = moderateMessage(name.trim());
+      if (!nameCheck.ok) {
+        setSaving(false);
+        Alert.alert(
+          t('add.name_rejected_title') || 'Имя нельзя использовать',
+          t(`chat.mod_${nameCheck.reason}`) || 'Выбери другое имя камня.',
+        );
+        return;
+      }
+      const trimmedDesc = description.trim();
+      if (trimmedDesc.length > 0) {
+        const descCheck = moderateMessage(trimmedDesc);
+        if (!descCheck.ok) {
+          setSaving(false);
+          Alert.alert(
+            t('add.description_rejected_title') || 'Описание нельзя сохранить',
+            t(`chat.mod_${descCheck.reason}`) || 'Переформулируй описание.',
+          );
+          return;
+        }
+      }
+
       // Child-safety gate: verify hide location is a public place (near POI),
       // not near a school / not on private residential property. Anti-grooming
       // pattern. Blocks obvious unsafe hides before we even upload.
@@ -443,15 +491,22 @@ export default function AddScreen() {
     );
   }
 
-  // Full-screen SafetyGate modal — rendered at top of the tree so it can
-  // appear in front of anything else. Blocks camera from opening until the
-  // user has acknowledged the safe-hiding rules once per install.
+  // Full-screen SafetyGate + AgeGate — rendered at top of the tree so
+  // they can appear in front of anything else. AgeGate runs first (COPPA
+  // birth_year collection), then SafetyGate (rules acknowledgement).
   const safetyGateEl = (
-    <SafetyGate
-      visible={showSafetyGate}
-      onAcknowledge={handleSafetyAcknowledge}
-      onClose={() => setShowSafetyGate(false)}
-    />
+    <>
+      <AgeGate
+        visible={showAgeGate}
+        onComplete={handleAgeGateComplete}
+        onClose={() => setShowAgeGate(false)}
+      />
+      <SafetyGate
+        visible={showSafetyGate}
+        onAcknowledge={handleSafetyAcknowledge}
+        onClose={() => setShowSafetyGate(false)}
+      />
+    </>
   );
 
   // Full-screen scan camera overlay (hides all UI underneath).

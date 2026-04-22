@@ -104,6 +104,13 @@ export const en: Record<string, string> = {
     'report.duplicate': 'You already reported this. We remember.',
     'report.also_block': 'Also block this user',
 
+    // Age gate (COPPA)
+    'agegate.title': 'How old are you?',
+    'agegate.hero': 'Stobi is 13+',
+    'agegate.subtitle': 'Required for safety — Stobi is not for users under 13.',
+    'agegate.pick_year': 'Pick a year',
+    'agegate.too_young': 'Stobi is for 13+ only. Sorry.',
+
     'chat.report': 'Report',
     'chat.report_title': 'Report sent',
     'chat.report_sent': 'Thanks! We\'ll review this message.',

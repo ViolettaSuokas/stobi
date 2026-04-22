@@ -117,6 +117,13 @@ export const fi: Record<string, string> = {
     'report.duplicate': 'Olet jo ilmiantanut tämän. Muistamme.',
     'report.also_block': 'Estä myös tämä käyttäjä',
 
+    // Age gate (COPPA)
+    'agegate.title': 'Kuinka vanha olet?',
+    'agegate.hero': 'Stobi on 13+',
+    'agegate.subtitle': 'Tämä on turvallisuussyistä — sovellus ei ole alle 13-vuotiaille.',
+    'agegate.pick_year': 'Valitse vuosi',
+    'agegate.too_young': 'Stobi on vain 13+. Anteeksi.',
+
     'chat.report': 'Ilmianna',
     'chat.report_title': 'Ilmoitus lähetetty',
     'chat.report_sent': 'Kiitos! Tarkistamme viestin.',
