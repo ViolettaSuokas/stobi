@@ -253,6 +253,15 @@ export async function deleteAccount(): Promise<void> {
   await resetAll();
 }
 
+/** GDPR Article 15: export all personal data tied to the current user. */
+export async function exportMyData(): Promise<Record<string, unknown>> {
+  if (!isSupabaseConfigured()) throw new Error('Export is available only when signed in online.');
+  const { data, error } = await supabase.rpc('gdpr_export_my_data');
+  if (error) throw new Error(error.message || 'Export failed.');
+  await trackEvent('data_exported');
+  return data as Record<string, unknown>;
+}
+
 /** Update user's profile photo URI */
 export async function updateProfilePhoto(photoUrl: string): Promise<void> {
   if (isSupabaseConfigured()) {
