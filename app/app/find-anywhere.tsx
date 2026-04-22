@@ -37,6 +37,7 @@ import {
 } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
+import { ScanProgress } from '../components/ScanProgress';
 import { StoneScanCamera } from '../components/StoneScanCamera';
 import { CelebrationOverlay } from '../components/CelebrationOverlay';
 import {
@@ -386,12 +387,10 @@ function ProcessingView({ label }: { label?: string }) {
         <StoneMascot size={80} color={Colors.mascot} variant="happy" showSparkles />
       </View>
       <ActivityIndicator size="large" color={Colors.accent} />
-      <Text style={styles.processingLabel}>
-        {label ?? 'AI ищет твой камень...'}
-      </Text>
-      <Text style={styles.processingSub}>
-        Это занимает 2–5 секунд
-      </Text>
+      <ScanProgress
+        visible
+        customMessages={label ? [label, label, label, label, label] : undefined}
+      />
     </View>
   );
 }

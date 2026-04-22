@@ -32,6 +32,7 @@ import { Colors } from '../constants/Colors';
 import { StoneMascot } from '../components/StoneMascot';
 import { StoneScanCamera } from '../components/StoneScanCamera';
 import { CelebrationOverlay, type CelebrationPayload } from '../components/CelebrationOverlay';
+import { ScanProgress } from '../components/ScanProgress';
 import {
   processPhoto,
   moderateAndEmbedPhoto,
@@ -226,11 +227,7 @@ export default function ScanStoneScreen() {
               </View>
             )}
             <ActivityIndicator size="large" color={Colors.accent} style={{ marginTop: 20 }} />
-            <Text style={styles.processingLabel}>
-              {phase === 'scanning'
-                ? t('scan.processing')
-                : t('find_anywhere.claiming')}
-            </Text>
+            <ScanProgress visible={phase === 'scanning' || phase === 'claiming'} />
           </View>
         )}
 
