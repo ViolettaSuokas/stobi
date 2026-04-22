@@ -164,12 +164,12 @@ export default function LoginScreen() {
             {/* Social */}
             <View style={styles.socialWrap}>
               {Platform.OS === 'ios' && (
-                <TouchableOpacity style={styles.socialBtn} onPress={handleAppleSignIn} activeOpacity={0.85} disabled={loading}>
+                <TouchableOpacity style={styles.socialBtn} onPress={handleAppleSignIn} activeOpacity={0.85} disabled={loading} accessibilityRole="button" accessibilityLabel={t('auth.apple')}>
                   <AppleLogo size={20} color="#FFFFFF" weight="fill" />
                   <Text style={styles.socialText}>{t('auth.apple')}</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading}>
+              <TouchableOpacity style={styles.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.85} disabled={loading} accessibilityRole="button" accessibilityLabel={t('auth.google')}>
                 <GoogleLogo size={18} color="#FFFFFF" weight="bold" />
                 <Text style={styles.socialText}>{t('auth.google')}</Text>
               </TouchableOpacity>

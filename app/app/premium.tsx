@@ -404,8 +404,8 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',

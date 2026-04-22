@@ -219,9 +219,15 @@ export default function ChatScreen() {
           );
         }
       } catch (e) {
-        // Модерация упала — не блокируем attach (fail-open для dev),
-        // но лог для отладки.
-        console.warn('chat: photo moderation skipped', e);
+        // Moderation failed — remove the optimistic attach and tell the user.
+        // Leaving an unmoderated photo in the send queue would let a flaky
+        // network/Edge Function bypass NSFW checks.
+        console.warn('chat: photo moderation failed', e);
+        setPendingPhoto(null);
+        Alert.alert(
+          t('chat.photo_rejected_title') || 'Фото не прошло проверку',
+          t('chat.moderation_failed') || 'Не удалось проверить фото. Попробуй ещё раз или выбери другое.',
+        );
       }
     }
   };

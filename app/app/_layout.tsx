@@ -42,6 +42,11 @@ export default function RootLayout() {
           if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
             void registerPushToken(session.user.id);
           }
+          // Session revoked or refresh failed — bounce user to login so they
+          // don't sit on an authed screen issuing 401s to every RPC.
+          if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            router.replace('/login' as any);
+          }
         })
       : null;
 
