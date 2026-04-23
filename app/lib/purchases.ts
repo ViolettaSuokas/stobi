@@ -20,9 +20,15 @@ const SANDBOX_KEY = 'test_mCIvELpIYugBvVUFNDasZssXuos';
 const RC_IOS_KEY = extra.RC_IOS_KEY ?? SANDBOX_KEY;
 const RC_ANDROID_KEY = extra.RC_ANDROID_KEY ?? SANDBOX_KEY;
 
-if (!__DEV__ && (RC_IOS_KEY === SANDBOX_KEY || RC_ANDROID_KEY === SANDBOX_KEY)) {
+// RevenueCat's SDK crashes the app with "Wrong API Key" if it detects a
+// test_ key in a release build (TestFlight counts as release). Until we
+// set real prod keys via EAS secrets, skip initialization entirely for
+// release builds. Consequence: no premium purchases in TestFlight, which
+// is fine — that's not what testers test.
+const IS_PLACEHOLDER_KEY = RC_IOS_KEY === SANDBOX_KEY || RC_ANDROID_KEY === SANDBOX_KEY;
+if (!__DEV__ && IS_PLACEHOLDER_KEY) {
   console.warn(
-    '[purchases] SANDBOX KEY IN PRODUCTION BUILD — set RC_IOS_KEY / RC_ANDROID_KEY via EAS env before App Store release.'
+    '[purchases] SANDBOX KEY IN PRODUCTION BUILD — RevenueCat disabled to prevent crash. Set RC_IOS_KEY / RC_ANDROID_KEY via EAS env before App Store release.'
   );
 }
 
@@ -31,7 +37,11 @@ let isInitialized = false;
 
 /** Check if RevenueCat is configured (not placeholder or empty) */
 export function isPurchasesConfigured(): boolean {
-  return !!RC_IOS_KEY && !RC_IOS_KEY.includes('YOUR_REVENUECAT');
+  if (!RC_IOS_KEY || RC_IOS_KEY.includes('YOUR_REVENUECAT')) return false;
+  // In release builds, a test_ key must be treated as "not configured"
+  // — otherwise RC SDK crashes with "Wrong API Key, app will close".
+  if (!__DEV__ && IS_PLACEHOLDER_KEY) return false;
+  return true;
 }
 
 /** Initialize RevenueCat — call once on app start after user logs in */
