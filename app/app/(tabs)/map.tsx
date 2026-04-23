@@ -743,10 +743,15 @@ export default function MapScreen() {
       </TouchableOpacity>
 
       {/* "Нашла камень где-то ещё" — AI-scanner entry point.
-          Основной CTA для сценария "нашла дома без GPS". */}
+          Основной CTA для сценария "нашла дома без GPS". Gated:
+          guest users get the login prompt instead of silent crash
+          deeper in the find flow. */}
       <TouchableOpacity
         style={styles.scanAnywhereBtn}
-        onPress={() => router.push('/find-anywhere')}
+        onPress={async () => {
+          if (!(await requireAuth(t('map.scan_anywhere') || 'искать по фото'))) return;
+          router.push('/find-anywhere');
+        }}
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel={t('map.scan_anywhere') || 'Найти камень по фото'}
