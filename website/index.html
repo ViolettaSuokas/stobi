@@ -557,10 +557,24 @@
   });
 })();
 
+// Track scroll direction globally so observers can decide whether to
+// animate. Rule: animations play only on DOWNWARD scroll. Scrolling
+// back up doesn't replay, and leaving elements upward doesn't reset
+// them (so they keep their final state when user returns via scroll-up).
+// They only reset when user scrolls upward past them (leaves downward
+// from viewport while going up), freeing them to replay on next down pass.
+window._scrollDir = 'down';
 (function () {
-  // Fold .how-phone-fly into the same reveal observer so it triggers
-  // at the same threshold as every other on-scroll element. REPLAYABLE:
-  // animations re-fire every time an element enters the viewport.
+  var lastY = window.scrollY;
+  window.addEventListener('scroll', function () {
+    var y = window.scrollY;
+    if (y > lastY) window._scrollDir = 'down';
+    else if (y < lastY) window._scrollDir = 'up';
+    lastY = y;
+  }, { passive: true });
+})();
+
+(function () {
   var items = document.querySelectorAll('.reveal, .how-phone-fly');
   if (!('IntersectionObserver' in window) || !items.length) {
     items.forEach(function (el) { el.classList.add('is-visible'); });
@@ -569,23 +583,30 @@
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
       if (e.isIntersecting) {
-        e.target.classList.add('is-visible');
-        if (e.target.classList.contains('value-content')) {
-          var section = e.target.closest('.value-prop');
-          if (section) {
-            clearTimeout(section._chipsTimer);
-            section._chipsTimer = setTimeout(function () {
-              section.classList.add('chips-in');
-            }, 700);
+        // Element entered viewport. Only animate in if scrolling down.
+        if (window._scrollDir === 'down') {
+          e.target.classList.add('is-visible');
+          if (e.target.classList.contains('value-content')) {
+            var section = e.target.closest('.value-prop');
+            if (section) {
+              clearTimeout(section._chipsTimer);
+              section._chipsTimer = setTimeout(function () {
+                section.classList.add('chips-in');
+              }, 700);
+            }
           }
         }
       } else {
-        e.target.classList.remove('is-visible');
-        if (e.target.classList.contains('value-content')) {
-          var section2 = e.target.closest('.value-prop');
-          if (section2) {
-            clearTimeout(section2._chipsTimer);
-            section2.classList.remove('chips-in');
+        // Element left viewport. Only reset if scrolling up (so it's
+        // ready to replay next time user scrolls down past it).
+        if (window._scrollDir === 'up') {
+          e.target.classList.remove('is-visible');
+          if (e.target.classList.contains('value-content')) {
+            var section2 = e.target.closest('.value-prop');
+            if (section2) {
+              clearTimeout(section2._chipsTimer);
+              section2.classList.remove('chips-in');
+            }
           }
         }
       }
@@ -634,8 +655,7 @@
     entries.forEach(function (entry) {
       var block = entry.target;
       if (entry.isIntersecting) {
-        // Each time the block enters, recompute the sequential offset
-        // from its parent's earlier-revealed siblings.
+        if (window._scrollDir !== 'down') return;
         var parent = block.parentElement;
         var offset = seenGroups.get(parent) || 0;
         block.style.transitionDelay = offset + 'ms';
@@ -645,9 +665,9 @@
         var dur = (wordCount - 1) * 60 + 700;
         seenGroups.set(parent, offset + Math.min(dur, 1400));
       } else {
+        if (window._scrollDir !== 'up') return;
         clearTimeout(block._wrTimer);
         block.classList.remove('wr-in');
-        // Reset the per-parent offset so re-entering starts fresh.
         seenGroups.set(block.parentElement, 0);
       }
     });
@@ -672,7 +692,11 @@
   }
   var io2 = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
-      e.target.classList.toggle('is-visible', e.isIntersecting);
+      if (e.isIntersecting) {
+        if (window._scrollDir === 'down') e.target.classList.add('is-visible');
+      } else {
+        if (window._scrollDir === 'up') e.target.classList.remove('is-visible');
+      }
     });
   }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
   groups.forEach(function (g) { io2.observe(g); });
@@ -748,7 +772,11 @@
   }
   var io4 = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
-      e.target.classList.toggle('wr-in', e.isIntersecting);
+      if (e.isIntersecting) {
+        if (window._scrollDir === 'down') e.target.classList.add('wr-in');
+      } else {
+        if (window._scrollDir === 'up') e.target.classList.remove('wr-in');
+      }
     });
   }, { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
   newBlocks.forEach(function (b) { io4.observe(b); });
@@ -839,7 +867,11 @@
   }
   var io3 = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
-      e.target.classList.toggle('words-out', e.isIntersecting);
+      if (e.isIntersecting) {
+        if (window._scrollDir === 'down') e.target.classList.add('words-out');
+      } else {
+        if (window._scrollDir === 'up') e.target.classList.remove('words-out');
+      }
     });
   }, { threshold: 0.2, rootMargin: '0px 0px -60px 0px' });
   io3.observe(wrap);
