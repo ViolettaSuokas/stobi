@@ -295,8 +295,17 @@ export default function ProfileScreen() {
         await updateProfilePhoto(signedUrl);
       } catch (e) {
         console.warn('avatar upload/moderate failed', e);
-        // Не откатываем — юзер хотя бы видит локально. Server sync упадёт
-        // при re-login, тогда получит дефолт.
+        // Revert the optimistic local photoUrl — without this the user
+        // sees the new avatar, then edits their name, and the avatar
+        // "disappears" (because getCurrentUser returns DB state with
+        // no photo_url). Better to show the failure immediately.
+        setUser((prev) => (prev ? { ...prev, photoUrl: undefined } : prev));
+        modal.show({
+          title: t('common.error') || 'Ошибка',
+          message: t('profile.avatar_upload_failed') ||
+            'Не удалось загрузить фото. Попробуй ещё раз.',
+          buttons: [{ label: t('common.understood') || 'OK', style: 'cancel' }],
+        });
       }
     } catch (e: any) {
       console.warn('handleChangePhoto error', e);
@@ -453,7 +462,13 @@ export default function ProfileScreen() {
                           await supabase.from('profiles').update({ bio: trimmed || null }).eq('id', user.id);
                         }
                         const fresh = await getCurrentUser();
-                        setUser(fresh);
+                        // Preserve in-flight optimistic photoUrl — see the
+                        // equivalent comment in the username-edit handler.
+                        setUser((prev) =>
+                          fresh
+                            ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
+                            : prev,
+                        );
                       },
                     },
                   ],
@@ -576,7 +591,16 @@ export default function ProfileScreen() {
                             await supabase.from('profiles').update({ username: trimmed }).eq('id', user.id);
                           }
                           const fresh = await getCurrentUser();
-                          setUser(fresh);
+                          // Merge, keeping optimistic photoUrl if the DB
+                          // hasn't caught up yet (avatar upload / NSFW
+                          // check still in flight). Without this, editing
+                          // name right after setting avatar wipes the
+                          // avatar out of the local UI.
+                          setUser((prev) =>
+                            fresh
+                              ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
+                              : prev,
+                          );
                         },
                       },
                     ],
