@@ -51,6 +51,37 @@ body {
   padding: 0 56px;
 }
 
+/* Language switcher in nav-right — minimalist two-letter toggle. */
+.nav-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Poppins', -apple-system, sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.0);
+  padding: 0;
+}
+.lang-opt {
+  background: transparent;
+  border: 0;
+  padding: 6px 4px;
+  cursor: pointer;
+  color: #9A96B0;                 /* muted by default */
+  font: inherit;
+  letter-spacing: inherit;
+  transition: color 0.2s ease-out;
+}
+.lang-opt:hover { color: #121515; }
+.lang-opt.is-active { color: #121515; font-weight: 600; }
+.lang-sep { color: rgba(0,0,0,0.2); }
+
 /* ─── Nav — bright-style с pill-контейнером в центре ─── */
 nav {
   position: sticky;
@@ -58,6 +89,40 @@ nav {
   background: transparent;
   z-index: 100;
   padding-top: 20px;
+  transition: padding 0.35s cubic-bezier(.22,1,.36,1);
+}
+/* On scroll the pill gets a frosted-glass halo + soft shadow. Triggered
+   by the same body.nav-cta-visible class JS already toggles. */
+body.nav-cta-visible nav {
+  padding-top: 12px;
+}
+body.nav-cta-visible .nav-pill {
+  box-shadow:
+    0 10px 36px rgba(18, 21, 21, 0.08),
+    0 2px 6px rgba(18, 21, 21, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.9);
+}
+/* Hover underline — soft 2px sliding from left. Bright uses same pattern. */
+.nav-pill a:not(.nav-pill-cta):not(.nav-cta-scroll) {
+  position: relative;
+}
+.nav-pill a:not(.nav-pill-cta):not(.nav-cta-scroll)::after {
+  content: '';
+  position: absolute;
+  left: 15.56px;
+  right: 15.56px;
+  bottom: 6px;
+  height: 2px;
+  background: #5B4FF0;
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(.22,1,.36,1);
+}
+.nav-pill a:not(.nav-pill-cta):not(.nav-cta-scroll):hover::after {
+  transform: scaleX(1);
 }
 nav .container {
   display: grid;
@@ -103,6 +168,10 @@ nav .container {
   border-radius: 35.56px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   justify-self: center;
+  /* Smooth width transition so when the Download button appears, the
+     pill widens gradually and the whole container re-centres the pill
+     as a consequence (the left+right 1fr cells shrink in lockstep). */
+  transition: padding 0.5s cubic-bezier(.22,1,.36,1);
 }
 .nav-pill a {
   color: #121515;
@@ -783,10 +852,41 @@ nav .container {
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
 }
 /* Positions per Figma: 1 top-left (-100px), 2 top-right (0), 3 bottom-left+108, 4 bottom-right+110 (-200) */
-.vp-chip-1 { top: -50px;  left: 0;       background: linear-gradient(135deg, #EDE8FF, #D9D0FC); animation: chipFloat 7s ease-in-out infinite; }
-.vp-chip-2 { top: 50px;    right: 0;      background: linear-gradient(135deg, #E6F0FA, #C8DDF5); animation: chipFloat 8s ease-in-out infinite 0.8s; }
-.vp-chip-3 { bottom: -50px;  left: 108px; background: linear-gradient(135deg, #EDE7FC, #CFC0F7); animation: chipFloat 9s ease-in-out infinite 1.5s; }
-.vp-chip-4 { bottom: -120px; right: 110px; background: linear-gradient(135deg, #FBE4E8, #F5CDD4); animation: chipFloat 7.5s ease-in-out infinite 2.2s; }
+.vp-chip-1 { top: -50px;  left: 0;       background: linear-gradient(135deg, #EDE8FF, #D9D0FC); }
+.vp-chip-2 { top: 50px;    right: 0;      background: linear-gradient(135deg, #E6F0FA, #C8DDF5); }
+.vp-chip-3 { bottom: -50px;  left: 108px; background: linear-gradient(135deg, #EDE7FC, #CFC0F7); }
+.vp-chip-4 { bottom: -120px; right: 110px; background: linear-gradient(135deg, #FBE4E8, #F5CDD4); }
+
+/* Chips stay hidden until the text inside .value-content has revealed,
+   then fade+scale in staggered (text first → chips after, Fizens-style).
+   JS adds .chips-in to .value-prop ~700ms after content becomes visible. */
+.value-prop .value-chip {
+  opacity: 0;
+  transform: scale(0.6) translateY(20px);
+  transition: opacity 0.7s cubic-bezier(.2,.7,.2,1),
+              transform 0.7s cubic-bezier(.2,.7,.2,1);
+  will-change: opacity, transform;
+}
+.value-prop.chips-in .vp-chip-1 {
+  animation: chipFloat 7s ease-in-out infinite 0.8s;
+  opacity: 1; transform: none;
+  transition-delay: 0ms;
+}
+.value-prop.chips-in .vp-chip-2 {
+  animation: chipFloat 8s ease-in-out infinite 1.6s;
+  opacity: 1; transform: none;
+  transition-delay: 150ms;
+}
+.value-prop.chips-in .vp-chip-3 {
+  animation: chipFloat 9s ease-in-out infinite 2.3s;
+  opacity: 1; transform: none;
+  transition-delay: 300ms;
+}
+.value-prop.chips-in .vp-chip-4 {
+  animation: chipFloat 7.5s ease-in-out infinite 3s;
+  opacity: 1; transform: none;
+  transition-delay: 450ms;
+}
 
 @keyframes chipFloat {
   0%, 100% { transform: translateY(0) rotate(-1.5deg); }
@@ -869,19 +969,80 @@ nav .container {
 }
 .btn-hero:active, .nav-pill a.nav-pill-cta:active { transform: translateY(1px) scale(0.98); }
 
-/* Gentle float for hero phone */
-@keyframes phoneFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.hero-center .phone-mockup {
-  animation: phoneFloat 6s ease-in-out infinite;
-}
+/* Phone float/tilt is now driven by scroll + mousemove in index.html's
+   JS (applyTransform) — CSS keyframes would fight the JS transform. */
 
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
   .hero-center .phone-mockup { animation: none; }
   .word-reveal span { opacity: 1; transform: none; animation: none; }
+}
+
+/* Download CTA in nav — two-stage animation to feel truly smooth:
+   Stage 1 (0.0-0.6s): container max-width 0 → 220px, padding 0 → final.
+     Background also starts transparent → dark so it doesn't pop.
+   Stage 2 (0.3-0.7s): text color + opacity fade in once the slot is
+     wide enough for the word "Download" to exist without being clipped.
+   This avoids the "hard pop" look where the button letters appeared
+   mid-expansion. */
+/* Minimal, butter-smooth reveal: button is fully styled from the start
+   (black bg, white text, full padding, final font size). It just starts
+   with 0 width and 0 horizontal padding. As width/padding grow, the
+   parent's overflow:hidden naturally reveals the button from left to
+   right — no color/clip-path state changes, no fade stages, no pops.
+   Single easing curve (easeOutQuint) applied to both, one duration. */
+/* The pill itself is a fixed-width frame with overflow:hidden. The
+   Download button is always inside at full size — it just sits beyond
+   the pill's right edge until the pill widens to reveal it. Only the
+   pill's width animates, not the button. Exactly thebrightapp.xyz. */
+.nav-pill {
+  overflow: hidden;
+  width: var(--pill-width-compact, auto);
+  transition: width 0.35s cubic-bezier(.165,.84,.44,1);
+}
+body.nav-cta-visible .nav-pill {
+  width: var(--pill-width-full, auto);
+}
+/* Button sits at end of flex row but is translated 100% rightward in
+   the compact state — so it physically lives outside the pill's box,
+   past its right edge. Pill's symmetric padding stays clean (no sliver
+   of black button peeking out). When nav-cta-visible, translateX(0)
+   brings the button back inside, in sync with the pill's width growth. */
+.nav-pill .nav-cta-scroll {
+  background: #121515 !important;
+  color: #fff !important;
+  padding: 12.67px 16.56px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transform: translateX(calc(100% + 11.67px));
+  transition: transform 0.35s cubic-bezier(.165,.84,.44,1);
+  pointer-events: none;
+  will-change: transform;
+}
+body.nav-cta-visible .nav-pill .nav-cta-scroll {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill { transition: none; }
+  .nav-pill .nav-cta-scroll { transform: none; transition: none; }
+}
+
+/* ─── How-section phone fly-in from below ─── */
+.how-phone-fly {
+  opacity: 0;
+  transform: translateY(120px) scale(0.94);
+  transition:
+    opacity 0.9s cubic-bezier(.22,1,.36,1),
+    transform 1s cubic-bezier(.22,1,.36,1);
+  will-change: opacity, transform;
+}
+.how-phone-fly.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .how-phone-fly { opacity: 1; transform: none; transition: none; }
 }
 
 /* ─── Fizens-style word-by-word hero title reveal ─── */
@@ -895,6 +1056,52 @@ nav .container {
 @keyframes wordRise {
   0%   { opacity: 0; transform: translateY(24px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Fizens-style text-reveal (word-by-word unblur + rise) ───
+   Used on .value-title and .value-sub. Each <span class="wr">
+   starts blurred + raised + invisible, then animates into place
+   with a stagger set by JS via --wr-delay. */
+.text-reveal .wr {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(14px);
+  transition:
+    opacity 0.7s cubic-bezier(.2,.7,.2,1) var(--wr-delay, 0ms),
+    filter 0.7s cubic-bezier(.2,.7,.2,1) var(--wr-delay, 0ms),
+    transform 0.7s cubic-bezier(.2,.7,.2,1) var(--wr-delay, 0ms);
+  will-change: opacity, filter, transform;
+}
+.text-reveal.wr-in .wr {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-reveal .wr { opacity: 1; filter: none; transform: none; transition: none; }
+}
+
+/* ─── Stagger-reveal: each direct child animates into view sequentially
+   when the container enters the viewport. Fizens "…and more additional
+   features" pattern. ─── */
+.stagger-reveal > * {
+  opacity: 0;
+  transform: translateY(24px) scale(0.98);
+  filter: blur(6px);
+  transition:
+    opacity 0.7s cubic-bezier(.2,.7,.2,1) var(--stagger, 0ms),
+    transform 0.7s cubic-bezier(.2,.7,.2,1) var(--stagger, 0ms),
+    filter 0.7s cubic-bezier(.2,.7,.2,1) var(--stagger, 0ms);
+  will-change: opacity, transform, filter;
+}
+.stagger-reveal.is-visible > * {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stagger-reveal > * { opacity: 1; transform: none; filter: none; transition: none; }
 }
 
 /* Magnetic buttons + phone tilt need smooth transition back to rest */
@@ -1770,7 +1977,33 @@ nav .container {
   border: 1px solid #E4E0FC;
   background: #fff;
   overflow: hidden;
-  transition: background 0.25s, border-color 0.25s;
+  transition:
+    background 0.3s cubic-bezier(.2,.7,.2,1),
+    border-color 0.3s cubic-bezier(.2,.7,.2,1),
+    box-shadow 0.3s cubic-bezier(.2,.7,.2,1);
+}
+.faq-item:hover {
+  border-color: #CEC4F9;
+  box-shadow: 0 4px 18px rgba(91,79,240,0.06);
+}
+
+/* Smooth expand — replaces native details jump.
+   .faq-body wraps the divider + answer; we animate its max-height
+   from 0 to a generous ceiling (800px) alongside opacity. */
+.faq-body {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.45s cubic-bezier(.2,.7,.2,1),
+    opacity 0.35s cubic-bezier(.2,.7,.2,1);
+}
+.faq-item[open] .faq-body {
+  max-height: 600px;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq-body { transition: none; }
 }
 .faq-item summary {
   list-style: none;
@@ -1934,6 +2167,35 @@ nav .container {
 }
 .bg-word-1 { top: 140px; left: 40px; }
 .bg-word-2 { top: 140px; right: 160px; }
+
+/* Words start behind the phone (pushed toward centre) and slide out to
+   their real positions when the wrap enters the viewport. Creates a
+   "the phone was hiding the words, now they peek out" reveal. */
+.addition-phone-wrap .bg-word {
+  opacity: 0;
+  transition:
+    transform 0.9s cubic-bezier(.2,.7,.2,1),
+    opacity 0.6s cubic-bezier(.2,.7,.2,1);
+  will-change: transform, opacity;
+}
+.addition-phone-wrap .bg-word-1 {
+  /* Positioned at left:40px; start shifted right so it sits under phone */
+  transform: translateX(260px);
+}
+.addition-phone-wrap .bg-word-2 {
+  /* Positioned at right:160px; start shifted left so it sits under phone */
+  transform: translateX(-260px);
+}
+.addition-phone-wrap.words-out .bg-word {
+  opacity: 1;
+  transform: translateX(0);
+}
+.addition-phone-wrap.words-out .bg-word-2 {
+  transition-delay: 150ms;  /* APP peeks out just after STOBI */
+}
+@media (prefers-reduced-motion: reduce) {
+  .addition-phone-wrap .bg-word { opacity: 1; transform: none; transition: none; }
+}
 
 .addition-phone {
   position: relative;
