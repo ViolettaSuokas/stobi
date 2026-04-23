@@ -27,7 +27,7 @@ import {
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { getCurrentUser, logout, deleteAccount, exportMyData } from '../lib/auth';
+import { getCurrentUser, logout, deleteAccount, exportMyData, type User } from '../lib/auth';
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 import { LanguageChanged, LoggedOut, AccountDeleted } from '../lib/analytics';
@@ -45,6 +45,14 @@ export default function SettingsScreen() {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [chatNotifs, setChatNotifs] = useState(true);
   const [showCommunityRules, setShowCommunityRules] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Know whether the viewer is signed in — Account section (Download
+  // my data / Logout / Delete account) only makes sense for logged-in
+  // users. Guests previously saw Logout which did nothing useful.
+  useEffect(() => {
+    getCurrentUser().then(setUser).catch(() => setUser(null));
+  }, []);
   const { lang, setLang, t } = useI18n();
   const modal = useModal();
 
@@ -366,25 +374,47 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Аккаунт */}
-        <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
-        <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={handleExportData} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Download my data">
-            <DownloadSimple size={20} color={Colors.accent} weight="regular" />
-            <Text style={styles.rowLabel}>{t('settings.export_data') || 'Download my data'}</Text>
-            <CaretRight size={16} color={Colors.text2} weight="bold" />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} onPress={handleLogout} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.logout')}>
-            <SignOut size={20} color={Colors.text2} weight="regular" />
-            <Text style={styles.rowLabel}>{t('settings.logout')}</Text>
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.delete_account')} accessibilityHint={t('settings.delete_account_hint')}>
-            <Trash size={20} color="#DC2626" weight="regular" />
-            <Text style={[styles.rowLabel, { color: '#DC2626' }]}>{t('settings.delete_account')}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Аккаунт — только для авторизованных. Для гостей показываем
+            кнопку "Войти" которая ведёт на логин-экран. */}
+        {user ? (
+          <>
+            <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
+            <View style={styles.card}>
+              <TouchableOpacity style={styles.row} onPress={handleExportData} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Download my data">
+                <DownloadSimple size={20} color={Colors.accent} weight="regular" />
+                <Text style={styles.rowLabel}>{t('settings.export_data') || 'Download my data'}</Text>
+                <CaretRight size={16} color={Colors.text2} weight="bold" />
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity style={styles.row} onPress={handleLogout} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.logout')}>
+                <SignOut size={20} color={Colors.text2} weight="regular" />
+                <Text style={styles.rowLabel}>{t('settings.logout')}</Text>
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity style={styles.row} onPress={handleDeleteAccount} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('settings.delete_account')} accessibilityHint={t('settings.delete_account_hint')}>
+                <Trash size={20} color="#DC2626" weight="regular" />
+                <Text style={[styles.rowLabel, { color: '#DC2626' }]}>{t('settings.delete_account')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => router.push('/login')}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.login') || 'Войти'}
+              >
+                <SignOut size={20} color={Colors.accent} weight="regular" style={{ transform: [{ scaleX: -1 }] }} />
+                <Text style={styles.rowLabel}>{t('common.login') || 'Войти'}</Text>
+                <CaretRight size={16} color={Colors.text2} weight="bold" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>

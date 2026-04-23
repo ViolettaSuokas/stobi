@@ -107,9 +107,28 @@ export default function RegisterScreen() {
       } else {
         void applyPendingReferralCode();
       }
-      router.replace('/map');
+      // Welcome alert — ранее юзер просто оказывался на карте без
+      // feedback о успешной регистрации. Покажем короткое приветствие
+      // и упомянем welcome-бонус что начисляется welcome_bonus-триггером.
+      Alert.alert(
+        t('register.welcome_title') || 'Добро пожаловать!',
+        t('register.welcome_text') ||
+          `Ты зарегистрирован${trimmedName ? `, ${trimmedName}` : ''}. Начислили 10💎 на старт — используй их чтобы открыть камни или украсить персонажа.`,
+        [{ text: t('common.ok') || 'OK', onPress: () => router.replace('/map') }],
+      );
     } catch (e: any) {
-      setError(e?.message ?? t('register.error'));
+      // Supabase возвращает "User already registered" — переводим в
+      // user-friendly текст, раньше юзер видел английский error либо
+      // (худший случай) форма «проходила» без явной ошибки.
+      const msg = String(e?.message ?? '').toLowerCase();
+      if (msg.includes('already registered') || msg.includes('user already') || msg.includes('duplicate')) {
+        setError(
+          t('register.email_taken') ||
+            'На этот email уже есть аккаунт. Попробуй войти или использовать другой email.',
+        );
+      } else {
+        setError(e?.message ?? t('register.error'));
+      }
     } finally {
       setLoading(false);
     }
