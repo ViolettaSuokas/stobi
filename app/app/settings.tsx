@@ -31,7 +31,8 @@ import { getCurrentUser, logout, deleteAccount, exportMyData } from '../lib/auth
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 import { LanguageChanged, LoggedOut, AccountDeleted } from '../lib/analytics';
-import { SafetyGate } from '../components/SafetyGate';
+import { SafetyGate, resetSafetyAck } from '../components/SafetyGate';
+import { resetOnboarding } from '../lib/auth';
 
 const NOTIF_KEYS = {
   push: 'stobi:notif:push',
@@ -122,6 +123,43 @@ export default function SettingsScreen() {
         },
       ],
     );
+  };
+
+  // Reset the "first-run" flags so the next launch shows onboarding →
+  // location rationale → map-info popup → SafetyGate again. Doesn't log
+  // the user out. Useful when TestFlight testers install over an older
+  // build and want to re-experience the first-run flow.
+  const handleResetFirstRun = () => {
+    modal.show({
+      title: t('settings.reset_firstrun_title') || 'Сбросить первый запуск?',
+      message: t('settings.reset_firstrun_text') ||
+        'Ты снова увидишь онбординг, правила и запрос геолокации. Аккаунт не затрагивается. После подтверждения закрой и открой приложение.',
+      buttons: [
+        { label: t('common.cancel'), style: 'cancel' },
+        {
+          label: t('common.confirm') || 'Сбросить',
+          style: 'destructive',
+          onPress: async () => {
+            await Promise.all([
+              resetOnboarding(),
+              resetSafetyAck(),
+              import('@react-native-async-storage/async-storage').then(({ default: AS }) =>
+                AS.multiRemove([
+                  'stobi:map_info_seen',
+                  'stobi:premium_trial_seen',
+                  'stobi:daily_challenge_seen',
+                ]),
+              ),
+            ]);
+            Alert.alert(
+              t('settings.reset_firstrun_done_title') || 'Готово',
+              t('settings.reset_firstrun_done_text') ||
+                'Закрой приложение полностью (свайп вверх) и открой снова.',
+            );
+          },
+        },
+      ],
+    });
   };
 
   const handleExportData = async () => {
@@ -306,6 +344,18 @@ export default function SettingsScreen() {
           >
             <Heart size={20} color={Colors.accent} weight="regular" />
             <Text style={styles.rowLabel}>{t('settings.community_rules') || 'Правила сообщества'}</Text>
+            <CaretRight size={16} color={Colors.text2} weight="bold" />
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.7}
+            onPress={handleResetFirstRun}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.reset_firstrun') || 'Сбросить первый запуск (для теста)'}
+          >
+            <Info size={20} color={Colors.accent} weight="regular" />
+            <Text style={styles.rowLabel}>{t('settings.reset_firstrun') || 'Сбросить первый запуск'}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
           <View style={styles.divider} />
