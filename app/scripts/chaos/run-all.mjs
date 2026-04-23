@@ -21,6 +21,12 @@ const SUITES = [
   '12-exif-strip.mjs',
 ];
 
+// After the suite runs, delete all chaos-*@stobi.local users to avoid
+// polluting the live profiles count (chat shows "N участников" which
+// used to include test accounts and confused real users).
+// Cleanup is non-fatal — if it fails we still report test results.
+const CLEANUP = 'cleanup.mjs';
+
 async function runOne(file) {
   return new Promise((resolve) => {
     console.log(`\n╔══════════════════════════════════════\n║ RUNNING ${file}\n╚══════════════════════════════════════`);
@@ -33,6 +39,11 @@ const results = [];
 for (const s of SUITES) {
   results.push(await runOne(s));
 }
+
+// Always run cleanup even if some suites failed — test users must not
+// pollute prod regardless of green/red status.
+console.log(`\n╔══════════════════════════════════════\n║ CLEANUP ${CLEANUP}\n╚══════════════════════════════════════`);
+await runOne(CLEANUP);
 
 console.log('\n\n═════════ FINAL SUMMARY ═════════');
 const pass = results.filter((r) => r.code === 0);

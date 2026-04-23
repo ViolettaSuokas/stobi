@@ -187,13 +187,22 @@ export default function ChatScreen() {
               .eq('id', authUser.id)
               .then(() => {}, (e) => console.warn('chat: last_active update failed', e));
           }
-          const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+          // Count only profiles whose username does NOT start with 'chaos-'
+          // — these are throwaway chaos-test accounts that were polluting
+          // the live "N участников" number in the chat header. Real users
+          // cannot pick a username starting with 'chaos-' (we do not need
+          // an explicit check client-side; the filter here is sufficient).
+          const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .not('username', 'like', 'chaos-%');
           if (active && count !== null) setMemberCount(count);
           const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
           const { count: online } = await supabase
             .from('profiles')
             .select('*', { count: 'exact', head: true })
-            .gte('last_active_at', fiveMinAgo);
+            .gte('last_active_at', fiveMinAgo)
+            .not('username', 'like', 'chaos-%');
           if (active && online !== null) setOnlineCount(online);
         } catch (e) {
           console.warn('chat: member counts load failed', e);
