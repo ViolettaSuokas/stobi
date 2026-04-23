@@ -413,7 +413,13 @@ export default function ProfileScreen() {
                         if (!name?.trim()) return;
                         await updateCharacterName(name.trim());
                         const fresh = await getCurrentUser();
-                        setUser(fresh);
+                        // Preserve in-flight optimistic photoUrl so
+                        // avatar doesn't blink out during rapid edits.
+                        setUser((prev) =>
+                          fresh
+                            ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
+                            : prev,
+                        );
                       },
                     },
                   ],
@@ -867,7 +873,13 @@ export default function ProfileScreen() {
                         if (!name?.trim()) return;
                         await updateCharacterName(name.trim());
                         const fresh = await getCurrentUser();
-                        setUser(fresh);
+                        // Preserve in-flight optimistic photoUrl so
+                        // avatar doesn't blink out during rapid edits.
+                        setUser((prev) =>
+                          fresh
+                            ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
+                            : prev,
+                        );
                       },
                     },
                   ],

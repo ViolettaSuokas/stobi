@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Image, View, StyleSheet, type ImageProps, type ViewStyle } from 'react-native';
 import { Camera } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
@@ -26,6 +26,16 @@ export const SafeImage = memo(function SafeImage({
   ...rest
 }: Props) {
   const [failed, setFailed] = useState(false);
+
+  // Reset failed state whenever the source URI changes — without this
+  // a single load error (stale file://, expired signed URL) leaves
+  // the component in "fallback icon" mode forever, even after the
+  // caller passes a new valid URL. Caused profile avatar to "disappear"
+  // after editing bio/username.
+  const uri = (source as { uri?: string } | undefined)?.uri;
+  useEffect(() => {
+    setFailed(false);
+  }, [uri]);
 
   if (failed) {
     return (
