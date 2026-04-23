@@ -799,15 +799,16 @@ const styles = StyleSheet.create({
 
   // Permission prompt
   permissionOverlay: {
-    // Full-screen absolute layer — without this, the overlay and the
-    // WebView/tab-bar siblings in the same flex column were stacking
-    // visually (map showed through beneath the rationale card).
+    // Full-screen absolute layer. Must use a high zIndex — the search
+    // bar, info button, recenter button, bottom card, and dropdown all
+    // use zIndex 10-21. Overlay sits above all of them.
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 10,
+    zIndex: 100,
+    elevation: 100,  // Android layering equivalent
     backgroundColor: Colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
