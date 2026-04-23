@@ -881,6 +881,35 @@ nav .container {
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
   .hero-center .phone-mockup { animation: none; }
+  .word-reveal span { opacity: 1; transform: none; animation: none; }
+}
+
+/* ─── Fizens-style word-by-word hero title reveal ─── */
+.word-reveal span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(24px);
+  animation: wordRise 0.9s cubic-bezier(.2,.7,.2,1) forwards;
+  will-change: opacity, transform;
+}
+@keyframes wordRise {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Magnetic buttons + phone tilt need smooth transition back to rest */
+.btn-hero, .value-cta, .feat-cta-btn, .nav-pill-cta,
+.hero-center .phone-mockup {
+  transition: transform 0.3s cubic-bezier(.2,.7,.2,1);
+}
+.hero-center .phone-mockup {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Hero accent shape — subtle blob motion behind phone */
+.hero-accent {
+  transition: transform 0.4s ease-out;
 }
 
 .feature-grid-2 {

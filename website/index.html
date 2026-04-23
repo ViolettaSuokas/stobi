@@ -44,7 +44,7 @@
 <section class="hero">
   <div class="container">
     <div class="hero-left reveal">
-      <h1>Not just a game.<br>It's your hobby.</h1>
+      <h1 class="word-reveal" data-text="Not just a game. It's your hobby."><span>Not</span> <span>just</span> <span>a</span> <span>game.</span><br><span>It's</span> <span>your</span> <span>hobby.</span></h1>
       <p class="lead">
         Paint a stone. Hide it on a walk. Follow its journey as strangers find it, keep it, or set it free again.
         <b>Real art. Real hands. Real stories.</b>
@@ -561,6 +561,99 @@
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
   items.forEach(function (el) { io.observe(el); });
+})();
+
+// ─── Fizens-style enhancements ──────────────────────────────────
+
+// 1. Word-by-word reveal on hero H1 — each <span> fades/rises staggered
+(function () {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) return;
+  document.querySelectorAll('.word-reveal span').forEach(function (w, i) {
+    w.style.animationDelay = (i * 80) + 'ms';
+  });
+})();
+
+// 2. Hero phone subtle tilt on mouse move (desktop only)
+(function () {
+  var phone = document.querySelector('.hero-center .phone-mockup');
+  if (!phone || matchMedia('(pointer: coarse)').matches) return;
+  var hero = document.querySelector('.hero');
+  hero.addEventListener('mousemove', function (e) {
+    var r = hero.getBoundingClientRect();
+    var x = ((e.clientX - r.left) / r.width - 0.5) * 2; // -1..1
+    var y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    phone.style.transform = 'translateY(var(--float-y, 0)) rotateY(' + (x * 4).toFixed(2) + 'deg) rotateX(' + (-y * 3).toFixed(2) + 'deg)';
+  });
+  hero.addEventListener('mouseleave', function () {
+    phone.style.transform = '';
+  });
+})();
+
+// 3. Magnetic buttons — CTA follows cursor slightly on hover
+(function () {
+  if (matchMedia('(pointer: coarse)').matches) return;
+  var magnets = document.querySelectorAll('.btn-hero, .value-cta, .feat-cta-btn, .nav-pill-cta');
+  magnets.forEach(function (btn) {
+    btn.addEventListener('mousemove', function (e) {
+      var r = btn.getBoundingClientRect();
+      var x = (e.clientX - r.left - r.width / 2) * 0.15;
+      var y = (e.clientY - r.top - r.height / 2) * 0.2;
+      btn.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+    });
+    btn.addEventListener('mouseleave', function () {
+      btn.style.transform = '';
+    });
+  });
+})();
+
+// 4. How-it-works — auto-advance step every 4s + sync on scroll
+(function () {
+  var steps = document.querySelectorAll('.how-step');
+  var screens = document.querySelectorAll('.how-screen');
+  if (!steps.length) return;
+
+  function activate(n) {
+    steps.forEach(function (s) { s.classList.remove('how-step-active'); });
+    screens.forEach(function (s) { s.classList.remove('is-active'); });
+    var step = document.querySelector('.how-step[data-step="' + n + '"]');
+    var screen = document.querySelector('.how-screen-' + n);
+    if (step) step.classList.add('how-step-active');
+    if (screen) screen.classList.add('is-active');
+  }
+
+  // Auto-rotation — pauses when user clicks (click handler above already
+  // switches the step; we just read the active one each tick).
+  var current = 1;
+  var timer = setInterval(function () {
+    current = (current % 3) + 1;
+    activate(current);
+  }, 4000);
+
+  // If the user manually clicks a step, reset the rotation timer so it
+  // doesn't immediately hop away from their choice.
+  steps.forEach(function (s) {
+    s.addEventListener('click', function () {
+      clearInterval(timer);
+      current = parseInt(s.getAttribute('data-step'), 10);
+      timer = setInterval(function () {
+        current = (current % 3) + 1;
+        activate(current);
+      }, 4000);
+    });
+  });
+})();
+
+// 5. Scroll-driven parallax on hero accent shape
+(function () {
+  var accent = document.querySelector('.hero-accent');
+  if (!accent) return;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) return;
+  window.addEventListener('scroll', function () {
+    var y = window.scrollY;
+    accent.style.transform = 'translateY(' + (y * 0.12) + 'px)';
+  }, { passive: true });
 })();
 </script>
 </body>
