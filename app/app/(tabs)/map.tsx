@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -510,7 +511,17 @@ export default function MapScreen() {
            экран ДО OS-prompt → user accept rate растёт с ~40% до 70%+.
            User может нажать "Skip" и посмотреть Helsinki-fallback.
            Skip-state сохраняется в dismissedPermissionOverlay. */}
-      {!loading && !dismissedPermissionOverlay && (permissionDenied || permissionUndetermined) && (
+      {/* Use React Native's <Modal> so the overlay is always full-screen
+          regardless of parent layout / zIndex quirks. Previous absolute-
+          positioned overlay was competing with tab-bar + search-bar for
+          z-order on some devices. */}
+      <Modal
+        visible={!loading && !dismissedPermissionOverlay && (permissionDenied || permissionUndetermined)}
+        animationType="fade"
+        transparent={false}
+        presentationStyle="fullScreen"
+        onRequestClose={() => setDismissedPermissionOverlay(true)}
+      >
         <View style={styles.permissionOverlay}>
           <View style={styles.permissionCard}>
             <StoneMascot size={100} color="#C4B5FD" variant="happy" showSparkles />
@@ -557,7 +568,7 @@ export default function MapScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Sticky banner: если юзер скипнул permission overlay, напоминаем
           что смотрит Helsinki-fallback, можно включить GPS в любой момент. */}
@@ -799,16 +810,9 @@ const styles = StyleSheet.create({
 
   // Permission prompt
   permissionOverlay: {
-    // Full-screen absolute layer. Must use a high zIndex — the search
-    // bar, info button, recenter button, bottom card, and dropdown all
-    // use zIndex 10-21. Overlay sits above all of them.
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-    elevation: 100,  // Android layering equivalent
+    // Rendered inside a full-screen <Modal> (presentationStyle=fullScreen),
+    // so this just needs to fill its parent and center its card.
+    flex: 1,
     backgroundColor: Colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
