@@ -9,7 +9,11 @@
 // only rows matching the chaos-test email pattern.
 import { execSync } from 'node:child_process';
 
-const sql = `delete from auth.users where email like 'chaos-%@stobi.local' returning email;`;
+// Broadened from 'chaos-%@stobi.local' to any '@stobi.local' email —
+// catches test-user orphans even if their username was set to something
+// that doesn't match the 'chaos-%' pattern (e.g. 08-safety-tier1's
+// 'username normal accepted' test case used to pick 'StoneLover123').
+const sql = `delete from auth.users where email like '%@stobi.local' returning email;`;
 console.log('Running:', sql);
 try {
   execSync(`npx supabase db query --linked "${sql}"`, { stdio: 'inherit' });

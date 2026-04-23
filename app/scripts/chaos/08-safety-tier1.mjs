@@ -89,7 +89,9 @@ for (const c of bioCases) {
 const usernameCases = [
   { label: 'username with phone rejected', username: 'call_358401234567', expect: 'reject' },
   { label: 'username with email rejected', username: 'me@mail.com', expect: 'reject' },
-  { label: 'username normal accepted', username: `StoneLover${Date.now() % 10000}`, expect: 'accept' },
+  // Prefix with 'chaos-' so the username is caught by chat's profile
+  // filter AND cleanup.mjs, even if the auth.users deletion misses it.
+  { label: 'username normal accepted', username: `chaos-sl-${Date.now() % 10000}`, expect: 'accept' },
 ];
 for (const c of usernameCases) {
   const r = await patchProfile(jwtA, idA, { username: c.username });
