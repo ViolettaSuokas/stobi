@@ -799,7 +799,15 @@ const styles = StyleSheet.create({
 
   // Permission prompt
   permissionOverlay: {
-    flex: 1,
+    // Full-screen absolute layer — without this, the overlay and the
+    // WebView/tab-bar siblings in the same flex column were stacking
+    // visually (map showed through beneath the rationale card).
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
     backgroundColor: Colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
