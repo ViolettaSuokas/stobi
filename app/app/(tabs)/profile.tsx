@@ -63,6 +63,7 @@ import {
   type ActivityType,
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
+import { getPendingFindsForMyStones } from '../../lib/finds';
 import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
@@ -100,6 +101,7 @@ export default function ProfileScreen() {
   // не вернёт ответ. Ставится в true только после первого resolve.
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingFindsCount, setPendingFindsCount] = useState(0);
   const [mainTab, setMainTab] = useState<MainTab>('overview');
   const [customTab, setCustomTab] = useState<CustomTab>('color');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
@@ -165,6 +167,11 @@ export default function ProfileScreen() {
                 setFoundCount(finds.length);
               })
               .catch((e) => console.warn('profile: activities load failed', e));
+
+            // Pending finds для бейджа "Одобрить находки".
+            getPendingFindsForMyStones()
+              .then((pf) => { if (active) setPendingFindsCount(pf.length); })
+              .catch(() => {});
           }
         } catch (e) {
           console.warn('profile load error', e);
@@ -197,14 +204,16 @@ export default function ProfileScreen() {
       if (trial.active) setTrialRemaining(formatRemaining(trial.msRemaining));
       if (u) {
         const seedUserId = DEMO_SEED_USER_MAP[u.email] ?? u.id;
-        const [acts, hides, finds] = await Promise.all([
+        const [acts, hides, finds, pending] = await Promise.all([
           getUserActivities(seedUserId, myStonesTab),
           getUserActivities(seedUserId, 'hide'),
           getUserActivities(seedUserId, 'find'),
+          getPendingFindsForMyStones().catch(() => [] as any[]),
         ]);
         setMyActivities(acts);
         setHiddenCount(hides.length);
         setFoundCount(finds.length);
+        setPendingFindsCount(pending.length);
       }
     } catch (e) {
       console.warn('profile refresh error', e);
@@ -689,6 +698,37 @@ export default function ProfileScreen() {
 
             {/* Welcome quest — скрывается когда все 3 задачи выполнены */}
             <WelcomeQuest />
+
+            {/* Pending finds — для авторов камней, ожидающих одобрения чужой
+                находки. Был в Settings → My Stones, переехал сюда т.к. это
+                повседневное действие, не настройка. Показываем только если
+                есть pending. */}
+            {user && pendingFindsCount > 0 && (
+              <TouchableOpacity
+                style={styles.pendingCard}
+                onPress={() => router.push('/pending-approvals' as any)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('pending.title') || 'Одобрить находки'}
+              >
+                <View style={styles.pendingIconBox}>
+                  <Text style={{ fontSize: 22 }}>🔔</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingTitle}>
+                    {t('pending.title') || 'Одобрить находки'}
+                  </Text>
+                  <Text style={styles.pendingSub}>
+                    {pendingFindsCount === 1
+                      ? (t('pending.subtitle_one') || '1 находка ждёт твоего подтверждения')
+                      : (t('pending.subtitle_many') || `${pendingFindsCount} находок ждут твоего подтверждения`).replace('{count}', String(pendingFindsCount))}
+                  </Text>
+                </View>
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingBadgeText}>{pendingFindsCount}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* Referral card — appears when logged in, always shown */}
             {user && <ReferralCard />}
@@ -1533,6 +1573,53 @@ const styles = StyleSheet.create({
 
   // Body
   body: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 20, backgroundColor: Colors.bg },
+
+  // Pending finds card — приметная карточка с бейджем-counter'ом.
+  pendingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+    marginBottom: 14,
+  },
+  pendingIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingSub: {
+    fontSize: 12,
+    color: '#92400E',
+    opacity: 0.8,
+    marginTop: 2,
+  },
+  pendingBadge: {
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  pendingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
 
   // Стат-блоки — 3 равные колонки. flexBasis:0 + flexGrow:1 в RN иногда
   // не работает корректно если внутри Text без flex'а — первый элемент

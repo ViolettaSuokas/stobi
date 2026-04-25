@@ -675,6 +675,8 @@ export const fi: Record<string, string> = {
     'add.scan_done_sub': 'Kun joku löytää kiven, tekoäly vahvistaa löydön.',
 
     'pending.title': 'Hyväksy löydöt',
+    'pending.subtitle_one': '1 löytö odottaa hyväksyntääsi',
+    'pending.subtitle_many': '{count} löytöä odottaa hyväksyntääsi',
     'pending.intro': 'Tekoäly ei ole 100% varma että nämä ovat kiviäsi. Katso kuvat ja päätä.',
     'pending.empty_title': 'Ei hyväksyntää odottavia löytöjä',
     'pending.empty_sub': 'Kun joku löytää kivesi eikä tekoäly ole 100% varma — pyyntö tulee tänne.',

@@ -659,6 +659,8 @@ export const en: Record<string, string> = {
     'add.scan_done_sub': 'Now when someone finds it, they just snap a photo and AI confirms the find.',
 
     'pending.title': 'Approve finds',
+    'pending.subtitle_one': '1 find waiting for your approval',
+    'pending.subtitle_many': '{count} finds waiting for your approval',
     'pending.intro': 'AI isn\'t 100% sure these are your stones. Review the photos and decide.',
     'pending.empty_title': 'No finds waiting for approval',
     'pending.empty_sub': 'When someone finds your stone and AI isn\'t 100% sure — a request lands here.',

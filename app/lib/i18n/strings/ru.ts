@@ -683,6 +683,8 @@ export const ru: Record<string, string> = {
 
     // Pending approvals — автор одобряет находки
     'pending.title': 'Одобрить находки',
+    'pending.subtitle_one': '1 находка ждёт твоего подтверждения',
+    'pending.subtitle_many': '{count} находок ждут твоего подтверждения',
     'pending.intro': 'Stobi не уверен на 100% что это твои камни. Посмотри фото и реши — одобрить или оставить ждать.',
     'pending.empty_title': 'Нет находок ожидающих одобрения',
     'pending.empty_sub': 'Когда кто-то найдёт твой камень и Stobi не будет уверен на 100% — запрос придёт сюда.',

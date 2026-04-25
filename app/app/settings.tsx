@@ -27,6 +27,7 @@ import {
 } from 'phosphor-react-native';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { getCurrentUser, logout, deleteAccount, exportMyData, type User } from '../lib/auth';
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
@@ -42,7 +43,6 @@ const NOTIF_KEYS = {
 
 export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
   const [chatNotifs, setChatNotifs] = useState(true);
   const [showCommunityRules, setShowCommunityRules] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -56,27 +56,50 @@ export default function SettingsScreen() {
   const { lang, setLang, t } = useI18n();
   const modal = useModal();
 
-  // Load persisted notification preferences
+  // Load notification preferences. Push prefs живёт на сервере
+  // (profiles.notif_push_enabled) — иначе сервер всё равно бы слал push.
+  // Chat-notifs пока остаются в AsyncStorage (chat realtime — клиент-side,
+  // выключение это просто игнорить нотифу при реальтайм-event'е).
   useEffect(() => {
     (async () => {
-      const [push, email, chat] = await Promise.all([
-        AsyncStorage.getItem(NOTIF_KEYS.push),
-        AsyncStorage.getItem(NOTIF_KEYS.email),
-        AsyncStorage.getItem(NOTIF_KEYS.chat),
-      ]);
-      if (push !== null) setPushEnabled(push === 'true');
-      if (email !== null) setEmailEnabled(email === 'true');
+      try {
+        if (isSupabaseConfigured()) {
+          const { data: { user: u } } = await supabase.auth.getUser();
+          if (u) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('notif_push_enabled')
+              .eq('id', u.id)
+              .maybeSingle();
+            if (data?.notif_push_enabled !== undefined && data?.notif_push_enabled !== null) {
+              setPushEnabled(!!data.notif_push_enabled);
+            }
+          }
+        }
+      } catch (e) { console.warn('notif prefs load', e); }
+      const chat = await AsyncStorage.getItem(NOTIF_KEYS.chat);
       if (chat !== null) setChatNotifs(chat === 'true');
     })();
   }, []);
 
-  const togglePush = (v: boolean) => {
-    setPushEnabled(v);
-    AsyncStorage.setItem(NOTIF_KEYS.push, String(v));
-  };
-  const toggleEmail = (v: boolean) => {
-    setEmailEnabled(v);
-    AsyncStorage.setItem(NOTIF_KEYS.email, String(v));
+  const togglePush = async (v: boolean) => {
+    setPushEnabled(v); // optimistic
+    try {
+      if (!isSupabaseConfigured()) return;
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notif_push_enabled: v })
+        .eq('id', u.id);
+      if (error) {
+        // Откатить optimistic — server не принял.
+        console.warn('togglePush server error', error.message);
+        setPushEnabled(!v);
+      }
+    } catch (e) {
+      console.warn('togglePush exception', e);
+    }
   };
   const toggleChat = (v: boolean) => {
     setChatNotifs(v);
@@ -272,21 +295,8 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Мои камни — author management */}
-        <Text style={styles.sectionTitle}>{t('settings.my_stones') || 'МОИ КАМНИ'}</Text>
-        <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => router.push('/pending-approvals' as any)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t('pending.title') || 'Одобрить находки'}
-          >
-            <Info size={20} color={Colors.accent} weight="regular" />
-            <Text style={styles.rowLabel}>{t('pending.title') || 'Одобрить находки'}</Text>
-            <CaretRight size={16} color={Colors.text2} weight="bold" />
-          </TouchableOpacity>
-        </View>
+        {/* "Одобрить находки" переехал в Profile (Общее tab) — это
+            повседневная функция автора камня, не настройка. */}
 
         {/* Платежи */}
         <Text style={styles.sectionTitle}>{t('settings.payments')}</Text>
