@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { earnPoints, unlockCosmeticById } from './points';
 import { getFoundStoneIds } from './finds';
 import { getUserStones } from './user-stones';
-import { getMessages } from './chat';
 import { getCurrentUser } from './auth';
 import { AchievementUnlocked } from './analytics';
 import { getTodayChallenge } from './daily-challenge';
@@ -95,22 +94,45 @@ export async function getAchievements(): Promise<AchievementState> {
 export async function checkAchievements(stats: AchievementStats): Promise<string[]> {
   const state = await getAchievements();
   const newlyUnlocked: string[] = [];
+  // Server-side источник правды для "уже получил награду": balance_events
+  // с reason='achievement:<id>'. Если запись есть — независимо от локального
+  // unlocked флага, награду повторно не даём. Если нет — даём (даже если
+  // local state.unlocked=true: значит earnPoints в прошлый раз упал и
+  // нужно повторить попытку).
+  const grantedIds = await getGrantedAchievementIds();
 
   for (const def of ACHIEVEMENT_DEFS) {
     const progress = getProgressForAchievement(def, stats);
     const current = state[def.id] ?? { unlocked: false, progress: 0 };
-
     current.progress = progress;
 
-    if (!current.unlocked && progress >= def.target) {
+    const eligibleForReward = progress >= def.target && !grantedIds.has(def.id);
+    if (eligibleForReward) {
+      // Critical fix: грант делаем ПЕРЕД unlocked=true. Если earnPoints
+      // упадёт (например, rate-limit, сеть, server) — local state
+      // остаётся unlocked=false, и в следующий вызов ачивка переригерится.
+      // Раньше: ставили unlocked=true → earnPoints failed → permanent loss.
+      let granted = false;
+      try {
+        const newBalance = await earnPoints(def.reward, `achievement:${def.id}`, def.id);
+        granted = typeof newBalance === 'number';
+      } catch (e) {
+        console.warn(`[achievements] failed to grant ${def.id}, retry next time`, e);
+      }
+      if (granted) {
+        current.unlocked = true;
+        current.unlockedAt = Date.now();
+        if (def.unlockCosmeticId) {
+          await unlockCosmeticById(def.unlockCosmeticId, def.id);
+        }
+        void AchievementUnlocked(def.id, def.reward);
+        newlyUnlocked.push(def.id);
+      }
+    } else if (progress >= def.target && grantedIds.has(def.id) && !current.unlocked) {
+      // Edge case: grant в balance_events есть, но local state потерян
+      // (reinstall / переустановка). Reconcile: ставим unlocked=true.
       current.unlocked = true;
       current.unlockedAt = Date.now();
-      await earnPoints(def.reward, `achievement:${def.id}`, def.id);
-      if (def.unlockCosmeticId) {
-        await unlockCosmeticById(def.unlockCosmeticId, def.id);
-      }
-      void AchievementUnlocked(def.id, def.reward);
-      newlyUnlocked.push(def.id);
     }
 
     state[def.id] = current;
@@ -120,18 +142,60 @@ export async function checkAchievements(stats: AchievementStats): Promise<string
   return newlyUnlocked;
 }
 
+// Считаем все сообщения юзера прямо через DB (без channel-фильтра).
+// Старая версия звала getMessages() с default='global' — но юзер шлёт
+// в 'FI'/'global'/etc, и social-chat ачивка не триггерилась.
+async function countUserMessagesAcrossChannels(): Promise<number> {
+  try {
+    const { isSupabaseConfigured, supabase } = await import('./supabase');
+    if (!isSupabaseConfigured()) return 0;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', user.id);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Источник правды для "награда уже выдана": balance_events на сервере.
+// Если RPC fails / offline — считаем что nothing granted (better try and
+// fail than skip and lose). Возвращаем Set для O(1) lookup.
+async function getGrantedAchievementIds(): Promise<Set<string>> {
+  const granted = new Set<string>();
+  try {
+    const { isSupabaseConfigured, supabase } = await import('./supabase');
+    if (!isSupabaseConfigured()) return granted;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return granted;
+    const { data } = await supabase
+      .from('balance_events')
+      .select('reason, ref_id')
+      .eq('user_id', user.id)
+      .like('reason', 'achievement:%');
+    if (data) {
+      for (const row of data as Array<{ reason: string; ref_id: string | null }>) {
+        const id = row.ref_id ?? row.reason.replace(/^achievement:/, '');
+        if (id) granted.add(id);
+      }
+    }
+  } catch (e) {
+    console.warn('[achievements] getGrantedAchievementIds failed', e);
+  }
+  return granted;
+}
+
 export async function gatherAchievementStats(): Promise<AchievementStats> {
-  const [foundIds, userStones, messages, user, challenge] = await Promise.all([
+  const [foundIds, userStones, user, challenge, chatMessages] = await Promise.all([
     getFoundStoneIds(),
     getUserStones(),
-    getMessages(),
     getCurrentUser(),
     getTodayChallenge(),
+    countUserMessagesAcrossChannels(),
   ]);
-
-  const chatMessages = user
-    ? messages.filter((m) => m.authorId === user.id).length
-    : 0;
 
   return {
     totalFinds: foundIds.length,

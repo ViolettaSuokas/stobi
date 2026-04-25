@@ -190,7 +190,10 @@ export async function getMessages(
         const msgs = data.map((row: Record<string, any>) => ({
           id: row.id,
           authorId: row.author_id,
-          authorName: row.profiles?.username ?? 'Unknown',
+          // Профиль null когда автор удалил аккаунт — FK SET NULL (см. миграцию
+          // 20260425180000). Показываем placeholder в чате чтобы не ломалась
+          // история разговоров.
+          authorName: row.profiles?.username ?? 'Удалённый юзер',
           authorAvatar: row.profiles?.avatar ?? '🪨',
           authorPhotoUrl: row.profiles?.photo_url ?? undefined,
           isArtist: row.profiles?.is_artist ?? false,

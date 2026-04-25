@@ -269,7 +269,8 @@ export default function ProfileScreen() {
       });
       if (result.canceled || !result.assets[0]) return;
 
-      const processed = await processPhoto(result.assets[0].uri);
+      // 'avatar' tier: 512px / q=0.7 ≈ 30 КБ — аватарка маленькая в UI.
+      const processed = await processPhoto(result.assets[0].uri, 'avatar');
 
       // Optimistic UI сразу — юзер видит фото без ожидания.
       setUser((prev) => (prev ? { ...prev, photoUrl: processed.uri } : prev));

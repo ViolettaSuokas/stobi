@@ -49,6 +49,15 @@ export async function checkHideLocationSafe(lat: number, lng: number): Promise<L
     return { safe: true };
   }
 
+  // Dev-only bypass: позволяет тестировать hide flow дома (где обычно
+  // нет рядом publicly-listed POI и Overpass отвечает "no nearby place").
+  // __DEV__ === true только в Expo Go / dev-build; в EAS preview/production
+  // он === false, так что в TestFlight и Store этот байпас не работает.
+  if (__DEV__) {
+    console.warn('[safety] DEV bypass for hide-location check — production builds still validate.');
+    return { safe: true, nearestPoi: 'dev_bypass' };
+  }
+
   for (let i = 0; i < RETRY_BACKOFFS_MS.length; i++) {
     if (i > 0 && RETRY_BACKOFFS_MS[i] > 0) {
       await new Promise((r) => setTimeout(r, RETRY_BACKOFFS_MS[i]));

@@ -110,19 +110,60 @@ async function writeRegistered(data: Record<string, StoredCredential>): Promise<
 
 export async function getCurrentUser(): Promise<User | null> {
   if (isSupabaseConfigured()) {
+    // Сначала проверяем auth-сессию. Если auth.getUser() returns null
+    // (нет/протух/удалён) — это НЕ network-error, нужно очистить кеш
+    // и вернуть null. Раньше любая ошибка fallback'алась на AsyncStorage,
+    // и удалённый аккаунт продолжал "работать" локально.
+    let authUser: { id: string; email?: string } | null = null;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data: profile } = await supabase
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        // Различить по error.status: 401/403 = auth invalid / user deleted →
+        // фатально, не fallback'аемся. Прочее (no internet) → fallback ниже.
+        const status = (error as { status?: number }).status;
+        if (status === 401 || status === 403) {
+          await supabase.auth.signOut().catch(() => {});
+          await AsyncStorage.removeItem(USER_KEY);
+          return null;
+        }
+        // Network error — fallback на cache
+        const cached = await AsyncStorage.getItem(USER_KEY);
+        return cached ? JSON.parse(cached) : null;
+      }
+      authUser = user as { id: string; email?: string } | null;
+    } catch (e) {
+      console.warn('auth.getUser network failure', e);
+      const cached = await AsyncStorage.getItem(USER_KEY);
+      return cached ? JSON.parse(cached) : null;
+    }
+
+    if (!authUser) {
+      // Сервер ответил, юзера нет — clear cache. Не путаем с offline.
+      await AsyncStorage.removeItem(USER_KEY);
+      return null;
+    }
+
+    try {
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
-        .single();
-      if (!profile) return null;
-      // Cache locally for offline
+        .eq('id', authUser.id)
+        .maybeSingle();
+      if (profileErr) {
+        // Network — fallback на cache
+        const cached = await AsyncStorage.getItem(USER_KEY);
+        return cached ? JSON.parse(cached) : null;
+      }
+      if (!profile) {
+        // Auth юзер есть, но profile удалён → аккаунт в полу-удалённом
+        // состоянии. Надо чисто разлогинить и не пускать.
+        await supabase.auth.signOut().catch(() => {});
+        await AsyncStorage.removeItem(USER_KEY);
+        return null;
+      }
       const mapped: User = {
         id: profile.id,
-        email: user.email ?? '',
+        email: authUser.email ?? '',
         username: profile.username,
         bio: profile.bio,
         avatar: profile.avatar ?? '🪨',
@@ -132,8 +173,8 @@ export async function getCurrentUser(): Promise<User | null> {
       };
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(mapped));
       return mapped;
-    } catch (e) { console.warn(e);
-      // Fallback to cached user if offline
+    } catch (e) {
+      console.warn('profile fetch network failure', e);
       const cached = await AsyncStorage.getItem(USER_KEY);
       return cached ? JSON.parse(cached) : null;
     }

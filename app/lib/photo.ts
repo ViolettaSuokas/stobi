@@ -1,4 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -12,7 +13,22 @@ import { supabase, isSupabaseConfigured } from './supabase';
 // Рекомендация: вызывать processPhoto() после ImagePicker.launchCameraAsync
 // и launchImageLibraryAsync, перед любым upload/render.
 
-const MAX_DIMENSION_PX = 1600;
+// Storage = деньги. Поэтому tier-сжатие по типу использования:
+//
+// - 'reference' (1600px, q=0.7, ~250 КБ) — hide эталон. Нужно качество для
+//   корректного CLIP embedding (AI-fingerprint) — это вектор, который потом
+//   будет матчиться годами против любых find-сканов.
+// - 'proof' (1024px, q=0.55, ~80 КБ) — find proof. Юзер фоткает камень в
+//   руках чтобы засчитать находку. После verified embedding сохранён,
+//   само фото нужно только для модерации спорных случаев → можно сильнее
+//   сжимать. Экономия ~3х по storage.
+// - 'avatar' (512px, q=0.7, ~30 КБ) — аватарка профиля. Маленькая в UI.
+const TIERS = {
+  reference: { maxDim: 1600, quality: 0.7 },
+  proof:     { maxDim: 1024, quality: 0.55 },
+  avatar:    { maxDim: 512,  quality: 0.7 },
+} as const;
+type PhotoTier = keyof typeof TIERS;
 
 export type ProcessedPhoto = {
   uri: string;
@@ -21,16 +37,21 @@ export type ProcessedPhoto = {
 };
 
 /**
- * Resizes photo to max 1600px (long side), re-encodes as JPEG 0.7 quality,
- * and strips EXIF (including GPS). Safe for uploads to Supabase Storage.
+ * Resizes photo + re-encodes as JPEG, strips EXIF (incl. GPS).
+ * Tier выбирается по назначению — см. комментарий к TIERS выше.
+ * Default 'reference' для backward compat.
  */
-export async function processPhoto(uri: string): Promise<ProcessedPhoto> {
+export async function processPhoto(
+  uri: string,
+  tier: PhotoTier = 'reference',
+): Promise<ProcessedPhoto> {
+  const cfg = TIERS[tier];
   try {
     const actions: ImageManipulator.Action[] = [
-      { resize: { width: MAX_DIMENSION_PX } },
+      { resize: { width: cfg.maxDim } },
     ];
     const result = await ImageManipulator.manipulateAsync(uri, actions, {
-      compress: 0.7,
+      compress: cfg.quality,
       format: ImageManipulator.SaveFormat.JPEG,
     });
     return {
@@ -95,7 +116,19 @@ export async function moderateAndEmbedPhoto(
   const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
 
   if (error) {
-    throw new Error(`Edge function ${functionName} failed: ${error.message}`);
+    // supabase-js даёт generic "non-2xx" — реальная причина в error.context
+    // (Response object). Читаем тело, чтобы увидеть конкретную ошибку
+    // edge function (например "Failed to fetch image: 400" или Replicate timeout).
+    let serverDetail = '';
+    try {
+      const ctx = (error as { context?: Response }).context;
+      if (ctx && typeof ctx.json === 'function') {
+        const body = await ctx.clone().json();
+        serverDetail = body?.error ? ` — ${body.error}` : ` — ${JSON.stringify(body).slice(0, 200)}`;
+      }
+    } catch {/* leave serverDetail empty if response not JSON */}
+    console.warn(`[moderateAndEmbedPhoto] ${functionName} failed for url=${photoUrl}`, error.message, serverDetail);
+    throw new Error(`Edge function ${functionName} failed: ${error.message}${serverDetail}`);
   }
 
   if (!data || typeof data !== 'object') {
@@ -138,19 +171,24 @@ export async function uploadPhotoToStorage(
     throw new Error('Not authenticated');
   }
 
-  // Read local file as blob via fetch (RN-safe).
-  const resp = await fetch(localUri);
-  if (!resp.ok) {
-    throw new Error(`Failed to read local photo: ${resp.status}`);
+  // RN/Expo на iOS не умеет нормально читать file:// через fetch().blob() —
+  // возвращает 0-байтовый blob, файл загружается пустым в Storage, потом
+  // Rekognition валится с "image.bytes length must be >= 1". Поэтому читаем
+  // через FileSystem как base64 и отдаём supabase-js как ArrayBuffer.
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  if (!base64 || base64.length === 0) {
+    throw new Error('Local photo is empty');
   }
-  const blob = await resp.blob();
+  const bytes = base64ToBytes(base64);
 
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
   const path = `${user.id}/${kind}/${filename}`;
 
   const { error: uploadError } = await supabase.storage
     .from('photos')
-    .upload(path, blob, {
+    .upload(path, bytes, {
       contentType: 'image/jpeg',
       upsert: false,
     });
@@ -194,6 +232,56 @@ async function logModerationEvent(
 }
 
 /**
+ * Удаляет файл из bucket `photos` по signed-URL'у. Извлекает path из URL
+ * формата `https://<project>/storage/v1/object/sign/photos/<path>?token=...`.
+ *
+ * Используется при удалении камней (cascade-cleanup), а также для уборки
+ * "лишних" upload'ов: когда hide/find загружает 2 фото для AI, но в БД
+ * хранится только одно — второе нужно удалить чтобы не было orphan'ов.
+ *
+ * НЕ бросает на failure (race / already-deleted / network) — caller
+ * не должен блокировать основной флоу из-за storage-cleanup'а.
+ */
+export async function deletePhotoByUrl(signedUrl: string | null | undefined): Promise<void> {
+  if (!signedUrl || !isSupabaseConfigured()) return;
+  try {
+    const m = signedUrl.match(/\/storage\/v1\/object\/(?:sign|public)\/photos\/([^?]+)/);
+    const path = m?.[1];
+    if (!path) {
+      console.warn('[deletePhotoByUrl] could not extract path from', signedUrl.slice(0, 100));
+      return;
+    }
+    const { error } = await supabase.storage.from('photos').remove([decodeURIComponent(path)]);
+    if (error) {
+      console.warn('[deletePhotoByUrl] remove failed', error.message, 'path=', path);
+    }
+  } catch (e) {
+    console.warn('[deletePhotoByUrl] exception', e);
+  }
+}
+
+/**
+ * Удаляет несколько файлов разом — оптимально когда нужно убрать массив
+ * URL'ов (extra-uploads из hide/find или batch-cleanup).
+ */
+export async function deletePhotosByUrls(signedUrls: (string | null | undefined)[]): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const paths: string[] = [];
+  for (const url of signedUrls) {
+    if (!url) continue;
+    const m = url.match(/\/storage\/v1\/object\/(?:sign|public)\/photos\/([^?]+)/);
+    if (m?.[1]) paths.push(decodeURIComponent(m[1]));
+  }
+  if (paths.length === 0) return;
+  try {
+    const { error } = await supabase.storage.from('photos').remove(paths);
+    if (error) console.warn('[deletePhotosByUrls] remove failed', error.message);
+  } catch (e) {
+    console.warn('[deletePhotosByUrls] exception', e);
+  }
+}
+
+/**
  * Exposed explicitly for paths that do their own upload (e.g. avatar).
  * Most callers should use `moderateAndEmbedPhoto` which covers the full pipeline.
  */
@@ -202,4 +290,16 @@ export async function logAvatarModerationReject(
   labels: unknown[],
 ): Promise<void> {
   await logModerationEvent(photoUrl, labels, 'avatar');
+}
+
+// Manual base64 → Uint8Array. atob() есть в RN runtime через core-js polyfill,
+// но строит binary string посимвольно — для больших фото (1-2MB base64) это
+// медленно. На наших ~300KB JPEG'ах нормально. Альтернативу через Buffer не
+// беру чтобы не тащить node polyfill.
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }

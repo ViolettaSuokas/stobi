@@ -430,14 +430,12 @@ export default function MapScreen() {
       }
       if (data.type === 'stoneTap') {
         if (!(await requireAuth())) return;
-        // Проверяем — уже найден? Если да — идём в stone detail
-        // для просмотра истории. Иначе — сразу в scanner.
-        const foundAlready = foundIds.includes(data.stoneId);
-        if (foundAlready) {
-          router.push(`/stone/${data.stoneId}`);
-        } else {
-          router.push(`/scan-stone?id=${data.stoneId}` as any);
-        }
+        // Всегда ведём в stone detail — там юзер видит название + фото
+        // (если уже найден или раскрыт), и осознанно жмёт "Я нашла этот
+        // камень" чтобы запустить сканер. Прямой шорткат tap→scanner
+        // путал: для своего камня залипал в сканере, для чужого —
+        // юзеры тыкали и не понимали зачем камера в лоб.
+        router.push(`/stone/${data.stoneId}`);
       }
     } catch {
       // ignore

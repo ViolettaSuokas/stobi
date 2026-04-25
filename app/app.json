@@ -17,7 +17,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.stobi.app",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:stobi.app"],
+      "associatedDomains": [
+        "applinks:stobi.app"
+      ],
       "entitlements": {
         "aps-environment": "production"
       },
@@ -94,10 +96,21 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/stone" },
-            { "scheme": "https", "host": "stobi.app", "pathPrefix": "/invite" }
+            {
+              "scheme": "https",
+              "host": "stobi.app",
+              "pathPrefix": "/stone"
+            },
+            {
+              "scheme": "https",
+              "host": "stobi.app",
+              "pathPrefix": "/invite"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -121,7 +134,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.984920601746-3of6pe9k4klltqo6mruu8mpc73ka3n3j"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

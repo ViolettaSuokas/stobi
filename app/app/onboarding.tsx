@@ -13,13 +13,73 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { markOnboardingSeen, hasSeenOnboarding } from '../lib/auth';
-import { useI18n } from '../lib/i18n';
+import { markOnboardingSeen, hasSeenOnboarding, getCurrentUser } from '../lib/auth';
+import { useI18n, type Lang } from '../lib/i18n';
 import { OnboardingCompleted, OnboardingSlideViewed, OnboardingSkipped } from '../lib/analytics';
 import { StoneMascot, type MascotVariant } from '../components/StoneMascot';
 import { Heart } from 'phosphor-react-native';
 
 const { width } = Dimensions.get('window');
+
+const LANG_OPTIONS: { code: Lang; label: string }[] = [
+  { code: 'en', label: 'EN' },
+  { code: 'ru', label: 'RU' },
+  { code: 'fi', label: 'FI' },
+];
+
+function LangPicker() {
+  const { lang, setLang } = useI18n();
+  return (
+    <View style={onboardingExtraStyles.langWrap}>
+      {LANG_OPTIONS.map((opt) => {
+        const active = lang === opt.code;
+        return (
+          <TouchableOpacity
+            key={opt.code}
+            onPress={() => setLang(opt.code)}
+            activeOpacity={0.7}
+            style={[onboardingExtraStyles.langBtn, active && onboardingExtraStyles.langBtnActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`Language ${opt.label}`}
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[onboardingExtraStyles.langText, active && onboardingExtraStyles.langTextActive]}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+const onboardingExtraStyles = StyleSheet.create({
+  langWrap: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  langBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  langBtnActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  langText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  langTextActive: {
+    color: '#1A1A2E',
+  },
+});
 
 type Slide = {
   titleKey: string;
@@ -184,12 +244,17 @@ function SceneCommunity() {
 export default function Onboarding() {
   const [page, setPage] = useState(0);
   const [seenBefore, setSeenBefore] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const { t } = useI18n();
 
-  // Check if user has seen onboarding before — show Skip if yes
+  // Skip кнопка справа в углу: показываем только залогиненным юзерам.
+  // Раньше — всем кто видел онбординг хоть раз. Теперь жёстче: гость без
+  // аккаунта проходит онбординг до конца (там кнопка "Начать" → /map).
+  // seenBefore оставляем для аналитики и потенциальных future use-cases.
   useEffect(() => {
     hasSeenOnboarding().then((seen) => setSeenBefore(seen));
+    getCurrentUser().then((u) => setIsAuthed(!!u));
   }, []);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -235,10 +300,12 @@ export default function Onboarding() {
       <View style={[styles.glow, styles.glowBottom]} />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* Top bar — Skip only on subsequent visits */}
+        {/* Top bar — language picker (left) + Skip (right). Picker позволяет
+            юзеру сразу переключить на свой язык — auto-detect берёт device
+            locale, но если он на отельном/чужом телефоне, кнопкой меняет. */}
         <View style={styles.topBar}>
-          <View style={{ flex: 1 }} />
-          {seenBefore && (
+          <LangPicker />
+          {isAuthed && (
             <TouchableOpacity onPress={finishOnboarding} activeOpacity={0.7}>
               <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
             </TouchableOpacity>
@@ -321,6 +388,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 8,

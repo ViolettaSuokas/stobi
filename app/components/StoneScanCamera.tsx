@@ -58,6 +58,17 @@ type Props = {
    * через 6 секунд если auto-capture не сработал (sanity escape hatch).
    */
   autoCapture?: boolean;
+  /**
+   * Статус AI-обработки последнего сделанного снимка (multi-step flow).
+   * Камера блокирует следующий countdown пока 'pending', чтобы юзер видел
+   * процесс анализа прямо тут, а не на отдельном спиннер-экране после.
+   * 'failed' → показываем retry button. 'done'/undefined → нормальный flow.
+   */
+  analyzing?: 'idle' | 'pending' | 'done' | 'failed';
+  /** Подпись для overlay "AI запоминает..." (зависит от шага). */
+  analyzingLabel?: string;
+  /** Юзер тапнул retry после неудачного анализа — родитель сбрасывает captures. */
+  onRetry?: () => void;
 };
 
 export function StoneScanCamera({
@@ -68,15 +79,22 @@ export function StoneScanCamera({
   ctaLabel,
   progress,
   autoCapture = true,
+  analyzing,
+  analyzingLabel,
+  onRetry,
 }: Props) {
   const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  // Auto-capture countdown: 3 -> 2 -> 1 -> snap. Started after camera-ready.
+  // Auto-capture countdown: 3 -> 2 -> 1 -> snap. Started после tap "Готов".
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showFallbackShutter, setShowFallbackShutter] = useState(false);
+  // Юзер должен тапнуть "Готов" перед каждым шагом — иначе камера сама
+  // снимает через 3 сек и не успеваешь поднести камень. Сбрасывается на
+  // каждый новый шаг (см. useEffect).
+  const [awaitingReady, setAwaitingReady] = useState(true);
 
   // Animated scan-line bouncing vertically inside frame
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -133,9 +151,25 @@ export function StoneScanCamera({
   // шагами даём 1.5с задержку чтобы юзер успел прочитать новую инструкцию
   // перед countdown.
   const stepKey = progress?.current ?? 1;
+  // На каждый новый шаг — снова ждём "Готов" от юзера (не само-стрельба).
+  useEffect(() => {
+    setAwaitingReady(true);
+  }, [stepKey]);
+  // На сброс analyzing 'failed' → 'idle' (после retry) тоже ждём готовности.
+  useEffect(() => {
+    if (analyzing === 'idle' || analyzing === 'done') setAwaitingReady(true);
+  }, [analyzing]);
   useEffect(() => {
     if (!autoCapture || !cameraReady || capturing) return;
-    const startDelay = stepKey > 1 ? 1500 : 0;
+    // Не запускаем countdown следующего шага пока AI ещё думает над предыдущим
+    // фото или вернул ошибку — иначе юзер успеет снять обратную сторону до
+    // того как первая проанализирована, и UI скачет. Родитель сам инкрементит
+    // progress.current когда status='done', тогда useEffect перезапустится.
+    if (analyzing === 'pending' || analyzing === 'failed') return;
+    // Ждём явный "Готов" — без этого 3-сек countdown стартовал на cameraReady,
+    // юзер не успевал поднести камень в кадр.
+    if (awaitingReady) return;
+    const startDelay = 0;
     setShowFallbackShutter(false);
     const startTick = setTimeout(() => {
       setCountdown(3);
@@ -157,7 +191,7 @@ export function StoneScanCamera({
       clearTimeout(fallback);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCapture, cameraReady, stepKey]);
+  }, [autoCapture, cameraReady, stepKey, analyzing, awaitingReady]);
 
   // Permission states
   if (!permission) {
@@ -266,10 +300,43 @@ export function StoneScanCamera({
           />
         </View>
 
-        {/* Bottom bar: либо countdown (auto-scan), либо ручная кнопка-затвор. */}
+        {/* Bottom bar: AI overlay (analyzing/failed) > countdown > shutter. */}
         <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-          {autoCapture && countdown !== null ? (
-            // Countdown ring — юзеру видно что камера сама снимет через N сек.
+          {analyzing === 'pending' ? (
+            // AI анализирует только что сделанный снимок — большая кнопка
+            // со спиннером + явный label. Countdown следующего шага залочен
+            // (см. useEffect выше) пока сюда не придёт 'done'.
+            <View style={styles.countdownRing}>
+              <ActivityIndicator color="#FFFFFF" size="large" />
+            </View>
+          ) : analyzing === 'failed' ? (
+            // AI/upload упал → юзер не должен залипать. Кнопка retry и крест.
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={onRetry}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scan.btn_retry_scan') || 'Попробовать заново'}
+            >
+              <Text style={styles.retryBtnText}>
+                {t('scan.btn_retry_scan') || 'Попробовать заново'}
+              </Text>
+            </TouchableOpacity>
+          ) : autoCapture && awaitingReady && cameraReady ? (
+            // Юзер должен подтвердить готовность к снимку — иначе раньше
+            // countdown стартовал на cameraReady, не успевал поднести камень.
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={() => setAwaitingReady(false)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t('scan.btn_ready') || 'Готов!'}
+            >
+              <Text style={styles.retryBtnText}>
+                {t('scan.btn_ready') || 'Готов!'}
+              </Text>
+            </TouchableOpacity>
+          ) : autoCapture && countdown !== null ? (
             <View style={styles.countdownRing}>
               <Text style={styles.countdownText}>{countdown}</Text>
             </View>
@@ -278,10 +345,8 @@ export function StoneScanCamera({
               <ActivityIndicator color="#FFFFFF" size="large" />
             </View>
           ) : (autoCapture && !showFallbackShutter && cameraReady) ? (
-            // After snap fired but auto's still finishing — neutral disc, no tap.
             <View style={[styles.countdownRing, { opacity: 0.4 }]} />
           ) : (
-            // Manual shutter: либо autoCapture отключен, либо escape hatch.
             <TouchableOpacity
               style={[styles.shutter, capturing && styles.shutterBusy]}
               onPress={handleShutter}
@@ -296,11 +361,18 @@ export function StoneScanCamera({
             </TouchableOpacity>
           )}
           <Text style={styles.shutterHint}>
-            {capturing
-              ? (t('scan.processing') || 'Снимаю...')
-              : (autoCapture && countdown !== null)
-                ? (t('scan.hold_steady') || 'Держи камень в рамке')
-                : (ctaLabel ?? t('scan.btn_capture') ?? 'Сканировать')}
+            {analyzing === 'pending'
+              ? (analyzingLabel || t('scan.analyzing') || 'AI запоминает рисунок…')
+              : analyzing === 'failed'
+                ? (t('scan.failed_title') || 'Не удалось обработать')
+                : awaitingReady && autoCapture && cameraReady
+                  // Подсказка перед "Готов" — что именно должен показать.
+                  ? (subtitle ? `Поднеси: ${subtitle}` : (t('scan.hold_steady') || 'Поднеси камень'))
+                  : capturing
+                    ? (t('scan.processing') || 'Снимаю…')
+                    : (autoCapture && countdown !== null)
+                      ? (t('scan.hold_steady') || 'Держи камень в рамке')
+                      : (ctaLabel ?? t('scan.btn_capture') ?? 'Сканировать')}
           </Text>
         </SafeAreaView>
       </View>
@@ -585,5 +657,24 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  retryBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 28,
+    backgroundColor: ACCENT,
+    minWidth: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 15,
   },
 });

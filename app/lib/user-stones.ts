@@ -100,12 +100,17 @@ export async function addUserStone(
       // AI-path: есть embedding → create_stone RPC (migration 017, 020)
       // усредняет embeddings в один reference vector(768) и сохраняет.
       if (extras.embeddings && extras.embeddings.length > 0 && extras.photoUrls && extras.photoUrls.length > 0) {
+        // pgvector ожидает текстовый литерал "[0.1,0.2,...]", а не raw JS-массив.
+        // supabase-js сериализует number[][] как JSON [[..],[..]] → Postgres
+        // пытается кастить в vector(768)[] и видит просто число → ValidationError
+        // "invalid input syntax for type vector: -0.034...". Конвертим заранее.
+        const embeddingsAsLiterals = extras.embeddings.map((e) => `[${e.join(',')}]`);
         const { data: rpcData, error: rpcError } = await supabase.rpc('create_stone', {
           p_name: input.name,
           p_description: input.description ?? null,
           p_tags: input.tags ?? [],
           p_photo_urls: extras.photoUrls,
-          p_embeddings: extras.embeddings,
+          p_embeddings: embeddingsAsLiterals,
           p_lat: input.coords.lat,
           p_lng: input.coords.lng,
           p_city: input.city ?? null,
@@ -113,6 +118,13 @@ export async function addUserStone(
         if (!rpcError && rpcData) {
           const parsed = rpcData as { stone_id: string };
           await trackEvent('stone_hide', { stone_id: parsed.stone_id, path: 'ai_v2' });
+          // create_stone сохраняет только photo_urls[0] в stones.photo_url —
+          // остальные фотки orphan'ятся в Storage и стоят денег. Удаляем их
+          // сразу. Не блокируем return на cleanup (best-effort).
+          if (extras.photoUrls.length > 1) {
+            const { deletePhotosByUrls } = await import('./photo');
+            void deletePhotosByUrls(extras.photoUrls.slice(1));
+          }
           return {
             id: parsed.stone_id,
             name: input.name,
@@ -182,13 +194,34 @@ export async function addUserStone(
   return stone;
 }
 
+export class CannotDeleteFoundStoneError extends Error {
+  constructor() {
+    super('cannot_delete_found_stone');
+    this.name = 'CannotDeleteFoundStoneError';
+  }
+}
+
 export async function deleteUserStone(id: string): Promise<void> {
   if (isSupabaseConfigured()) {
     try {
+      // Storage cleanup идёт автоматически через AFTER DELETE trigger
+      // (миграция 20260425140000) — клиент НЕ должен звать storage.remove
+      // отдельно, иначе race condition с trigger'ом. Просто DELETE строки
+      // и storage сам почистится через edge function delete-stone-photo.
       const { error } = await supabase.from('stones').delete().eq('id', id);
       if (!error) return;
-    } catch {
-      // Fall through to AsyncStorage
+      // Сервер вернул ошибку — кодифицируем известные случаи.
+      // BEFORE DELETE trigger _block_delete_found_stone бросает
+      // 'cannot_delete_found_stone' если у камня есть finds.
+      const msg = error.message ?? '';
+      if (msg.includes('cannot_delete_found_stone')) {
+        throw new CannotDeleteFoundStoneError();
+      }
+      throw new Error(msg || 'delete_failed');
+    } catch (e) {
+      if (e instanceof CannotDeleteFoundStoneError) throw e;
+      console.warn('deleteUserStone failed', e);
+      // Fall through to AsyncStorage только для unrelated network ошибок.
     }
   }
   const stones = await read();

@@ -92,8 +92,8 @@ export default function ScanStoneScreen() {
         return;
       }
 
-      // 1. Process (resize, EXIF strip)
-      const processed = await processPhoto(uri);
+      // 1. Process (resize, EXIF strip) — find proof tier (1024px / 0.55).
+      const processed = await processPhoto(uri, 'proof');
 
       // 2. Upload to storage
       const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'find');

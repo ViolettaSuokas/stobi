@@ -4,9 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Animated,
   Easing,
   Dimensions,
+  Modal,
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -191,11 +193,28 @@ export function CelebrationOverlay({
   if (!visible) return null;
 
   return (
+    // Modal с presentationStyle="overFullScreen" — иначе оверлей рендерится
+    // ВНУТРИ tab-навигатора, и кнопка "Закрыть" закрывается таб-баром.
+    // Юзер видит "+3💎" но не может дисмиссить → залипает.
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      presentationStyle="overFullScreen"
+      onRequestClose={onClose}
+    >
     <View style={styles.fill} pointerEvents="auto">
       <LinearGradient
         colors={['#7C3AED', '#5B4FF0', '#4F46E5']}
         style={StyleSheet.absoluteFillObject}
       />
+
+      {/* Tap-anywhere-to-dismiss: тыкнул мимо кнопок — закрылось. Завернули
+          в TouchableWithoutFeedback чтобы тапы по СВОЕМУ контенту (share/close)
+          не пробрасывались сюда. */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-only" />
+      </TouchableWithoutFeedback>
 
       {/* Confetti layer */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
@@ -204,7 +223,7 @@ export function CelebrationOverlay({
         ))}
       </View>
 
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']} pointerEvents="box-none">
         <View style={styles.content}>
           <Animated.View style={{ transform: [{ scale: mascotScale }] }}>
             <StoneMascot size={160} color="#FCD34D" variant="sparkle" showSparkles />
@@ -286,6 +305,7 @@ export function CelebrationOverlay({
         </View>
       </SafeAreaView>
     </View>
+    </Modal>
   );
 }
 

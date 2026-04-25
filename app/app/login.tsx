@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Envelope, Lock, WarningCircle, CaretLeft } from 'phosphor-react-native';
@@ -43,7 +44,30 @@ export default function LoginScreen() {
       void LoggedIn(loginEmail ? 'demo' : 'email');
       router.replace('/map');
     } catch (e: any) {
-      setError(e?.message ?? t('login.error'));
+      const msg = String(e?.message ?? '').toLowerCase();
+      // Supabase: "Invalid login credentials" / "Email not confirmed" /
+      // "Profile not found" — на эти случаи показываем дружественный
+      // диалог с предложением зарегаться.
+      const looksLikeMissing = msg.includes('invalid login') ||
+        msg.includes('credentials') ||
+        msg.includes('profile not found') ||
+        msg.includes('user not found');
+      if (looksLikeMissing) {
+        Alert.alert(
+          t('login.not_registered_title') || 'Аккаунт не найден',
+          t('login.not_registered_text') ||
+            'С такими данными аккаунта нет. Сначала зарегистрируйся.',
+          [
+            { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+            {
+              text: t('common.register') || 'Регистрация',
+              onPress: () => router.replace('/register'),
+            },
+          ],
+        );
+      } else {
+        setError(e?.message ?? t('login.error'));
+      }
     } finally {
       setLoading(false);
     }

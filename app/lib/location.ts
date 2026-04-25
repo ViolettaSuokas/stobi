@@ -48,6 +48,9 @@ export type NearbyStone = {
   createdAt?: string | null;
   /** Last successful find / author-confirm (migration 017). ISO string. */
   lastConfirmedAt?: string | null;
+  /** URL фото камня (signed Supabase URL). Раньше не пробрасывалось → детальная
+   *  страница падала на серый-каменный fallback. */
+  photoUri?: string | null;
 };
 
 /** Free users see stones within this radius. Beyond = Premium only */
@@ -316,6 +319,7 @@ export async function getNearbyStones(
             authorId: s.author_id ?? null,
             createdAt: s.created_at ?? null,
             lastConfirmedAt: s.last_confirmed_at ?? null,
+            photoUri: s.photo_url ?? null,
           };
         });
       }

@@ -1,7 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyChallengeCompleted } from './analytics';
+import { earnPoints } from './points';
 
 const STORAGE_KEY = 'stobi:daily_challenge';
+// Награда за выполнение daily challenge — раньше была 0, в UI говорилось
+// "получи алмазики за задание" но никаких grant'ов не было.
+// 10💎 — middle ground: достойно за 5 находок / 2 хайда, не overpowered.
+export const CHALLENGE_REWARD = 10;
 
 export type ChallengeId =
   | 'find-3' | 'hide-1' | 'find-5' | 'social-chat'
@@ -99,6 +104,20 @@ export async function updateChallengeProgress(
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   if (!wasCompleted && state.completed) {
     void DailyChallengeCompleted(state.challengeId);
+    // Награждаем 💎 ровно один раз в день. ref_id = challenge:<id>:<date>
+    // используется как dedupe ключ — если юзер каким-то образом call'ает
+    // повторно, balance_events уникальность защитит (см. unique constraint
+    // или просто overwrite через ref_id check). На клиенте лишний earnPoints
+    // безопасен — server rate-limit его придушит.
+    try {
+      await earnPoints(
+        CHALLENGE_REWARD,
+        `challenge:${state.challengeId}`,
+        `${state.challengeId}:${state.date}`,
+      );
+    } catch (e) {
+      console.warn('[challenge] reward grant failed', e);
+    }
   }
   return state;
 }

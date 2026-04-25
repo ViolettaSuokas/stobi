@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Tabs, useFocusEffect } from 'expo-router';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AgeGate, needsAgeGate } from '../../components/AgeGate';
 import {
   MapPin,
   SquaresFour,
@@ -131,17 +132,38 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 export default function TabLayout() {
+  // Auto-показ AgeGate если у юзера нет birth_year. Apple/Google sign-in
+  // не запрашивают год → server RPC's (create_stone, record_find_v2,
+  // отправка сообщения) reject'ят с 'birth_year_required'. Пока юзер
+  // не введёт год — он не может ничего делать в приложении.
+  // Проверка на маунте tabs (юзер уже логинен) и при возврате на таб.
+  const [showAgeGate, setShowAgeGate] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    needsAgeGate().then((needs) => {
+      if (!cancelled && needs) setShowAgeGate(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="map" />
-      <Tabs.Screen name="feed" />
-      <Tabs.Screen name="add" />
-      <Tabs.Screen name="chat" />
-      <Tabs.Screen name="profile" />
-    </Tabs>
+    <>
+      <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen name="map" />
+        <Tabs.Screen name="feed" />
+        <Tabs.Screen name="add" />
+        <Tabs.Screen name="chat" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+      <AgeGate
+        visible={showAgeGate}
+        onComplete={() => setShowAgeGate(false)}
+        onClose={() => setShowAgeGate(false)}
+      />
+    </>
   );
 }
 

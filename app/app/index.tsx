@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
 import { Redirect } from 'expo-router';
 import { Colors } from '../constants/Colors';
-import { hasSeenOnboarding } from '../lib/auth';
+import { hasSeenOnboarding, getCurrentUser } from '../lib/auth';
 import { StoneMascot, type MascotVariant } from '../components/StoneMascot';
 
 type Destination = '/onboarding' | '/(tabs)/map';
@@ -60,14 +60,23 @@ export default function Index() {
     const start = Date.now();
 
     (async () => {
-      // First launch → onboarding.
-      // Returning user (logged in OR guest who already saw onboarding) → map.
+      // Маршрутизация на старте:
+      //  - залогинен → сразу /map
+      //  - не залогинен → /onboarding (там есть Skip если seen=true)
+      // Раньше: если seen → /map даже без auth → юзер удалил аккаунт, в
+      // следующий запуск попадал на карту минуя регистрацию.
       let dest: Destination = '/onboarding';
       try {
-        const seen = await hasSeenOnboarding();
-        if (seen) dest = '/(tabs)/map';
+        const user = await getCurrentUser();
+        if (user) {
+          dest = '/(tabs)/map';
+        } else {
+          // Always onboarding for non-auth — Skip кнопка покажется только
+          // тем кто уже видел онбординг раньше (см. seenBefore в onboarding.tsx).
+          dest = '/onboarding';
+        }
       } catch {
-        // Offline or unexpected — fall back to onboarding.
+        // Network issue — на /onboarding и пусть юзер залогинится оттуда.
       }
 
       const elapsed = Date.now() - start;

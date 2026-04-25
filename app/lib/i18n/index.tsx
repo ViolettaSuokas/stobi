@@ -19,6 +19,7 @@
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 import { ru } from './strings/ru';
 import { fi } from './strings/fi';
 import { en } from './strings/en';
@@ -35,21 +36,52 @@ type I18nContextType = {
   t: (key: string) => string;
 };
 
+// Default — всегда английский (международная аудитория). Раньше hardcoded
+// 'ru', потом auto-detect device locale — но владелец app просит начать
+// с английского. Юзер сразу видит language picker на онбординге, может
+// переключить за 1 тап. AsyncStorage override побеждает (запоминается).
+function detectDeviceLang(): Lang {
+  return 'en';
+}
+
 const I18nContext = createContext<I18nContextType>({
-  lang: 'ru',
+  lang: 'en',
   setLang: () => {},
   t: (key) => key,
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('ru');
+  const [lang, setLangState] = useState<Lang>(detectDeviceLang);
 
   useEffect(() => {
-    AsyncStorage.getItem(LANG_KEY).then((saved) => {
+    let mounted = true;
+    const sync = async () => {
+      const saved = await AsyncStorage.getItem(LANG_KEY);
+      if (!mounted) return;
       if (saved === 'ru' || saved === 'fi' || saved === 'en') {
         setLangState(saved as Lang);
+      } else {
+        // LANG_KEY был очищен (resetAll при delete account / logout) —
+        // возвращаемся к дефолту вместо stale value из памяти.
+        setLangState('en');
       }
-    });
+    };
+    void sync();
+    // Перечитываем язык при изменении auth-сессии. Это срабатывает после
+    // logout/deleteAccount: resetAll очищает LANG_KEY → onAuthStateChange
+    // (event='SIGNED_OUT') → sync() → fallback на 'en'.
+    let unsubscribe: (() => void) | null = null;
+    (async () => {
+      try {
+        const { supabase } = await import('../supabase');
+        const { data } = supabase.auth.onAuthStateChange(() => { void sync(); });
+        unsubscribe = () => data.subscription.unsubscribe();
+      } catch {/* offline / not configured — ничего не делаем */}
+    })();
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
   const setLang = (newLang: Lang) => {

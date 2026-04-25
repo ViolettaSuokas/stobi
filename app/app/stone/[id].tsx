@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Modal,
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,7 +40,7 @@ import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getPoints, spendPoints, ALL_ITEMS } from '../../lib/points';
 import {
   hasFoundStone,
-  markStoneFound,
+  markStoneFoundV2,
   getFindsToday,
   getFindsOfAuthorToday,
   isAuthorLimitReached,
@@ -48,11 +49,14 @@ import {
 } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
-import { deleteUserStone, editUserStone } from '../../lib/user-stones';
+import { deleteUserStone, editUserStone, CannotDeleteFoundStoneError } from '../../lib/user-stones';
 import { activateTrial, DAILY_CHALLENGE_GOAL } from '../../lib/premium-trial';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
 import * as ImagePicker from 'expo-image-picker';
-import { processPhoto } from '../../lib/photo';
+import { processPhoto, uploadPhotoToStorage, moderateAndEmbedPhoto } from '../../lib/photo';
+import { StoneScanCamera } from '../../components/StoneScanCamera';
+import { checkSceneQuality } from '../../lib/scan-quality';
+import { sceneQualityError } from '../../lib/scan-errors';
 import * as haptics from '../../lib/haptics';
 import { ShareTapped, StoneTapped, FirstFindCelebrated, StoneFound } from '../../lib/analytics';
 import { CelebrationOverlay, type CelebrationPayload } from '../../components/CelebrationOverlay';
@@ -70,6 +74,29 @@ import { getTrialInfo } from '../../lib/premium-trial';
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 0.95;
 
+/**
+ * Усредняет N embedding'ов и нормализует в unit-vector.
+ * Зеркало server-side l2_normalize в create_stone — pgvector cosine
+ * distance корректна только на единичных векторах, иначе яркое фото
+ * с большей magnitude доминирует над тусклым при усреднении.
+ */
+function averageEmbeddings(embs: number[][]): number[] {
+  if (embs.length === 0) throw new Error('embeddings empty');
+  const len = embs[0].length;
+  const out = new Array<number>(len).fill(0);
+  for (const e of embs) {
+    for (let i = 0; i < len; i++) out[i] += e[i];
+  }
+  for (let i = 0; i < len; i++) out[i] /= embs.length;
+  let mag = 0;
+  for (let i = 0; i < len; i++) mag += out[i] * out[i];
+  mag = Math.sqrt(mag);
+  if (mag > 0 && Number.isFinite(mag)) {
+    for (let i = 0; i < len; i++) out[i] /= mag;
+  }
+  return out;
+}
+
 export default function StoneDetailScreen() {
   const params = useLocalSearchParams();
   const stoneId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -82,6 +109,23 @@ export default function StoneDetailScreen() {
   const [isOwnStone, setIsOwnStone] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
+
+  // AI find scanner state — открывается по тапу "Я нашла этот камень".
+  // Раньше просто ImagePicker + GPS<30м, теперь 2-х сторонний scan→embed→
+  // average→server cosine. Зеркало hide flow для более устойчивого матча.
+  const [showFindCamera, setShowFindCamera] = useState(false);
+  type FindCapture = {
+    localUri: string;
+    photoUrl?: string;
+    embedding?: number[];
+    status: 'pending' | 'done' | 'failed';
+  };
+  const [findCaptures, setFindCaptures] = useState<FindCapture[]>([]);
+  const FIND_TOTAL = 2;
+  const FIND_STEPS = [
+    'Сторона с рисунком',
+    'Переверни камень — другая сторона',
+  ];
 
   // Celebration overlay for stone find
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
@@ -103,15 +147,11 @@ export default function StoneDetailScreen() {
     const interval = setInterval(() => setNow(Date.now()), 15 * 1000);
     return () => clearInterval(interval);
   }, []);
-  const lockRemainingMs = (() => {
-    if (!stone?.createdAt) return 0;
-    const createdMs = typeof stone.createdAt === 'string'
-      ? new Date(stone.createdAt).getTime()
-      : Number(stone.createdAt);
-    if (!Number.isFinite(createdMs)) return 0;
-    const unlockAt = createdMs + 60 * 60 * 1000;
-    return Math.max(0, unlockAt - now);
-  })();
+  // Fresh-lock полностью удалён в миграции 20260425130000 — UX-цена
+  // (легит-находки через 5-30 минут после hide блокировались) перевешивала
+  // анти-фрод бонус. Защита держится на daily/author/own/AI-similarity.
+  // Оставляем 0 чтобы render-ветка "isFresh" гарантированно не показывалась.
+  const lockRemainingMs = 0;
   const isFresh = lockRemainingMs > 0;
   const lockMinutes = Math.ceil(lockRemainingMs / 60000);
 
@@ -269,9 +309,20 @@ export default function StoneDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             if (!stoneId) return;
-            await deleteUserStone(stoneId);
-            router.dismiss();
-            router.replace('/(tabs)/map');
+            try {
+              await deleteUserStone(stoneId);
+              router.dismiss();
+              router.replace('/(tabs)/map');
+            } catch (e) {
+              if (e instanceof CannotDeleteFoundStoneError) {
+                Alert.alert(
+                  'Нельзя удалить',
+                  'Этот камень уже кто-то нашёл. Удаление сотрёт у них запись находки и +💎. Камень останется на карте.',
+                );
+              } else {
+                Alert.alert(t('common.error') || 'Ошибка', String(e));
+              }
+            }
           },
         },
       ],
@@ -297,7 +348,11 @@ export default function StoneDetailScreen() {
   };
 
   const handleFound = async () => {
-    if (!stoneId || alreadyFound || claiming) return;
+    console.log('[stone-detail] handleFound tapped', { stoneId, alreadyFound, claiming, isOwnStone });
+    if (!stoneId || alreadyFound || claiming) {
+      console.log('[stone-detail] handleFound early-return');
+      return;
+    }
     if (isOwnStone) {
       Alert.alert(t('stone.own_stone'), t('stone.cant_find_own'));
       return;
@@ -312,73 +367,166 @@ export default function StoneDetailScreen() {
       }
     }
 
-    if (!(await requireAuth('отметить находку'))) return;
+    const authed = await requireAuth('отметить находку');
+    console.log('[stone-detail] handleFound authed=', authed);
+    if (!authed) return;
 
-    // ── GPS verification: must be within 30 meters of the stone ──
-    // (Server enforces same limit in record_find RPC — migration 005)
-    const userLocation = await getCurrentLocation();
-    if (!userLocation) {
-      Alert.alert(t('common.no_gps'), t('add.no_gps'));
+    // Intro: используем native Alert.alert вместо useModal, потому что
+    // stone/[id] открывается как stack modal (presentation:'modal' в
+    // _layout.tsx). Глобальный ModalProvider живёт в корне tree — на iOS
+    // его кастомный Modal не показывается поверх native stack modal'а
+    // даже с overFullScreen. Native Alert.alert работает всегда.
+    console.log('[stone-detail] showing intro alert');
+    Alert.alert(
+      'Сканируем камень',
+      'Возьми камень в руки. Сначала сделаем фото стороны с рисунком, потом перевернём — и AI сверит с эталоном.',
+      [
+        { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+        {
+          text: 'Начать',
+          onPress: () => {
+            console.log('[stone-detail] intro Начать tapped');
+            setFindCaptures([]);
+            setShowFindCamera(true);
+          },
+        },
+      ],
+    );
+  };
+
+  // Вызывается из StoneScanCamera после каждого snap'а (2 раза за скан).
+  // Накапливаем capture в массив, фоном грузим + считаем embedding.
+  // Когда оба done — вычисляем средний embedding и вызываем markStoneFoundV2.
+  const handleFindCapture = async (uri: string) => {
+    if (!stoneId) return;
+
+    const quality = await checkSceneQuality(uri);
+    if (quality.reason !== 'ok') {
+      const err = sceneQualityError(quality.reason);
+      Alert.alert(err.title, err.tips.join('\n'));
       return;
     }
 
-    if (stone?.coords) {
-      const distanceM = haversineDistance(userLocation.coords, stone.coords);
-      if (distanceM > 30) {
-        const userCity = userLocation.city ?? '';
-        const stoneCity = stone.city ?? '';
-        const cityHint = userCity && stoneCity && userCity !== stoneCity
-          ? `\n\n${t('stone.too_far_city').replace('{userCity}', userCity).replace('{stoneCity}', stoneCity)}`
-          : '';
-        // Показываем конкретное расстояние — юзер поймёт, близко он или нет.
-        const distHint = `\n\n${t('stone.too_far_distance')
-          .replace('{distance}', String(Math.round(distanceM)))}`;
-        Alert.alert(
-          t('stone.too_far_title'),
-          `${t('stone.too_far_text')}${distHint}${cityHint}`,
-        );
-        return;
+    const index = findCaptures.length;
+    // 'proof' tier: 1024px / q=0.55 → ~80 КБ вместо 250 КБ (reference).
+    // Достаточно для AI-embedding'а, юзер всё равно фото не разглядывает.
+    const processed = await processPhoto(uri, 'proof');
+    setFindCaptures((prev) => [...prev, { localUri: processed.uri, status: 'pending' }]);
+
+    // Фоновая обработка — параллельно для обеих сторон.
+    (async () => {
+      try {
+        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'find');
+        const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
+        if (!moderation.safe) {
+          setFindCaptures((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], status: 'failed' };
+            return next;
+          });
+          Alert.alert(
+            t('find_anywhere.error_nsfw') || 'Фото не прошло проверку',
+            'Попробуй другое фото камня.',
+          );
+          return;
+        }
+        setFindCaptures((prev) => {
+          const next = [...prev];
+          next[index] = {
+            ...next[index],
+            photoUrl: signedUrl,
+            embedding: moderation.embedding,
+            status: 'done',
+          };
+          return next;
+        });
+      } catch (e: any) {
+        console.warn('find capture process failed', e);
+        setFindCaptures((prev) => {
+          const next = [...prev];
+          next[index] = { ...next[index], status: 'failed' };
+          return next;
+        });
       }
-    }
+    })();
+  };
 
-    // ── Photo required as proof ──
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 1,
-      allowsEditing: true,
-      aspect: [4, 3],
-    });
+  // Когда оба capture'а 'done' — закрываем камеру, усредняем embedding'и
+  // и отправляем на сервер. Зеркало того что create_stone делает на сервере
+  // (server averages multi-angle hide embeddings перед сохранением).
+  useEffect(() => {
+    if (!showFindCamera || !stoneId) return;
+    if (findCaptures.length !== FIND_TOTAL) return;
+    if (!findCaptures.every((c) => c.status === 'done')) return;
 
-    if (result.canceled || !result.assets?.[0]) {
-      Alert.alert(t('stone.photo_required_title'), t('stone.photo_required_text'));
-      return;
-    }
+    setShowFindCamera(false);
+    void submitFind();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [findCaptures, showFindCamera]);
 
-    // Proof-фото тоже ресайзим + стираем EXIF перед отправкой на сервер
-    await processPhoto(result.assets[0].uri);
+  const submitFind = async () => {
+    console.log('[stone-detail] submitFind start', { stoneId, captures: findCaptures.length });
+    if (!stoneId) return;
+    const dones = findCaptures.filter((c) => c.status === 'done' && c.embedding && c.photoUrl);
+    console.log('[stone-detail] submitFind dones=', dones.length);
+    if (dones.length === 0) return;
 
     setClaiming(true);
     try {
-      // Server RPC handles: insert find, reward finder + author,
-      // anti-fraud (≤2/author/day, ≥1h age, own-stone check, distance).
-      const findRes = await markStoneFound(
+      const avgEmbedding = averageEmbeddings(dones.map((c) => c.embedding!));
+      const userLocation = await getCurrentLocation().catch(() => null);
+      console.log('[stone-detail] submitFind calling markStoneFoundV2', {
         stoneId,
-        userLocation.coords.lat,
-        userLocation.coords.lng
-      );
+        photoUrlPrefix: dones[0].photoUrl!.slice(0, 80),
+        embDim: avgEmbedding.length,
+        gps: userLocation?.coords ?? null,
+      });
+
+      const findRes = await markStoneFoundV2({
+        stoneId,
+        photoUrl: dones[0].photoUrl!,
+        embedding: avgEmbedding,
+        lat: userLocation?.coords.lat ?? null,
+        lng: userLocation?.coords.lng ?? null,
+      });
+      console.log('[stone-detail] submitFind result=', findRes);
 
       if (!findRes.ok) {
         setClaiming(false);
         void haptics.warn();
+        Alert.alert(t('common.error'), findRes.detail || findRes.reason);
+        return;
+      }
+
+      // Server вернул decision: verified | pending | rejected | already_found
+      if (findRes.status === 'rejected') {
+        setClaiming(false);
+        void haptics.warn();
+        const simPct = findRes.similarity != null
+          ? ` (${Math.round(findRes.similarity * 100)}%)`
+          : '';
         const msgKey =
-          findRes.reason === 'too_far' ? t('stone.too_far_text') :
-          findRes.reason === 'cannot_find_own_stone' ? t('stone.cannot_find_own') :
-          findRes.reason === 'stone_too_fresh' ? t('stone.too_fresh') :
-          findRes.reason === 'author_daily_limit' ? t('stone.author_limit') :
-          t('common.error');
+          findRes.reason === 'low_similarity'
+            ? `Это не похоже на этот камень${simPct}. Попробуй сделать фото чётче или с другой стороны.`
+          : findRes.reason === 'cannot_find_own_stone' ? t('stone.cannot_find_own')
+          : findRes.reason === 'stone_too_fresh' ? t('stone.too_fresh')
+          : findRes.reason === 'author_daily_limit' ? t('stone.author_limit')
+          : findRes.reason === 'daily_find_limit' ? 'Лимит находок на сегодня'
+          : t('common.error');
         Alert.alert(t('common.error'), msgKey);
         return;
       }
 
+      if (findRes.status === 'pending') {
+        setClaiming(false);
+        Alert.alert(
+          'Отправлено автору',
+          'Похоже на этот камень, но не на 100%. Автору отправлено на подтверждение, как только подтвердит — начислим 💎.',
+        );
+        return;
+      }
+
+      // Verified — celebrate.
       void haptics.success();
       setAlreadyFound(true);
       const newBalance = findRes.balance ?? (await getPoints());
@@ -534,9 +682,13 @@ export default function StoneDetailScreen() {
     }
   };
 
-  // Pick the best photo: prefer real URI, then bundled photo key
+  // Pick the best photo: prefer stone's own photo_url (set when hidden),
+  // потом activity history (для legacy / cross-references), потом bundled
+  // photo key (демо-камни). Раньше брали ТОЛЬКО из history, и если истории
+  // ещё нет (свежий камень или у finder'а нет cached activities) →
+  // юзер видел серый-каменный fallback вместо реального фото автора.
   const actWithPhoto = history.find((a) => a.photoUri || a.photo);
-  const heroPhotoUri = actWithPhoto?.photoUri;
+  const heroPhotoUri = stone?.photoUri ?? actWithPhoto?.photoUri;
   const heroPhoto = actWithPhoto?.photo;
   // Original creator: oldest hide event
   const creator = [...history].reverse().find((a) => a.type === 'hide');
@@ -921,6 +1073,66 @@ export default function StoneDetailScreen() {
         )}
       </SafeAreaView>
 
+      {/* AI find scanner — 2-х сторонний скан зеркально hide flow.
+          Прогресс берём по done-count, чтобы countdown следующего шага не
+          стартовал пока AI не закончил предыдущий (см. analyzing prop). */}
+      {(() => {
+        const findDoneCount = findCaptures.filter((c) => c.status === 'done').length;
+        const findCurrentStep = Math.min(findDoneCount + 1, FIND_TOTAL);
+        const lastFind = findCaptures[findCaptures.length - 1];
+        const findAnyFailed = findCaptures.some((c) => c.status === 'failed');
+        const findAnalyzing: 'idle' | 'pending' | 'done' | 'failed' =
+          !lastFind ? 'idle' :
+          lastFind.status === 'pending' ? 'pending' :
+          findAnyFailed ? 'failed' :
+          lastFind.status === 'done' ? 'done' : 'idle';
+        const findAnalyzingLabel = findCaptures.length === 1
+          ? 'AI запоминает рисунок…'
+          : 'AI анализирует обратную сторону…';
+        return (
+          <Modal
+            visible={showFindCamera}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={() => {
+              setShowFindCamera(false);
+              setFindCaptures([]);
+            }}
+          >
+            <StoneScanCamera
+              title={t('scan.title_find')}
+              subtitle={FIND_STEPS[findCaptures.length] ?? t('scan.sub_find')}
+              progress={{
+                current: findCurrentStep,
+                total: FIND_TOTAL,
+                stepLabel: `Фото ${findCurrentStep} из ${FIND_TOTAL}`,
+              }}
+              onCapture={handleFindCapture}
+              onCancel={() => {
+                setShowFindCamera(false);
+                setFindCaptures([]);
+              }}
+              ctaLabel={t('scan.btn_capture')}
+              analyzing={findAnalyzing}
+              analyzingLabel={findAnalyzingLabel}
+              onRetry={() => setFindCaptures([])}
+            />
+          </Modal>
+        );
+      })()}
+
+      {/* Claiming overlay — пока AI обрабатывает фото после snap'а. */}
+      {claiming && (
+        <View style={StyleSheet.absoluteFill}>
+          <View style={styles.claimingOverlay}>
+            <ActivityIndicator color={Colors.accent} size="large" />
+            <Text style={styles.claimingText}>
+              {t('scan.processing') || 'AI проверяет…'}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Celebration overlay — показывается после успешной находки */}
       {celebration && <CelebrationOverlay {...celebration} />}
 
@@ -959,6 +1171,20 @@ function pluralize(n: number, one: string, few: string, many: string): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+
+  // AI find: фуллскрин loading пока сервер сравнивает embedding
+  claimingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(18,16,39,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  claimingText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
 
   // Hero
   heroArea: {

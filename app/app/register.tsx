@@ -22,7 +22,7 @@ import {
 import { router, Link } from 'expo-router';
 import Constants from 'expo-constants';
 import { Colors } from '../constants/Colors';
-import { register, login, DEMO_ACCOUNTS, configureGoogleSignIn, getGoogleSignin } from '../lib/auth';
+import { register, configureGoogleSignIn, getGoogleSignin } from '../lib/auth';
 
 // Google Sign-In requires a native module not bundled in Expo Go.
 // Hide the button there to avoid TurboModule invariant violations.
@@ -44,7 +44,10 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // Возраст — спрашиваем "сколько тебе лет" а не "год рождения" (детям
+  // первое в разы понятнее). На сервер всё равно сохраняем birth_year =
+  // currentYear - age (COPPA work на уровне года, точная дата не нужна).
+  const [ageInput, setAgeInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -76,11 +79,8 @@ export default function RegisterScreen() {
       setError(t('register.email_invalid'));
       return;
     }
-    // COPPA / GDPR — нужно подтверждение возраста 13+
-    if (!ageConfirmed) {
-      setError(t('register.age_gate_required'));
-      return;
-    }
+    const yearNum = validateAge();
+    if (yearNum === null) return;
     if (password.length < 8) {
       setError(t('register.password_too_short'));
       return;
@@ -90,6 +90,16 @@ export default function RegisterScreen() {
     try {
       await register(trimmedEmail, password, trimmedName);
       void Registered('email');
+      // Save birth_year right after register — иначе server RPC's
+      // не работают (create_stone, record_find_v2 require birth_year).
+      try {
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        if (newUser) {
+          await supabase.from('profiles').update({ birth_year: yearNum }).eq('id', newUser.id);
+        }
+      } catch (e) {
+        console.warn('failed to save birth_year', e);
+      }
       // Применяем invite code (из поля или pending deep-link)
       const codeToApply = inviteCode.trim().toUpperCase();
       if (codeToApply) {
@@ -105,7 +115,18 @@ export default function RegisterScreen() {
         }
         // Если не ok — просто молча игнорируем (invalid code не блокирует регистрацию)
       } else {
-        void applyPendingReferralCode();
+        // Не "void" — реально awaitим, чтобы показать тост о +50💎
+        // (раньше fire-and-forget терял feedback). applyPendingReferralCode
+        // тихо вернёт null если кода нет — это нормально.
+        const result = await applyPendingReferralCode();
+        if (result?.ok) {
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
+        }
       }
       // Welcome alert — ранее юзер просто оказывался на карте без
       // feedback о успешной регистрации. Покажем короткое приветствие
@@ -117,14 +138,20 @@ export default function RegisterScreen() {
         [{ text: t('common.ok') || 'OK', onPress: () => router.replace('/map') }],
       );
     } catch (e: any) {
-      // Supabase возвращает "User already registered" — переводим в
-      // user-friendly текст, раньше юзер видел английский error либо
-      // (худший случай) форма «проходила» без явной ошибки.
+      // Дружественные ошибки + переход в /login если аккаунт уже есть.
       const msg = String(e?.message ?? '').toLowerCase();
       if (msg.includes('already registered') || msg.includes('user already') || msg.includes('duplicate')) {
-        setError(
-          t('register.email_taken') ||
-            'На этот email уже есть аккаунт. Попробуй войти или использовать другой email.',
+        Alert.alert(
+          t('register.email_taken_title') || 'Email уже зарегистрирован',
+          t('register.email_taken_text') ||
+            'На этот email уже есть аккаунт. Хочешь войти?',
+          [
+            { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+            {
+              text: t('common.login') || 'Войти',
+              onPress: () => router.replace('/login'),
+            },
+          ],
         );
       } else {
         setError(e?.message ?? t('register.error'));
@@ -132,6 +159,27 @@ export default function RegisterScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Простая валидация возраста: ≥13 → ok, иначе блок без обхода.
+  // Industry-standard pattern (Snapchat/Instagram/Discord/Reddit) — никакого
+  // over-engineering с persistent rejection. Если юзер врёт — "no actual
+  // knowledge" доктрина FTC прикрывает: мы спросили честно, поверили на слово.
+  // Для родителей с детьми <13 — играют вместе на родительском аккаунте.
+  const validateAge = (): number | null => {
+    const ageNum = parseInt(ageInput.trim(), 10);
+    if (!Number.isFinite(ageNum) || ageNum <= 0 || ageNum > 130) {
+      setError(t('register.age_invalid') || 'Сколько тебе лет?');
+      return null;
+    }
+    if (ageNum < 13) {
+      setError(
+        t('register.age_under_13') ||
+          'Stobi доступен с 13 лет. Если тебе младше — играй с родителем на его телефоне.',
+      );
+      return null;
+    }
+    return new Date().getFullYear() - ageNum;
   };
 
   const handleGoogleSignIn = async () => {
@@ -146,6 +194,8 @@ export default function RegisterScreen() {
       setError('Google Sign-In доступен только в установленной версии приложения. В Expo Go используй Apple или Email.');
       return;
     }
+    const yearNum = validateAge();
+    if (yearNum === null) return;
     setLoading(true);
     setError(null);
     try {
@@ -158,11 +208,16 @@ export default function RegisterScreen() {
       const idToken = userInfo?.data?.idToken ?? userInfo?.idToken;
       if (!idToken) throw new Error(t('stone.error_google_token'));
 
-      const { error: signInError } = await supabase.auth.signInWithIdToken({
+      const { data, error: signInError } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
       });
       if (signInError) throw signInError;
+
+      // Save birth_year right after auth (Google не передаёт год сам).
+      if (data.user) {
+        await supabase.from('profiles').update({ birth_year: yearNum }).eq('id', data.user.id);
+      }
 
       router.replace('/map');
     } catch (e: any) {
@@ -179,6 +234,8 @@ export default function RegisterScreen() {
       setError('Supabase not configured');
       return;
     }
+    const yearNum = validateAge();
+    if (yearNum === null) return;
     setLoading(true);
     setError(null);
     try {
@@ -199,12 +256,45 @@ export default function RegisterScreen() {
       if (signInError) throw signInError;
 
       // Save user's name from Apple (only available on first sign-in)
-      if (credential.fullName && data.user) {
-        const fullName = [credential.fullName.givenName, credential.fullName.familyName]
-          .filter(Boolean)
-          .join(' ');
-        if (fullName) {
-          await supabase.from('profiles').update({ username: fullName }).eq('id', data.user.id);
+      // + birth_year (Apple sign-in не передаёт год). Один UPDATE экономит
+      // round-trip, плюс гарантирует что если username не пришёл — год всё
+      // равно записан (раньше профиль оставался без birth_year → COPPA gate).
+      if (data.user) {
+        const updates: Record<string, unknown> = { birth_year: yearNum };
+        if (credential.fullName) {
+          const fullName = [credential.fullName.givenName, credential.fullName.familyName]
+            .filter(Boolean)
+            .join(' ');
+          if (fullName) updates.username = fullName;
+        }
+        await supabase.from('profiles').update(updates).eq('id', data.user.id);
+      }
+      // Apply referral code — раньше для Apple sign-in этот шаг был пропущен
+      // (есть только в email-flow). Нужен и здесь — иначе у юзера, который
+      // открыл deep-link с invite-кодом и зарегился через Apple, бонусы
+      // (50💎 ему + 50💎 пригласившему) терялись. applyPendingReferralCode
+      // идемпотентен — если уже redeemed, server вернёт already_redeemed
+      // и мы тихо игнорируем (см. redeemReferralCode catch).
+      const inviteFromField = inviteCode.trim().toUpperCase();
+      if (inviteFromField) {
+        const result = await redeemReferralCode(inviteFromField);
+        if (result.ok) {
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
+        }
+      } else {
+        const result = await applyPendingReferralCode();
+        if (result?.ok) {
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
         }
       }
       router.replace('/map');
@@ -262,6 +352,22 @@ export default function RegisterScreen() {
 
               <View style={styles.buttonsWrap}>
                 <Text style={styles.signUpLabel}>{t('auth.sign_up')}</Text>
+
+                {/* Год рождения — ВЫШЕ всех методов sign-in (Apple/Google
+                    тоже его требуют). Раньше поле стояло внизу формы и
+                    юзер тапая Apple silently fail'ил с "введи год". */}
+                <View style={styles.inputWrap}>
+                  <User size={18} color="rgba(255,255,255,0.5)" weight="regular" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('register.age_hint_placeholder') || 'Сколько тебе лет?'}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    value={ageInput}
+                    onChangeText={(text) => setAgeInput(text.replace(/\D/g, '').slice(0, 3))}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                  />
+                </View>
 
                 {/* Apple Sign-In — iOS only */}
                 {Platform.OS === 'ios' && (
@@ -346,19 +452,8 @@ export default function RegisterScreen() {
                   />
                 </View>
 
-                {/* Age gate — COPPA / GDPR 13+ confirmation */}
-                <TouchableOpacity
-                  style={styles.ageGate}
-                  activeOpacity={0.8}
-                  onPress={() => setAgeConfirmed(!ageConfirmed)}
-                >
-                  <View style={[styles.checkbox, ageConfirmed && styles.checkboxActive]}>
-                    {ageConfirmed && <Text style={styles.checkboxTick}>✓</Text>}
-                  </View>
-                  <Text style={styles.ageGateText}>
-                    {t('register.age_gate')}
-                  </Text>
-                </TouchableOpacity>
+                {/* Birth year поле перенесено наверх формы (выше Apple/Google),
+                    дубликат удалён. */}
 
                 {error && (
                   <View style={styles.errorBox}>
@@ -401,32 +496,9 @@ export default function RegisterScreen() {
                 </Text>
               </View>
 
-            {/* Dev demo accounts */}
-            {__DEV__ && (
-              <View style={styles.demoList}>
-                <Text style={styles.demoHeader}>DEV: Quick Login</Text>
-                {DEMO_ACCOUNTS.map((acc) => (
-                  <TouchableOpacity
-                    key={acc.email}
-                    style={styles.demoBtn}
-                    onPress={async () => {
-                      try {
-                        await login(acc.email, acc.password);
-                        router.replace('/map');
-                      } catch (e: any) {
-                        setError(e?.message ?? t('login.error'));
-                      }
-                    }}
-                    disabled={loading}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={{ fontSize: 20 }}>{acc.emoji}</Text>
-                    <Text style={styles.demoLabel}>{acc.label}</Text>
-                    <ArrowRight size={16} color="rgba(255,255,255,0.5)" weight="bold" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            {/* Dev demo accounts removed — мешали реальному testing flow.
+                Демо-юзеры (demo@stobi.app, anna@stobi.app) всё ещё в БД
+                для seeded-data, но quick-login кнопок больше нет. */}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -602,6 +674,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: 'rgba(255,255,255,0.85)',
+  },
+  ageGateHint: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.55)',
+    paddingHorizontal: 4,
+    marginBottom: 4,
   },
 
   ctaBtn: {

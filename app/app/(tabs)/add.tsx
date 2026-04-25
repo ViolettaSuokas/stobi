@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -89,8 +90,14 @@ export default function AddScreen() {
     ? scanCaptures.map((c) => c.embedding).filter((e): e is number[] => Array.isArray(e))
     : null;
   const scanPhotoUrl = scanCaptures[0]?.photoUrl ?? null;
-  const scanAllDone = scanCaptures.length === SCAN_TOTAL
-    && scanCaptures.every((c) => c.status === 'done');
+  // Settled = все 2 кадра прошли pipeline (done или failed). Спиннер должен
+  // уйти когда settled, иначе timeout/сетевая ошибка → бесконечная "AI
+  // анализирует". Раньше зависели только от `every === 'done'` → если хоть
+  // один failed, юзер залипал на 45-сек copy навсегда.
+  const scanSettled = scanCaptures.length === SCAN_TOTAL
+    && scanCaptures.every((c) => c.status !== 'pending');
+  const scanAnyFailed = scanCaptures.some((c) => c.status === 'failed');
+  const scanAllDone = scanSettled && !scanAnyFailed;
 
   const modal = useModal();
   const { t } = useI18n();
@@ -132,20 +139,39 @@ export default function AddScreen() {
   // read + acknowledged the safety rules (hide only in public places, never
   // near schools, etc). This is critical since painted-rocks users are often
   // children and unsafe hiding patterns = child-safety hazard.
+  // Intro модал: объясняем юзеру весь scan-flow заранее. Без этого первый
+  // раз непонятно: "почему камера сразу открылась? зачем 2 фото? когда
+  // переворачивать?". Modal короткий, юзер читает 5 сек и сам жмёт "Начать".
+  const showScanIntro = () => {
+    modal.show({
+      title: 'Сканируем камень',
+      message:
+        'Возьми камень в руки. Сначала сделаем фото стороны с рисунком, потом перевернёшь — и AI запомнит его, чтобы потом узнать когда найдут.',
+      buttons: [
+        { label: t('common.cancel') || 'Отмена', style: 'cancel' },
+        {
+          label: 'Начать',
+          onPress: () => {
+            setScanCaptures([]);
+            setShowScanCamera(true);
+          },
+        },
+      ],
+    });
+  };
+
   const handleOpenScanCamera = async () => {
     const acked = await hasAcknowledgedSafety();
     if (!acked) {
       setShowSafetyGate(true);
       return;
     }
-    setScanCaptures([]);
-    setShowScanCamera(true);
+    showScanIntro();
   };
 
   const handleSafetyAcknowledge = () => {
     setShowSafetyGate(false);
-    setScanCaptures([]);
-    setShowScanCamera(true);
+    showScanIntro();
   };
 
   const handleScanCapture = async (uri: string) => {
@@ -169,17 +195,15 @@ export default function AddScreen() {
       setPhotoUri(processed.uri);         // первое фото идёт в photo area
     }
     setScanCaptures((prev) => [...prev, { localUri: processed.uri, status: 'pending' }]);
-
-    // Если собрали все — закрываем камеру.
-    if (index + 1 >= SCAN_TOTAL) {
-      setShowScanCamera(false);
-      setScanning(true);
-    }
+    // Камеру НЕ закрываем после последнего capture — ждём пока AI закончит
+    // оба, чтобы юзер видел "AI запоминает..." прямо в камере. Закрытие
+    // триггерится из useEffect ниже когда scanAllDone.
 
     // Фоново: upload + edge function. Не блокируем следующий shutter.
     (async () => {
       try {
-        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'stone');
+        const { signedUrl, path } = await uploadPhotoToStorage(processed.uri, 'stone');
+        console.log(`[scan] capture[${index}] uploaded path=${path} signedUrl=${signedUrl.slice(0, 120)}...`);
         const moderation = await moderateAndEmbedPhoto(signedUrl, 'stone');
         if (!moderation.safe) {
           setScanCaptures((prev) => {
@@ -229,7 +253,31 @@ export default function AddScreen() {
     setScanning(false);
   };
 
+  // Camera retry: AI упал на одном из снимков → камера показала retry.
+  // Сбрасываем все captures и оставляем камеру открытой — countdown
+  // перезапустится автоматически (cameraReady остаётся true).
+  const handleScanRetry = () => {
+    setScanCaptures([]);
+    setPhotoUri(null);
+  };
+
+  // Auto-close camera когда AI закончил оба снимка успешно. Раньше
+  // закрывали сразу после captureN — но тогда AI крутился на отдельном
+  // спиннер-экране, и при failure юзер залипал. Теперь весь scan-loop
+  // (snap → AI → snap → AI) живёт внутри камеры.
+  useEffect(() => {
+    if (!showScanCamera) return;
+    if (scanCaptures.length === SCAN_TOTAL && scanCaptures.every((c) => c.status === 'done')) {
+      setShowScanCamera(false);
+      setScanning(false);
+    }
+  }, [showScanCamera, scanCaptures]);
+
   const handleSave = async () => {
+    // Прячем клавиатуру — иначе после save показывается CelebrationOverlay,
+    // а клавиатура от поля "Название" остаётся и закрывает половину экрана,
+    // включая кнопку закрытия overlay → юзер залипает.
+    Keyboard.dismiss();
     const trimmedName = name.trim();
     const trimmedDesc = description.trim();
 
@@ -385,7 +433,10 @@ export default function AddScreen() {
         stoneCity: city ?? undefined,
         onClose: () => {
           setCelebration(null);
-          router.back();
+          // На карту, а не router.back() — /add это таб без истории, back
+          // не работает, юзер залипает на пустом /add. Карта — естественный
+          // следующий шаг (видишь свой только что спрятанный камень).
+          router.push('/(tabs)/map');
         },
       });
     } catch (e: any) {
@@ -448,7 +499,24 @@ export default function AddScreen() {
   // Full-screen scan camera as a Modal — must wrap in Modal (not return
   // inline) so it overlays the tab bar. Returning StoneScanCamera as the
   // tab body left the tab navigator's bar covering the shutter button.
-  const currentScanStep = Math.min(scanCaptures.length + 1, SCAN_TOTAL);
+  //
+  // Шаг считаем по done-count, не по length — иначе после snap'а
+  // камера сразу показывает "Photo 2 of 2" хотя photo 1 ещё в AI.
+  // Countdown следующего шага залочен через analyzing prop пока
+  // предыдущий не settled.
+  const doneCount = scanCaptures.filter((c) => c.status === 'done').length;
+  const currentScanStep = Math.min(doneCount + 1, SCAN_TOTAL);
+  // Статус для камеры берём от последнего capture'а (он сейчас в обработке).
+  const lastCapture = scanCaptures[scanCaptures.length - 1];
+  const cameraAnalyzing: 'idle' | 'pending' | 'done' | 'failed' =
+    !lastCapture ? 'idle' : lastCapture.status === 'pending' ? 'pending' :
+    scanAnyFailed ? 'failed' :
+    lastCapture.status === 'done' ? 'done' : 'idle';
+  // Подпись зависит от того, какую сторону только что сняли.
+  const cameraAnalyzingLabel =
+    scanCaptures.length === 1
+      ? (t('scan.analyzing') || 'AI запоминает рисунок…')
+      : (t('scan.analyzing_back') || 'AI анализирует обратную сторону…');
   const scanCameraEl = (
     <Modal
       visible={showScanCamera}
@@ -473,6 +541,9 @@ export default function AddScreen() {
           setScanCaptures([]);
         }}
         ctaLabel={t('scan.btn_capture')}
+        analyzing={cameraAnalyzing}
+        analyzingLabel={cameraAnalyzingLabel}
+        onRetry={handleScanRetry}
       />
     </Modal>
   );

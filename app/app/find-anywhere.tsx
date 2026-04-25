@@ -147,8 +147,8 @@ export default function FindAnywhereScreen() {
         return;
       }
 
-      // 1. Resize + EXIF strip
-      const processedPhoto = await processPhoto(rawUri);
+      // 1. Resize + EXIF strip — find proof tier (1024px / 0.55).
+      const processedPhoto = await processPhoto(rawUri, 'proof');
 
       // 2. Upload to Supabase Storage → signed URL
       const { signedUrl } = await uploadPhotoToStorage(processedPhoto.uri, 'find');
