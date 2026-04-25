@@ -24,12 +24,9 @@ import {
   ArrowUp,
   Heart,
   PencilSimple,
-  Paperclip,
   Globe,
   MapPin,
 } from 'phosphor-react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { processPhoto } from '../../lib/photo';
 import * as haptics from '../../lib/haptics';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -248,44 +245,6 @@ export default function ChatScreen() {
       };
     }, []),
   );
-
-  const handleAttachPhoto = async () => {
-    if (!(await requireAuth('прикрепить фото'))) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 1,
-      allowsEditing: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const processed = await processPhoto(result.assets[0].uri);
-      // Optimistic local preview — юзер сразу видит что фото прикрепилось.
-      setPendingPhoto(processed.uri);
-
-      // NSFW модерация в фоне. Если AWS Rekognition сконфигурирован
-      // и фото непотреб — отменяем attach + показываем ошибку.
-      try {
-        const { uploadPhotoToStorage, moderateAndEmbedPhoto } = await import('../../lib/photo');
-        const { signedUrl } = await uploadPhotoToStorage(processed.uri, 'find');
-        const moderation = await moderateAndEmbedPhoto(signedUrl, 'find');
-        if (!moderation.safe) {
-          setPendingPhoto(null);
-          Alert.alert(
-            t('chat.photo_rejected_title') || 'Фото отклонено',
-            t('chat.photo_rejected_text') || 'AI не разрешил это фото. Выбери другое.',
-          );
-        }
-      } catch (e) {
-        // Moderation failed — remove the optimistic attach and tell the user.
-        // Leaving an unmoderated photo in the send queue would let a flaky
-        // network/Edge Function bypass NSFW checks.
-        console.warn('chat: photo moderation failed', e);
-        setPendingPhoto(null);
-        Alert.alert(
-          t('chat.photo_rejected_title') || 'Фото не прошло проверку',
-          t('chat.moderation_failed') || 'Не удалось проверить фото. Попробуй ещё раз или выбери другое.',
-        );
-      }
-    }
-  };
 
   const handleSend = async () => {
     const trimmed = text.trim();
@@ -834,15 +793,15 @@ export default function ChatScreen() {
 
         {/* Input bar */}
         <View style={styles.inputBar}>
-          <TouchableOpacity
-            style={styles.attachBtn}
-            onPress={handleAttachPhoto}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t('chat.attach_photo') || 'Приложить фото'}
-          >
-            <Paperclip size={22} color={Colors.text2} weight="regular" />
-          </TouchableOpacity>
+          {/* Photo attach intentionally disabled in v1.
+           * Current pipeline pushes chat photos through the CLIP-embedding
+           * Edge Function meant for stone-find proofs, which:
+           *   (a) occasionally rate-limits on Replicate and surfaces the
+           *       'chat.moderation_failed' alert to the user
+           *   (b) wouldn't cross-sync anyway — messages.photo_url is read
+           *       as a StonePhotoKey, not a storage URL.
+           * Proper chat-photo support needs a lighter NSFW-only Edge
+           * Function plus URL-aware rendering. Tracked separately. */}
           <TextInput
             style={styles.input}
             placeholder={t('chat.placeholder')}
