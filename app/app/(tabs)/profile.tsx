@@ -699,39 +699,7 @@ export default function ProfileScreen() {
             {/* Welcome quest — скрывается когда все 3 задачи выполнены */}
             <WelcomeQuest />
 
-            {/* Pending finds — для авторов камней, ожидающих одобрения чужой
-                находки. Был в Settings → My Stones, переехал сюда т.к. это
-                повседневное действие, не настройка. Показываем только если
-                есть pending. */}
-            {user && pendingFindsCount > 0 && (
-              <TouchableOpacity
-                style={styles.pendingCard}
-                onPress={() => router.push('/pending-approvals' as any)}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={t('pending.title') || 'Одобрить находки'}
-              >
-                <View style={styles.pendingIconBox}>
-                  <Text style={{ fontSize: 22 }}>🔔</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.pendingTitle}>
-                    {t('pending.title') || 'Одобрить находки'}
-                  </Text>
-                  <Text style={styles.pendingSub}>
-                    {pendingFindsCount === 1
-                      ? (t('pending.subtitle_one') || '1 находка ждёт твоего подтверждения')
-                      : (t('pending.subtitle_many') || `${pendingFindsCount} находок ждут твоего подтверждения`).replace('{count}', String(pendingFindsCount))}
-                  </Text>
-                </View>
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingBadgeText}>{pendingFindsCount}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* Referral card — appears when logged in, always shown */}
-            {user && <ReferralCard />}
+            {/* Referral card переехал после "Одобрить находки" (см. ниже) */}
 
             {/* Stats */}
             <View style={styles.statsRow}>
@@ -928,7 +896,52 @@ export default function ProfileScreen() {
                 <Text style={styles.addStoneText}>{t('profile.add_stone')}</Text>
               </TouchableOpacity>
             )}
+
+            {/* Pending finds — после "Мои камни", потому что это про
+                те же камни (одобрить чужую находку твоего камня). Всегда
+                видно авторизованному юзеру: при pending>0 — жёлтая
+                с counter, при 0 — серая "пока пусто" (чтобы юзер знал
+                где это будет когда находка появится). */}
+            {user && (
+              <TouchableOpacity
+                style={[
+                  pendingFindsCount > 0 ? styles.pendingCard : styles.pendingCardEmpty,
+                  { marginTop: 12, marginBottom: 0 },
+                ]}
+                onPress={() => router.push('/pending-approvals' as any)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('pending.title') || 'Одобрить находки'}
+              >
+                <View style={styles.pendingIconBox}>
+                  <Text style={{ fontSize: 22 }}>{pendingFindsCount > 0 ? '🔔' : '🌱'}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={pendingFindsCount > 0 ? styles.pendingTitle : styles.pendingTitleEmpty}>
+                    {t('pending.title') || 'Одобрить находки'}
+                  </Text>
+                  <Text style={pendingFindsCount > 0 ? styles.pendingSub : styles.pendingSubEmpty}>
+                    {pendingFindsCount === 0
+                      ? (t('pending.empty_inline') || 'Пока никто не ждёт одобрения')
+                      : pendingFindsCount === 1
+                        ? (t('pending.subtitle_one') || '1 находка ждёт твоего подтверждения')
+                        : (t('pending.subtitle_many') || `${pendingFindsCount} находок ждут твоего подтверждения`).replace('{count}', String(pendingFindsCount))}
+                  </Text>
+                </View>
+                {pendingFindsCount > 0 ? (
+                  <View style={styles.pendingBadge}>
+                    <Text style={styles.pendingBadgeText}>{pendingFindsCount}</Text>
+                  </View>
+                ) : (
+                  <CaretRight size={16} color={Colors.text2} weight="bold" />
+                )}
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Referral card — переехал сюда из верха overview, по запросу:
+              сначала pending finds (про твои камни), потом приглашение друзей. */}
+          {user && <ReferralCard />}
 
           {/* Premium — viewable by everyone, CTA inside handles auth */}
           {!user?.isArtist && (
@@ -1587,6 +1600,18 @@ const styles = StyleSheet.create({
     borderColor: '#FDE68A',
     marginBottom: 14,
   },
+  pendingCardEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 14,
+  },
   pendingIconBox: {
     width: 44,
     height: 44,
@@ -1600,10 +1625,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#92400E',
   },
+  pendingTitleEmpty: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.text,
+  },
   pendingSub: {
     fontSize: 12,
     color: '#92400E',
     opacity: 0.8,
+    marginTop: 2,
+  },
+  pendingSubEmpty: {
+    fontSize: 12,
+    color: Colors.text2,
     marginTop: 2,
   },
   pendingBadge: {
