@@ -107,11 +107,7 @@ export default function SettingsScreen() {
   };
 
   const handlePaymentHistory = () => {
-    modal.show({
-      title: t('settings.payment_history'),
-      message: t('settings.payment_history_empty'),
-      buttons: [{ label: t('common.ok'), style: 'cancel' }],
-    });
+    router.push('/diamond-history' as any);
   };
 
   const handleLogout = () => {

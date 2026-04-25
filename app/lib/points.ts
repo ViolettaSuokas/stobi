@@ -421,3 +421,46 @@ export async function setEquippedIds(equipped: NonNullable<StoredState['equipped
 export async function resetPoints(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
+
+// ────────────────────────────────────────────
+// Balance history (diamond_history screen)
+// ────────────────────────────────────────────
+
+export type BalanceEvent = {
+  id: string;
+  amount: number;
+  reason: string;
+  refId: string | null;
+  balanceAfter: number;
+  createdAt: string;
+};
+
+/**
+ * Fetches the current user's balance_events for the diamond-history screen.
+ * Server-side ORDER BY created_at DESC LIMIT 100. Returns [] for guests
+ * or on network failure.
+ */
+export async function getBalanceHistory(limit: number = 100): Promise<BalanceEvent[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('balance_events')
+      .select('id, amount, reason, ref_id, balance_after, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return data.map((row: any) => ({
+      id: row.id,
+      amount: row.amount,
+      reason: row.reason,
+      refId: row.ref_id ?? null,
+      balanceAfter: row.balance_after,
+      createdAt: row.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
