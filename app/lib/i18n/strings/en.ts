@@ -61,6 +61,7 @@ export const en: Record<string, string> = {
     'settings.terms': 'Terms of Service',
     'settings.community_rules': 'Community rules',
     'settings.account': 'ACCOUNT',
+    'settings.export_data': 'Download my data',
     'settings.logout': 'Log out',
     'settings.delete_account': 'Delete account',
     'settings.delete_confirm': 'All your data will be permanently deleted: stones, finds, achievements, diamonds. This cannot be undone.',

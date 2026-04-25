@@ -247,16 +247,8 @@ export default function SettingsScreen() {
               trackColor={{ true: Colors.accent, false: Colors.surface2 }}
             />
           </View>
-          <View style={styles.divider} />
-          <View style={styles.row}>
-            <Bell size={20} color={Colors.accent} weight="regular" />
-            <Text style={styles.rowLabel}>{t('settings.email')}</Text>
-            <Switch
-              value={emailEnabled}
-              onValueChange={toggleEmail}
-              trackColor={{ true: Colors.accent, false: Colors.surface2 }}
-            />
-          </View>
+          {/* Email-уведомления убраны — нет email-pipeline в проекте,
+              switch был визуальной заглушкой (только AsyncStorage). */}
           <View style={styles.divider} />
           <View style={styles.row}>
             <Bell size={20} color={Colors.accent} weight="regular" />
@@ -350,18 +342,26 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>{t('settings.community_rules') || 'Правила сообщества'}</Text>
             <CaretRight size={16} color={Colors.text2} weight="bold" />
           </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity
-            style={styles.row}
-            activeOpacity={0.7}
-            onPress={handleResetFirstRun}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.reset_firstrun') || 'Сбросить первый запуск (для теста)'}
-          >
-            <Info size={20} color={Colors.accent} weight="regular" />
-            <Text style={styles.rowLabel}>{t('settings.reset_firstrun') || 'Сбросить первый запуск'}</Text>
-            <CaretRight size={16} color={Colors.text2} weight="bold" />
-          </TouchableOpacity>
+          {/* Reset-firstrun — debug-инструмент для тестов онбординга,
+              не для конечных юзеров. В TestFlight и в проде __DEV__ = false,
+              так что строка скрыта. Раньше отсутствовала проверка → юзер
+              видел raw-ключ "settings.reset_firstrun". */}
+          {__DEV__ && (
+            <>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.row}
+                activeOpacity={0.7}
+                onPress={handleResetFirstRun}
+                accessibilityRole="button"
+                accessibilityLabel="Сбросить первый запуск (для теста)"
+              >
+                <Info size={20} color={Colors.accent} weight="regular" />
+                <Text style={styles.rowLabel}>DEV: Сбросить первый запуск</Text>
+                <CaretRight size={16} color={Colors.text2} weight="bold" />
+              </TouchableOpacity>
+            </>
+          )}
           <View style={styles.divider} />
           <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push('/feedback' as any)} accessibilityRole="button" accessibilityLabel={t('settings.feedback')}>
             <Info size={20} color={Colors.accent} weight="regular" />

@@ -72,6 +72,7 @@ export const fi: Record<string, string> = {
     'settings.terms': 'Käyttöehdot',
     'settings.community_rules': 'Yhteisön säännöt',
     'settings.account': 'TILI',
+    'settings.export_data': 'Lataa tietoni',
     'settings.logout': 'Kirjaudu ulos',
     'settings.delete_account': 'Poista tili',
     'settings.delete_confirm': 'Kaikki tietosi poistetaan pysyvästi: kivet, löydöt, saavutukset ja timantit. Tätä toimintoa ei voi peruuttaa.',

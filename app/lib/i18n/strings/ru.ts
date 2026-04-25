@@ -67,6 +67,7 @@ export const ru: Record<string, string> = {
     'settings.terms': 'Условия использования',
     'settings.community_rules': 'Правила сообщества',
     'settings.account': 'АККАУНТ',
+    'settings.export_data': 'Скачать мои данные',
     'settings.logout': 'Выйти из аккаунта',
     'settings.delete_account': 'Удалить аккаунт',
     'settings.delete_confirm': 'Все твои данные будут удалены безвозвратно: камни, находки, достижения, алмазики. Это действие нельзя отменить.',

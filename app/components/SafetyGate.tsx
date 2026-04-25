@@ -8,8 +8,8 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCircle, X, Warning, Heart, MapPin, Users } from 'phosphor-react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CheckCircle, X, CaretLeft, Warning, Heart, MapPin, Users } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
 
@@ -50,18 +50,54 @@ export function SafetyGate({ visible, onAcknowledge, onClose, readOnly = false }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
+      {/* SafeAreaProvider нужен внутри Modal на iOS — модалка рендерится
+          вне React Navigation tree, поэтому SafeAreaView из родительского
+          провайдера insets не получает (отсюда крестик упирался в часы). */}
+      <SafeAreaProvider>
+        <SafetyGateBody
+          readOnly={readOnly}
+          checked={checked}
+          setChecked={setChecked}
+          onClose={onClose}
+          handleConfirm={handleConfirm}
+        />
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
+function SafetyGateBody({
+  readOnly,
+  checked,
+  setChecked,
+  onClose,
+  handleConfirm,
+}: {
+  readOnly: boolean;
+  checked: boolean;
+  setChecked: (v: boolean) => void;
+  onClose: () => void;
+  handleConfirm: () => void;
+}) {
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+
+  return (
       <View style={styles.container}>
-        <SafeAreaView edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <X size={22} color={Colors.text} weight="bold" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>
-              {t('safety.gate_title') || 'Правила безопасности'}
-            </Text>
-            <View style={{ width: 40 }} />
-          </View>
-        </SafeAreaView>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          {/* readOnly = открыто из настроек как справка → back-стрелка
+              как у других settings-страниц. Не-readOnly = mandatory gate
+              перед первой пряткой → крестик (явно "закрыть/отмена"). */}
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+            {readOnly
+              ? <CaretLeft size={22} color={Colors.text} weight="bold" />
+              : <X size={22} color={Colors.text} weight="bold" />}
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {t('safety.gate_title') || 'Правила безопасности'}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
 
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.heroIcon}>
@@ -173,7 +209,6 @@ export function SafetyGate({ visible, onAcknowledge, onClose, readOnly = false }
           )}
         </ScrollView>
       </View>
-    </Modal>
   );
 }
 
