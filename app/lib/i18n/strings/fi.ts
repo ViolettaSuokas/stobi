@@ -85,7 +85,7 @@ export const fi: Record<string, string> = {
     'chat.placeholder': 'Kirjoita chattiin...',
     'chat.mod_title': 'Ei voi lähettää',
     'chat.send_failed_title': 'Lähetys epäonnistui',
-    'chat.send_failed_text': 'Tarkista nettiyhteys ja yritä uudelleen. Viestisi on tallennettu.',
+    'chat.send_failed_text': 'Lähetys epäonnistui. Yritä uudelleen.',
     'chat.rate_limit': 'Odota muutama sekunti ennen seuraavaa viestiä.',
     'chat.mod_profanity': 'Viesti sisältää kiellettyjä sanoja. Pidetään hyvä meininki!',
     'chat.load_older': '↑ Näytä vanhemmat viestit',

@@ -72,7 +72,7 @@ export const en: Record<string, string> = {
     'chat.placeholder': 'Write a message...',
     'chat.mod_title': 'Cannot send',
     'chat.send_failed_title': 'Send failed',
-    'chat.send_failed_text': 'Check your internet and try again. Your message has been kept.',
+    'chat.send_failed_text': 'Could not send. Try again.',
     'chat.rate_limit': 'Wait a few seconds before your next message.',
     'chat.mod_profanity': 'Message contains prohibited words. Let\'s be kind!',
     'chat.load_older': '↑ Show older messages',

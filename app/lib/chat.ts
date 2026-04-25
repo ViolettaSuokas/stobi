@@ -174,7 +174,7 @@ export async function getMessages(
     try {
       let query = supabase
         .from('messages')
-        .select('*, profiles(username, avatar, is_artist, photo_url)')
+        .select('*, profiles!messages_author_id_fkey(username, avatar, is_artist, photo_url)')
         .eq('channel', channel)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -262,7 +262,7 @@ export async function sendMessage(
           reply_to_id: replyToId ?? null,
           channel,
         })
-        .select('*, profiles(username, avatar, is_artist, photo_url)')
+        .select('*, profiles!messages_author_id_fkey(username, avatar, is_artist, photo_url)')
         .single();
 
       if (error) {
