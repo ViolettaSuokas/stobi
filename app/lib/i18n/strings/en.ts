@@ -274,7 +274,7 @@ export const en: Record<string, string> = {
     'register.error': 'Registration failed',
     'register.email_taken': 'An account already exists with this email. Try signing in or use another.',
     'register.welcome_title': 'Welcome to Stobi!',
-    'register.welcome_text': 'You got 10💎 to start. Unlock stones, build your collection, share your finds.',
+    'register.welcome_text': 'You got 20💎 to start. Unlock stones, build your collection, share your finds.',
     'register.notice': 'Data is currently saved only on this device. Real registration will be available after backend integration.',
     'register.name_too_short': 'Name must be at least 2 characters',
     'register.name_too_long': 'Name cannot be longer than 32 characters',

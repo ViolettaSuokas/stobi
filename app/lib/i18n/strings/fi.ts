@@ -288,7 +288,7 @@ export const fi: Record<string, string> = {
     'register.error': 'Rekisteröinti epäonnistui',
     'register.email_taken': 'Tällä sähköpostilla on jo tili. Yritä kirjautua sisään tai käytä toista.',
     'register.welcome_title': 'Tervetuloa Stobi-sovellukseen!',
-    'register.welcome_text': 'Saat 10💎 alkuun. Avaa kiviä, kerää kokoelmaa ja jaa löytöjä.',
+    'register.welcome_text': 'Saat 20💎 alkuun. Avaa kiviä, kerää kokoelmaa ja jaa löytöjä.',
     'register.name_too_short': 'Nimessä täytyy olla vähintään 2 merkkiä',
     'register.name_too_long': 'Nimi saa olla enintään 32 merkkiä',
     'register.email_invalid': 'Tarkista sähköposti — siinä näyttää olevan virhe',

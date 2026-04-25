@@ -58,6 +58,7 @@ import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
 import { checkSceneQuality } from '../lib/scan-quality';
 import { translateScanError, sceneQualityError, type FriendlyError } from '../lib/scan-errors';
+import { gatherAchievementStats, checkAchievements } from '../lib/achievements';
 
 type Phase = 'idle' | 'intro' | 'camera' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
 
@@ -236,6 +237,15 @@ export default function FindAnywhereScreen() {
       });
       setPhase('success');
       void haptics.success();
+      // Trigger achievement progress recalc — find-anywhere is a legitimate
+      // find entry point. Без этого find-1/find-5/find-100 не разблокируются
+      // если юзер находит только через AI-сканер.
+      try {
+        const achStats = await gatherAchievementStats();
+        await checkAchievements(achStats);
+      } catch (e) {
+        console.warn('find-anywhere: achievement check failed', e);
+      }
     } catch (e: any) {
       console.warn('handleClaim error', e);
       setFriendlyError(translateScanError(e?.message ?? String(e), 'find'));

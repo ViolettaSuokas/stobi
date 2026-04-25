@@ -283,7 +283,7 @@ export const ru: Record<string, string> = {
     'register.error': 'Не удалось зарегистрироваться',
     'register.email_taken': 'На этот email уже есть аккаунт. Попробуй войти или использовать другой email.',
     'register.welcome_title': 'Добро пожаловать в Stobi!',
-    'register.welcome_text': 'Мы начислили тебе 10💎 на старт. Открывай камни, собирай коллекцию и делись находками.',
+    'register.welcome_text': 'Мы начислили тебе 20💎 на старт. Открывай камни, собирай коллекцию и делись находками.',
     'register.name_too_short': 'Имя должно быть минимум 2 символа',
     'register.name_too_long': 'Имя не длиннее 32 символов',
     'register.email_invalid': 'Проверь email — кажется, в нём ошибка',

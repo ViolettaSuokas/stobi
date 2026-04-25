@@ -134,7 +134,7 @@ export default function RegisterScreen() {
       Alert.alert(
         t('register.welcome_title') || 'Добро пожаловать!',
         t('register.welcome_text') ||
-          `Ты зарегистрирован${trimmedName ? `, ${trimmedName}` : ''}. Начислили 10💎 на старт — используй их чтобы открыть камни или украсить персонажа.`,
+          `Ты зарегистрирован${trimmedName ? `, ${trimmedName}` : ''}. Начислили 20💎 на старт — используй их чтобы открыть камни или украсить персонажа.`,
         [{ text: t('common.ok') || 'OK', onPress: () => router.replace('/map') }],
       );
     } catch (e: any) {
@@ -217,6 +217,33 @@ export default function RegisterScreen() {
       // Save birth_year right after auth (Google не передаёт год сам).
       if (data.user) {
         await supabase.from('profiles').update({ birth_year: yearNum }).eq('id', data.user.id);
+      }
+
+      // Apply referral code — раньше пропускалось в Google-флоу (только
+      // Apple/email применяли). Без этого юзер открыл deep-link с invite,
+      // зарегился через Google → 50💎 ему и пригласившему теряются.
+      // applyPendingReferralCode идемпотентен (already_redeemed → silent).
+      const inviteFromField = inviteCode.trim().toUpperCase();
+      if (inviteFromField) {
+        const result = await redeemReferralCode(inviteFromField);
+        if (result.ok) {
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
+        }
+      } else {
+        const result = await applyPendingReferralCode();
+        if (result?.ok) {
+          setTimeout(() => {
+            Alert.alert(
+              t('referral.bonus_applied_title'),
+              t('referral.bonus_applied_text').replace('{amount}', String(result.bonus)),
+            );
+          }, 500);
+        }
       }
 
       router.replace('/map');
