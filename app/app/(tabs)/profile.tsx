@@ -95,6 +95,9 @@ type CustomTab = 'color' | 'face' | 'shape' | 'decor';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
+  // profileLoaded стартует false → guest CTA не мигает пока async getCurrentUser
+  // не вернёт ответ. Ставится в true только после первого resolve.
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>('overview');
   const [customTab, setCustomTab] = useState<CustomTab>('color');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
@@ -130,6 +133,7 @@ export default function ProfileScreen() {
           setUser(u);
           setBalance(state.balance);
           setOwnedIds(state.ownedItemIds);
+          setProfileLoaded(true);
           if (equipped.color) setSelectedColorId(equipped.color);
           if (equipped.eye) setSelectedEyeId(equipped.eye);
           if (equipped.shape) setSelectedShapeId(equipped.shape);
@@ -490,7 +494,11 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
 
-            {!user && (
+            {/* Guest CTA — показываем только когда точно знаем что юзер не
+                залогинен (profileLoaded=true && !user). До первого resolve
+                асинхронного getCurrentUser ничего не рендерим — иначе при
+                каждом возврате на таб мигает guest-state на полсекунды. */}
+            {profileLoaded && !user && (
               <View style={styles.guestCtaRow}>
                 <TouchableOpacity
                   style={styles.guestSignUpBtn}

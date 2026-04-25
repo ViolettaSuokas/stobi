@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -63,11 +63,17 @@ export default function FeedScreen() {
   // 2-волновая загрузка: critical path (stats+recent+feed) сначала, чтобы
   // экран показал контент как можно быстрее. Вторичные данные (location,
   // user, style) грузятся в фоне и не блокируют первый пиксель.
+  // Tracks first focus → useCallback с deps:[] не видит обновлённый state,
+  // поэтому используем ref. После первой загрузки rev будет true.
+  const hasLoadedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
-        setLoading(true);
+        // Спиннер показываем ТОЛЬКО при первом mounting. На повторных
+        // фокусах рефрешим тихо в фоне — иначе юзер видит
+        // "белый экран → спиннер → контент" каждый раз при возврате на таб.
+        if (!hasLoadedRef.current) setLoading(true);
         const [statsRes, recentRes, feedRes] = await Promise.all([
           getDayStats(),
           getRecentlyHidden(8),
@@ -78,6 +84,7 @@ export default function FeedScreen() {
         setRecent(recentRes);
         setFeed(feedRes);
         setLoading(false);
+        hasLoadedRef.current = true;
 
         // Вторая волна — не блокирует UI
         Promise.all([
