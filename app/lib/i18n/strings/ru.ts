@@ -80,7 +80,7 @@ export const ru: Record<string, string> = {
     'chat.placeholder': 'Написать в чат...',
     'chat.mod_title': 'Нельзя отправить',
     'chat.send_failed_title': 'Не удалось отправить',
-    'chat.send_failed_text': 'Проверь интернет и попробуй ещё раз. Твоё сообщение сохранено.',
+    'chat.send_failed_text': 'Не удалось отправить. Попробуй ещё раз.',
     'chat.rate_limit': 'Подожди несколько секунд перед следующим сообщением.',
     'chat.mod_profanity': 'Сообщение содержит запрещённые слова. Давай будем вежливыми!',
     'chat.load_older': '↑ Показать более старые сообщения',
