@@ -49,9 +49,14 @@ async function api(method, path, body) {
 console.log('Finding latest build…');
 const builds = await api('GET', `/v1/apps/${APP_ID}/builds?limit=10`);
 if (!builds.ok) { console.error('list builds failed:', builds.text); process.exit(1); }
-const build = builds.data.data.find((b) => b.attributes.processingState === 'VALID');
+// Pick the NEWEST VALID build by uploadedDate — otherwise we'd act on
+// an already-approved older build and skip the real new one.
+const valid = builds.data.data
+  .filter((b) => b.attributes.processingState === 'VALID')
+  .sort((a, b) => new Date(b.attributes.uploadedDate) - new Date(a.attributes.uploadedDate));
+const build = valid[0];
 if (!build) { console.error('no processed build found'); process.exit(1); }
-console.log(`  → build ${build.id}, version ${build.attributes.version}`);
+console.log(`  → build ${build.id}, version ${build.attributes.version}, uploaded ${build.attributes.uploadedDate}`);
 
 // 2. Find the group.
 const groups = await api('GET', `/v1/apps/${APP_ID}/betaGroups?limit=50`);

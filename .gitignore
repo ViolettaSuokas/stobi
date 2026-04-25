@@ -14,3 +14,7 @@ app/credentials/*.p12
 **/*-service-account*.json
 **/gcp-*.json
 **/google-credentials*.json
+
+# Vercel token
+.vercel/
+.vercel-token
