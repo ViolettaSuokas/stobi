@@ -563,8 +563,14 @@ export const ru: Record<string, string> = {
 
     // Find Anywhere screen
     'find_anywhere.title': 'Нашла камень',
+    'find_anywhere.intro_title': 'Камень в руках?',
+    'find_anywhere.intro_text': 'Если ты нашёл камень — но не помнишь где он на карте, отсканируй его сейчас. Stobi узнает по рисунку и засчитает находку.',
+    'find_anywhere.intro_hint1': 'Поднеси камень в кадр и удерживай',
+    'find_anywhere.intro_hint2': 'Stobi сравнит с эталонами в твоей зоне',
+    'find_anywhere.intro_hint3': 'Если совпало — получишь награду',
+    'find_anywhere.intro_start': 'Начать сканирование',
     'find_anywhere.hero_title': 'Сфотографируй найденный камень',
-    'find_anywhere.hero_sub': 'AI узнаёт камень по рисунку — даже если ты уже дома. Не обязательно быть рядом.',
+    'find_anywhere.hero_sub': 'Stobi узнаёт камень по рисунку — даже если ты уже дома. Не обязательно быть рядом.',
     'find_anywhere.tip_1': 'Снимай при хорошем свете',
     'find_anywhere.tip_2': 'Камень должен занимать бо́льшую часть кадра',
     'find_anywhere.tip_3': 'Фокус на рисунок, без бликов',
@@ -577,28 +583,28 @@ export const ru: Record<string, string> = {
     'find_anywhere.auto_title': 'Нашли с высокой уверенностью',
     'find_anywhere.auto_sub': 'Если это не твой — выбери другой вариант ниже',
     'find_anywhere.pick_title': 'Похожие камни — выбери свой',
-    'find_anywhere.pick_sub': 'AI нашёл несколько похожих. Выбери тот, что у тебя в руках.',
+    'find_anywhere.pick_sub': 'Stobi нашёл несколько похожих. Выбери тот, что у тебя в руках.',
     'find_anywhere.btn_claim': 'Это мой камень',
     'find_anywhere.btn_select_first': 'Выбери камень выше',
     'find_anywhere.success_title': 'Находка засчитана!',
     'find_anywhere.success_sub': 'Камень твой! Алмазики пришли на баланс.',
     'find_anywhere.pending_title': 'Ждём подтверждения автора',
-    'find_anywhere.pending_sub': 'AI не на 100% уверен, но похоже на правду. Автор подтвердит в течение 48 часов — алмазики придут тогда.',
+    'find_anywhere.pending_sub': 'Stobi не на 100% уверен, но похоже на правду. Автор подтвердит в течение 48 часов — алмазики придут тогда.',
     'find_anywhere.fail_title': 'Что-то пошло не так',
     'find_anywhere.fail_sub': 'Попробуй ещё раз с другим ракурсом',
     'find_anywhere.btn_retry': 'Попробовать ещё раз',
 
     // Scan modal — universal (hide + find)
     'scan.title_find': 'Наведи камень в рамку',
-    'scan.sub_find': 'AI проверит что это тот самый',
+    'scan.sub_find': 'Stobi проверит что это тот самый',
     'scan.title_hide': 'Наведи камень в рамку',
-    'scan.sub_hide': 'AI запомнит его, чтобы потом узнать',
+    'scan.sub_hide': 'Stobi запомнит его, чтобы потом узнать',
     'scan.btn_capture': 'Сканирую',
     'scan.btn_retake': 'Сканировать заново',
-    'scan.processing': 'AI анализирует…',
+    'scan.processing': 'Stobi анализирует…',
     'scan.processing_sub': 'Это займёт до 45 секунд',
-    'scan.analyzing': 'AI запоминает рисунок…',
-    'scan.analyzing_back': 'AI анализирует обратную сторону…',
+    'scan.analyzing': 'Stobi запоминает рисунок…',
+    'scan.analyzing_back': 'Stobi анализирует обратную сторону…',
     'scan.failed_title': 'Не удалось обработать',
     'scan.btn_retry_scan': 'Попробовать заново',
     'scan.btn_ready': 'Готов!',
@@ -613,7 +619,7 @@ export const ru: Record<string, string> = {
 
     // Pending finds — для автора подтвердить чужой скан камня
     'stone.pending_finds_title': 'Кто-то нашёл твой камень',
-    'stone.pending_finds_sub': 'AI не уверен на 100% — подтверди что это твой камень и {name} получит свои алмазики.',
+    'stone.pending_finds_sub': 'Stobi не уверен на 100% — подтверди что это твой камень и {name} получит свои алмазики.',
     'stone.pending_approve': 'Да',
     'stone.approve_success_title': 'Готово!',
     'stone.approve_success_text': '{name} получил свои алмазики за находку.',
@@ -650,14 +656,14 @@ export const ru: Record<string, string> = {
     'add.scan_btn': 'Сканировать камень',
     'add.scan_btn_sub': 'Камера сама сделает снимок',
     'add.photo_btn': 'Добавить фото',
-    'add.scan_done': 'AI готов! Камень запомнен',
-    'add.scan_done_sub': 'Теперь тот, кто найдёт — просто сфоткает и AI подтвердит находку.',
+    'add.scan_done': 'Stobi готов! Камень запомнен',
+    'add.scan_done_sub': 'Теперь тот, кто найдёт — просто сфоткает и Stobi подтвердит находку.',
 
     // Pending approvals — автор одобряет находки
     'pending.title': 'Одобрить находки',
-    'pending.intro': 'AI не уверен на 100% что это твои камни. Посмотри фото и реши — одобрить или оставить ждать.',
+    'pending.intro': 'Stobi не уверен на 100% что это твои камни. Посмотри фото и реши — одобрить или оставить ждать.',
     'pending.empty_title': 'Нет находок ожидающих одобрения',
-    'pending.empty_sub': 'Когда кто-то найдёт твой камень и AI не будет уверен на 100% — запрос придёт сюда.',
+    'pending.empty_sub': 'Когда кто-то найдёт твой камень и Stobi не будет уверен на 100% — запрос придёт сюда.',
     'pending.yours': 'Твой камень',
     'pending.theirs': 'Что прислали',
     'pending.approve': 'Одобрить находку',
@@ -670,7 +676,7 @@ export const ru: Record<string, string> = {
 
     // Chat — photo moderation rejection
     'chat.photo_rejected_title': 'Фото отклонено',
-    'chat.photo_rejected_text': 'AI не разрешил это фото. Выбери другое.',
+    'chat.photo_rejected_text': 'Stobi не разрешил это фото. Выбери другое.',
 
     // Celebration — social share bonus
     'celebration.share_offer': 'Поделись находкой в соцсетях — получи ещё +5 алмазиков',

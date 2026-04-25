@@ -27,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
+  X,
   CaretLeft,
   Camera,
   MagnifyingGlass,
@@ -58,7 +59,7 @@ import * as haptics from '../lib/haptics';
 import { checkSceneQuality } from '../lib/scan-quality';
 import { translateScanError, sceneQualityError, type FriendlyError } from '../lib/scan-errors';
 
-type Phase = 'idle' | 'camera' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
+type Phase = 'idle' | 'intro' | 'camera' | 'processing' | 'picking' | 'claiming' | 'success' | 'failed';
 
 type ProcessedScan = {
   photoUrl: string;                 // signed URL для Edge Function (уже uploaded)
@@ -78,8 +79,11 @@ export default function FindAnywhereScreen() {
   const { t } = useI18n();
   const modal = useModal();
 
-  // Стартуем сразу в камере — как и scan-stone: никаких intro-экранов.
-  const [phase, setPhase] = useState<Phase>('camera');
+  // Стартуем с intro-экрана — юзер должен понимать что это flow для
+  // случая когда камень уже у него в руках (нашёл вне карты, привёз
+  // домой), а не "просто посканировать". Раньше сразу прыгали в камеру
+  // и юзер пугался — что от него хотят.
+  const [phase, setPhase] = useState<Phase>('intro');
   const [processed, setProcessed] = useState<ProcessedScan | null>(null);
   const [selected, setSelected] = useState<StoneSearchHit | null>(null);
   const [claimResult, setClaimResult] = useState<{
@@ -243,8 +247,71 @@ export default function FindAnywhereScreen() {
   // Render
   // ─────────────────────────────────────
 
-  // Camera mode — полноэкранная live-камера со scan-frame (как на карте
-  // при тапе на stone). Стартуем сразу отсюда, без idle-экрана.
+  // Intro — объясняем зачем этот flow существует. Юзер нашёл камень
+  // вживую, забрал домой, не помнит где на карте → тут он его сканит,
+  // AI находит совпадение в БД и регистрирует находку. Без объяснения
+  // юзер пугается камеры "от меня что хотят?".
+  if (phase === 'intro') {
+    return (
+      <SafeAreaView style={styles.introContainer} edges={['top', 'bottom']}>
+        <View style={styles.introHeader}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.introBackBtn}
+            activeOpacity={0.7}
+          >
+            <X size={22} color={Colors.text} weight="bold" />
+          </TouchableOpacity>
+          <View style={styles.introBackBtn} />
+        </View>
+        <View style={styles.introContent}>
+          <View style={styles.introMascotWrap}>
+            <StoneMascot size={140} color={Colors.mascot} variant="sparkle" showSparkles />
+          </View>
+          <Text style={styles.introTitle}>
+            {t('find_anywhere.intro_title') || 'Камень в руках?'}
+          </Text>
+          <Text style={styles.introText}>
+            {t('find_anywhere.intro_text') ||
+              'Если ты нашёл камень — но не помнишь где он на карте, отсканируй его сейчас. AI узнает по рисунку и засчитает находку.'}
+          </Text>
+          <View style={styles.introHints}>
+            <View style={styles.introHintRow}>
+              <Text style={styles.introHintEmoji}>📷</Text>
+              <Text style={styles.introHintText}>
+                {t('find_anywhere.intro_hint1') || 'Поднеси камень в кадр и удерживай'}
+              </Text>
+            </View>
+            <View style={styles.introHintRow}>
+              <Text style={styles.introHintEmoji}>🤖</Text>
+              <Text style={styles.introHintText}>
+                {t('find_anywhere.intro_hint2') || 'AI сравнит с эталонами в твоей зоне'}
+              </Text>
+            </View>
+            <View style={styles.introHintRow}>
+              <Text style={styles.introHintEmoji}>💎</Text>
+              <Text style={styles.introHintText}>
+                {t('find_anywhere.intro_hint3') || 'Если совпало — получишь награду'}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.introFooter}>
+          <TouchableOpacity
+            style={styles.introCta}
+            onPress={() => setPhase('camera')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.introCtaText}>
+              {t('find_anywhere.intro_start') || 'Начать сканирование'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Camera mode — после того как юзер тапнул "Начать" в intro.
   if (phase === 'camera') {
     return (
       <StoneScanCamera
@@ -646,6 +713,83 @@ function TipRow({ icon, text }: { icon: React.ReactNode; text: string }) {
 // ─────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
+
+  // Intro screen — объясняет flow перед тем как открыть сканер.
+  introContainer: { flex: 1, backgroundColor: Colors.bg },
+  introHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  introBackBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  introContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  introMascotWrap: {
+    marginBottom: 12,
+  },
+  introTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  introText: {
+    fontSize: 14,
+    color: Colors.text2,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  introHints: {
+    width: '100%',
+    gap: 10,
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  introHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  introHintEmoji: { fontSize: 22 },
+  introHintText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text,
+    lineHeight: 18,
+  },
+  introFooter: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  introCta: {
+    backgroundColor: Colors.accent,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  introCtaText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
 
   header: {
     flexDirection: 'row',
