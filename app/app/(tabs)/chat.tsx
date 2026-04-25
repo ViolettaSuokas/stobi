@@ -116,6 +116,37 @@ export default function ChatScreen() {
     void loadMessages();
   }, [loadMessages]);
 
+  // Realtime: подписка на изменения в messages по текущему каналу.
+  // Без этого собеседник видел чужие сообщения только после ручного
+  // pull-to-refresh — выглядит как "чат сломан". Перезагружаем всю
+  // страницу при любом INSERT/UPDATE/DELETE — это дороже одного
+  // append-в-state, но надёжнее: payload не содержит joined profile,
+  // а делать второй round-trip за профилем на каждое сообщение —
+  // лишняя сложность ради микро-оптимизации.
+  useEffect(() => {
+    let active = true;
+    let sub: { unsubscribe: () => void } | null = null;
+    (async () => {
+      const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
+      if (!isSupabaseConfigured() || !active) return;
+      const ch = supabase
+        .channel(`messages:${channel}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'messages', filter: `channel=eq.${channel}` },
+          () => {
+            if (active) void loadMessages();
+          },
+        )
+        .subscribe();
+      sub = { unsubscribe: () => { void supabase.removeChannel(ch); } };
+    })();
+    return () => {
+      active = false;
+      sub?.unsubscribe();
+    };
+  }, [channel, loadMessages]);
+
   const loadOlderMessages = useCallback(async () => {
     if (loadingOlder || !canLoadOlder || messages.length === 0) return;
     setLoadingOlder(true);
