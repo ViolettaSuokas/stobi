@@ -98,11 +98,33 @@ export default function LoginScreen() {
       const idToken = userInfo?.data?.idToken ?? userInfo?.idToken;
       if (!idToken) throw new Error(t('stone.error_google_token'));
 
-      const { error: signInError } = await supabase.auth.signInWithIdToken({
+      const { data, error: signInError } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
       });
       if (signInError) throw signInError;
+
+      // Если signInWithIdToken создал НОВЫЙ аккаунт (Apple/Google ещё не
+      // были привязаны к Stobi) — это юзер тапнул "Login" но на самом деле
+      // не зарегистрирован. Выкидываем обратно с alert'ом про регистрацию,
+      // т.к. на login-screen нет поля для возраста (нужен COPPA gate).
+      const isNewUser = !!data.user && Date.now() - new Date(data.user.created_at).getTime() < 10_000;
+      if (isNewUser) {
+        await supabase.auth.signOut();
+        Alert.alert(
+          t('login.not_registered_title') || 'Аккаунт не найден',
+          t('login.not_registered_text') ||
+            'Похоже, ты ещё не регистрировался в Stobi через Google. Перейди в Регистрацию — там нужно указать возраст.',
+          [
+            {
+              text: t('common.register') || 'Регистрация',
+              onPress: () => router.replace('/register'),
+            },
+            { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+          ],
+        );
+        return;
+      }
 
       void LoggedIn('google');
       router.replace('/map');

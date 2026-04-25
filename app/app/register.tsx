@@ -168,14 +168,28 @@ export default function RegisterScreen() {
   // Для родителей с детьми <13 — играют вместе на родительском аккаунте.
   const validateAge = (): number | null => {
     const ageNum = parseInt(ageInput.trim(), 10);
+    // Alert + setError. Только setError юзер не видит — поле возраста
+    // вверху, а error-блок где-то ниже формы. Юзер тапает Apple/Google
+    // и не понимает почему ничего не происходит.
     if (!Number.isFinite(ageNum) || ageNum <= 0 || ageNum > 130) {
-      setError(t('register.age_invalid') || 'Сколько тебе лет?');
+      const msg = t('register.age_invalid') || 'Сначала укажи возраст';
+      setError(msg);
+      Alert.alert(
+        t('register.age_required_title') || 'Укажи возраст',
+        t('register.age_required_text') ||
+          'Stobi требует возраст для регистрации (13 лет и старше). Введи число лет в поле сверху.',
+        [{ text: t('common.ok') || 'OK' }],
+      );
       return null;
     }
     if (ageNum < 13) {
-      setError(
-        t('register.age_under_13') ||
-          'Stobi доступен с 13 лет. Если тебе младше — играй с родителем на его телефоне.',
+      const msg = t('register.age_under_13') ||
+        'Stobi доступен с 13 лет. Если тебе младше — играй с родителем на его телефоне.';
+      setError(msg);
+      Alert.alert(
+        t('register.age_under_13_title') || 'Stobi с 13 лет',
+        msg,
+        [{ text: t('common.ok') || 'OK' }],
       );
       return null;
     }
@@ -214,9 +228,24 @@ export default function RegisterScreen() {
       });
       if (signInError) throw signInError;
 
-      // Save birth_year right after auth (Google не передаёт год сам).
-      if (data.user) {
+      // Detect new vs returning — same logic as Apple flow.
+      const isNewUser = !!data.user && Date.now() - new Date(data.user.created_at).getTime() < 10_000;
+
+      // Save birth_year only for new users (returning уже имеют его в БД).
+      if (data.user && isNewUser) {
         await supabase.from('profiles').update({ birth_year: yearNum }).eq('id', data.user.id);
+      }
+
+      // Returning user — alert + редирект на карту, БЕЗ welcome-bonus
+      // alert и без перезаписи birth_year.
+      if (!isNewUser) {
+        Alert.alert(
+          t('register.already_registered_title') || 'Аккаунт уже существует',
+          t('register.already_registered_text') ||
+            'Этот Google-аккаунт уже зарегистрирован в Stobi. Заходим в твой существующий аккаунт.',
+          [{ text: t('common.ok') || 'OK', onPress: () => router.replace('/map') }],
+        );
+        return;
       }
 
       // Apply referral code — раньше пропускалось в Google-флоу (только
@@ -282,11 +311,18 @@ export default function RegisterScreen() {
       });
       if (signInError) throw signInError;
 
+      // Determine whether this is a fresh registration или returning user.
+      // signInWithIdToken возвращает существующий аккаунт если Apple ID
+      // уже привязан → юзер думает что "регится снова", а на самом деле
+      // просто залогинился. Решаем: created_at < 10 сек назад = new.
+      const isNewUser = !!data.user && Date.now() - new Date(data.user.created_at).getTime() < 10_000;
+
       // Save user's name from Apple (only available on first sign-in)
       // + birth_year (Apple sign-in не передаёт год). Один UPDATE экономит
       // round-trip, плюс гарантирует что если username не пришёл — год всё
       // равно записан (раньше профиль оставался без birth_year → COPPA gate).
-      if (data.user) {
+      // Для returning user НЕ перезаписываем birth_year (он уже есть в БД).
+      if (data.user && isNewUser) {
         const updates: Record<string, unknown> = { birth_year: yearNum };
         if (credential.fullName) {
           const fullName = [credential.fullName.givenName, credential.fullName.familyName]
@@ -295,6 +331,19 @@ export default function RegisterScreen() {
           if (fullName) updates.username = fullName;
         }
         await supabase.from('profiles').update(updates).eq('id', data.user.id);
+      }
+
+      // Returning user — показываем чёткий alert что аккаунт уже существует.
+      // Раньше silently заходил → юзер думал что "регится снова" и каждый
+      // раз получает welcome_bonus, хотя на самом деле просто логинится.
+      if (!isNewUser) {
+        Alert.alert(
+          t('register.already_registered_title') || 'Аккаунт уже существует',
+          t('register.already_registered_text') ||
+            'Этот Apple ID уже зарегистрирован в Stobi. Заходим в твой существующий аккаунт.',
+          [{ text: t('common.ok') || 'OK', onPress: () => router.replace('/map') }],
+        );
+        return;
       }
       // Apply referral code — раньше для Apple sign-in этот шаг был пропущен
       // (есть только в email-flow). Нужен и здесь — иначе у юзера, который
