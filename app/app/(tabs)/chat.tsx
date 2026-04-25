@@ -494,17 +494,11 @@ export default function ChatScreen() {
                   </View>
                 );
               }
-              const s = (myStyle && user && item.authorId === user.id) ? myStyle : getUserStoneStyle(item.authorId);
+              // Fallback: эмодзи-аватарка вместо маскота. Маскот (StoneMascot)
+              // используется только в герое/онбординге, не в списках юзеров.
               return (
                 <View style={styles.avatar}>
-                  <StoneMascot
-                    size={42}
-                    color={s.color}
-                    shape={s.shape}
-                    variant={s.variant}
-                    decor={s.decor}
-                    showSparkles={false}
-                  />
+                  <Text style={{ fontSize: 22 }}>{item.authorAvatar || '🪨'}</Text>
                 </View>
               );
             })() : null}

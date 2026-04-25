@@ -96,16 +96,20 @@ function escapeHtml(str: string): string {
  * fuzzCoords applied here (stable — based on stoneId hash) so the WebView
  * script receives render-ready positions.
  */
-function stoneMarkerPayload(stones: NearbyStone[]) {
+function stoneMarkerPayload(stones: NearbyStone[], currentUserId: string | null) {
   return stones.map((s) => {
     const fuzz = fuzzCoords(s.coords, s.id);
+    const isOwn = !!(currentUserId && s.authorId === currentUserId);
     return {
       id: s.id,
       lat: fuzz.lat,
       lng: fuzz.lng,
-      fill: s.colors[0],
-      stroke: s.colors[1],
-      label: `${s.emoji} ${s.name}`,
+      // Свои камни — золотистый ободок чтобы юзер сразу видел "это моё".
+      // Чужие — обычный city-color.
+      fill: isOwn ? '#FEF3C7' : s.colors[0],
+      stroke: isOwn ? '#F59E0B' : s.colors[1],
+      label: isOwn ? `${s.emoji} ${s.name} (твой)` : `${s.emoji} ${s.name}`,
+      isOwn,
     };
   });
 }
@@ -450,21 +454,27 @@ export default function MapScreen() {
   const userLat = location?.coords.lat ?? 60.2934;
   const userLng = location?.coords.lng ?? 25.0378;
 
-  // Все камни по стране (за вычетом найденных + скрыть от заблокированных авторов).
-  // Новые камни видны сразу, но кнопка «Я нашёл» заблокирована первый час (в stone/[id].tsx).
-  const allCountryStones = stones.filter(
+  // Видимые на карте — все камни (вкл. свои чтобы юзер видел где спрятал),
+  // кроме найденных + блокированных авторов.
+  const visibleAll = stones.filter(
     (s) => !foundIds.includes(s.id) && !(s.authorId && blockedIds.has(s.authorId)),
   );
+  // Findable — то что юзер реально может "найти" (не свои!). Используем
+  // для счётчиков "X камней рядом", чтобы не подмешивать собственные —
+  // юзер сам не может найти свой камень (anti-fraud в record_find_v2).
+  const findableStones = visibleAll.filter(
+    (s) => !(currentUserId && s.authorId === currentUserId),
+  );
 
-  // Камни в моём городе (для нижней карточки)
+  // Камни в моём городе (для нижней карточки) — тоже только findable
   const myCity = location?.city ?? null;
   const myCityStones = myCity
-    ? allCountryStones.filter((s) => s.city === myCity)
-    : allCountryStones;
+    ? findableStones.filter((s) => s.city === myCity)
+    : findableStones;
 
   const visibleStones = useMemo(
-    () => [...allCountryStones].sort((a, b) => a.distanceMeters - b.distanceMeters),
-    [allCountryStones],
+    () => [...visibleAll].sort((a, b) => a.distanceMeters - b.distanceMeters),
+    [visibleAll],
   );
 
   // HTML стабилен по userLat/userLng — WebView больше не пересоздаётся при
@@ -484,7 +494,7 @@ export default function MapScreen() {
   // Срабатывает и на первичную готовность карты, и на любое обновление списка.
   useEffect(() => {
     if (!mapReady) return;
-    const payload = stoneMarkerPayload(visibleStones);
+    const payload = stoneMarkerPayload(visibleStones, currentUserId);
     const js = `window.renderStones(${JSON.stringify(payload)}); true;`;
     webViewRef.current?.injectJavaScript(js);
   }, [mapReady, visibleStones]);
@@ -496,9 +506,11 @@ export default function MapScreen() {
     webViewRef.current?.injectJavaScript(js);
   }, [mapReady, userLat, userLng]);
 
-  const totalStones = allCountryStones.length;       // top chip: вся Финляндия
+  // Счётчики — findable (без своих), потому что свой камень нельзя
+  // "найти" → не должен попадать в "X камней ждут тебя".
+  const totalStones = findableStones.length;         // top chip: вся Финляндия
   const cityStonesCount = myCityStones.length;       // bottom card: твой город
-  const hiddenStones = visibleStones.length;         // на карте
+  const hiddenStones = visibleStones.length;         // на карте (вкл. свои с золотым ободком)
   const lockedCount = 0;
   const foundCount = foundIds.length;
 

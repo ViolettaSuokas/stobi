@@ -51,6 +51,7 @@ import {
   type StoneSearchHit,
 } from '../lib/finds';
 import { requireAuth } from '../lib/auth-gate';
+import { getCurrentLocation } from '../lib/location';
 import { useModal } from '../lib/modal';
 import { useI18n } from '../lib/i18n';
 import * as haptics from '../lib/haptics';
@@ -161,8 +162,17 @@ export default function FindAnywhereScreen() {
         return;
       }
 
-      // 4. ANN search top-3
-      const hits = await searchStoneByEmbedding(moderation.embedding, 3);
+      // 4. ANN search top-3, с GPS pre-filter — server сравнивает только
+      //    с камнями в радиусе 5км от юзера. Это:
+      //    - ускоряет поиск (меньше pool)
+      //    - убирает false-positive из других городов / стран
+      //    - даёт честный distance_m в результатах
+      const userLoc = await getCurrentLocation().catch(() => null);
+      const hits = await searchStoneByEmbedding(
+        moderation.embedding,
+        3,
+        userLoc?.coords ?? null,
+      );
       if (hits.length === 0 || hits[0].similarity < LIKELY_MATCH_THRESHOLD) {
         setProcessed({
           photoUrl: signedUrl,

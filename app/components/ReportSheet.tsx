@@ -19,7 +19,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Warning, Shield, Prohibit, MapPin, Hand, Question } from 'phosphor-react-native';
+import { X, Warning, Shield, Prohibit, MapPin, Hand, Question, EyeSlash } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
 import { fileContentReport, type ReportCategory, type ReportTargetType } from '../lib/reports';
@@ -35,6 +35,10 @@ type Props = {
   authorId?: string;
   onClose: () => void;
   onDone?: (result: 'sent' | 'duplicate') => void;
+  // Опциональный handler для "камня тут нет" — отдельный flow от обычного
+  // report'а (не abuse-жалоба, а гео-сигнал что место устарело). Если
+  // передан, в шторке появится дополнительный пункт меню.
+  onStoneMissing?: () => void;
 };
 
 // Categories shown in UI. Order matters: most-severe first so a careless
@@ -78,7 +82,7 @@ const CATEGORIES: { key: ReportCategory; icon: (color: string) => ReactNode; tke
   },
 ];
 
-export function ReportSheet({ visible, targetType, targetId, authorId, onClose, onDone }: Props) {
+export function ReportSheet({ visible, targetType, targetId, authorId, onClose, onDone, onStoneMissing }: Props) {
   const { t } = useI18n();
   const [category, setCategory] = useState<ReportCategory | null>(null);
   const [reason, setReason] = useState('');

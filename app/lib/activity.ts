@@ -12,7 +12,10 @@ export type Activity = {
   type: ActivityType;
   userId: string;
   userName: string;
+  /** Эмодзи (всегда есть, fallback). */
   userAvatar: string;
+  /** Фото-аватарка из профиля если юзер её загрузил — приоритет над эмодзи. */
+  userPhotoUrl?: string;
   isArtist?: boolean;
   stoneId: string;
   stoneEmoji: string;
@@ -174,11 +177,78 @@ const ACTIVITIES: Activity[] = SEED.map((s, i) => {
 // ────────────────────────────────────────────
 
 async function loadAllActivities(): Promise<Activity[]> {
-  // Lazy import to avoid circular dep
-  const { getUserStones, toActivity } = await import('./user-stones');
-  const userStones = await getUserStones();
-  const userActs = userStones.map(toActivity);
-  return [...ACTIVITIES, ...userActs].sort((a, b) => b.createdAt - a.createdAt);
+  // Server-backed activity: загружаем последние hides/finds из БД.
+  // Раньше было: seed + локальные хайды → юзеры не видели хайды друг
+  // друга в общей ленте, журнал камня показывал только seed-историю.
+  const { isSupabaseConfigured, supabase } = await import('./supabase');
+  if (!isSupabaseConfigured()) {
+    // Offline / not signed in — fallback на локальные.
+    const { getUserStones, toActivity } = await import('./user-stones');
+    const userStones = await getUserStones();
+    return userStones.map(toActivity).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  const FETCH_LIMIT = 50;
+
+  try {
+    const [hidesRes, findsRes] = await Promise.all([
+      supabase
+        .from('stones')
+        .select('id, name, emoji, city, photo_url, created_at, author_id, profiles!stones_author_id_fkey(id, username, avatar, is_artist, photo_url)')
+        .or('is_hidden.is.null,is_hidden.eq.false')
+        .order('created_at', { ascending: false })
+        .limit(FETCH_LIMIT),
+      supabase
+        .from('finds')
+        .select('id, found_at, user_id, stone_id, profiles!finds_user_id_fkey(id, username, avatar, is_artist, photo_url), stones!inner(name, emoji, city, photo_url)')
+        .order('found_at', { ascending: false })
+        .limit(FETCH_LIMIT),
+    ]);
+
+    const hides: Activity[] = (hidesRes.data ?? []).map((row: Record<string, any>) => ({
+      id: `hide-${row.id}`,
+      type: 'hide' as ActivityType,
+      userId: row.author_id ?? 'deleted',
+      userName: row.profiles?.username ?? 'Удалённый юзер',
+      userAvatar: row.profiles?.avatar ?? '🪨',
+      userPhotoUrl: row.profiles?.photo_url ?? undefined,
+      isArtist: row.profiles?.is_artist ?? false,
+      stoneId: row.id,
+      stoneEmoji: row.emoji ?? '🪨',
+      stoneName: row.name ?? 'Камень',
+      stoneColors: ['#C4B5FD', '#7C3AED'] as const,
+      city: row.city ?? '',
+      createdAt: new Date(row.created_at).getTime(),
+      photoUri: row.photo_url ?? undefined,
+    }));
+
+    const finds: Activity[] = (findsRes.data ?? []).map((row: Record<string, any>) => ({
+      id: `find-${row.id}`,
+      type: 'find' as ActivityType,
+      userId: row.user_id ?? 'deleted',
+      userName: row.profiles?.username ?? 'Удалённый юзер',
+      userAvatar: row.profiles?.avatar ?? '🪨',
+      userPhotoUrl: row.profiles?.photo_url ?? undefined,
+      isArtist: row.profiles?.is_artist ?? false,
+      stoneId: row.stone_id,
+      stoneEmoji: row.stones?.emoji ?? '🪨',
+      stoneName: row.stones?.name ?? 'Камень',
+      stoneColors: ['#86EFAC', '#16A34A'] as const,
+      city: row.stones?.city ?? '',
+      createdAt: new Date(row.found_at).getTime(),
+      // Превью находки — берём фото самого камня (то что видел autor при
+      // hide). Раньше было undefined → в ленте показывался серый-каменный
+      // fallback вместо реальной картинки.
+      photoUri: row.stones?.photo_url ?? undefined,
+    }));
+
+    return [...hides, ...finds].sort((a, b) => b.createdAt - a.createdAt);
+  } catch (e) {
+    console.warn('[activity] DB load failed, fallback to local stones', e);
+    const { getUserStones, toActivity } = await import('./user-stones');
+    const userStones = await getUserStones();
+    return userStones.map(toActivity).sort((a, b) => b.createdAt - a.createdAt);
+  }
 }
 
 /** Returns activities sorted newest-first, optionally limited. */
@@ -188,8 +258,21 @@ export async function getActivityFeed(limit?: number): Promise<Activity[]> {
   if (cached) return cached;
   const all = await loadAllActivities();
   const result = limit ? all.slice(0, limit) : all;
-  setCached(cacheKey, result, 60_000);
+  // 15 сек — компромисс между UX-fresh и нагрузкой на БД. На find/hide
+  // вызовы invalidateActivityFeed() убирают cache мгновенно для актора.
+  setCached(cacheKey, result, 15_000);
   return result;
+}
+
+/** Эарly-инвалидация — вызывать после действий, которые меняют ленту:
+ *  hide камня, approve pending find, reject. Нет смысла ждать 15с TTL
+ *  если юзер только что что-то сделал. */
+export async function invalidateActivityFeed(): Promise<void> {
+  const { invalidate } = await import('./cache');
+  invalidate('activityFeed:all');
+  for (const limit of [10, 20, 30, 50, 100]) {
+    invalidate(`activityFeed:${limit}`);
+  }
 }
 
 /** Counts of hides/finds today and this week (rolling). */
@@ -215,10 +298,16 @@ export async function getDayStats(): Promise<DayStats> {
   return { hiddenToday, foundToday, hiddenWeek, foundWeek };
 }
 
-/** Newest hidden stones (for the horizontal "fresh stones" carousel). */
+/** Newest hidden stones — только те что ещё **никем не найдены**.
+ *  Карусель "свежие камни" — для discovery, не должна показывать
+ *  уже найденный камень (он уже не для всех "свежий"). */
 export async function getRecentlyHidden(limit = 8): Promise<Activity[]> {
   const all = await loadAllActivities();
-  return all.filter((a) => a.type === 'hide').slice(0, limit);
+  // Собираем set stoneId которые уже нашли (есть find activity)
+  const foundIds = new Set(all.filter((a) => a.type === 'find').map((a) => a.stoneId));
+  return all
+    .filter((a) => a.type === 'hide' && !foundIds.has(a.stoneId))
+    .slice(0, limit);
 }
 
 /**
@@ -258,7 +347,7 @@ export async function getLeaderboard(
     period === 'today' ? now - DAY : period === 'week' ? now - 7 * DAY : 0;
 
   const all = await loadAllActivities();
-  const counts = new Map<string, { user: { id: string; name: string; avatar: string; isArtist?: boolean }; count: number }>();
+  const counts = new Map<string, { user: { id: string; name: string; avatar: string; photoUrl?: string; isArtist?: boolean }; count: number }>();
   for (const a of all) {
     if (a.type !== kind) continue;
     if (a.createdAt < cutoff) continue;
@@ -267,7 +356,7 @@ export async function getLeaderboard(
       existing.count++;
     } else {
       counts.set(a.userId, {
-        user: { id: a.userId, name: a.userName, avatar: a.userAvatar, isArtist: a.isArtist },
+        user: { id: a.userId, name: a.userName, avatar: a.userAvatar, photoUrl: a.userPhotoUrl, isArtist: a.isArtist },
         count: 1,
       });
     }
@@ -281,6 +370,7 @@ export async function getLeaderboard(
       userId: e.user.id,
       userName: e.user.name,
       userAvatar: e.user.avatar,
+      userPhotoUrl: e.user.photoUrl,
       isArtist: e.user.isArtist,
       count: e.count,
     }));

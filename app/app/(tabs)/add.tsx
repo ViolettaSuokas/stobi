@@ -711,23 +711,31 @@ export default function AddScreen() {
           </View>
         </ScrollView>
 
-        {/* Bottom CTA */}
+        {/* Bottom CTA — кнопка ВСЕГДА видна внизу. Activates только когда:
+            - скан завершён (photoUri есть)
+            - name >= 2 символов
+            description опциональный — необязателен. */}
         <SafeAreaView style={styles.ctaWrap} edges={['bottom']}>
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t('add.save_button')}
-            accessibilityState={{ disabled: saving, busy: saving }}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveBtnText}>{t('add.save_button')}</Text>
-            )}
-          </TouchableOpacity>
+          {(() => {
+            const canSave = !!photoUri && name.trim().length >= 2 && !saving;
+            return (
+              <TouchableOpacity
+                style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+                onPress={handleSave}
+                disabled={!canSave}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('add.save_button')}
+                accessibilityState={{ disabled: !canSave, busy: saving }}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveBtnText}>{t('add.save_button')}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })()}
         </SafeAreaView>
       </KeyboardAvoidingView>
 

@@ -32,13 +32,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import { X, Camera as CameraIcon } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { useI18n } from '../lib/i18n';
 
 const { width, height } = Dimensions.get('window');
 const FRAME_SIZE = Math.min(width, height) * 0.72;
-const FRAME_Y = (height - FRAME_SIZE) * 0.36;
+const FRAME_Y = (height - FRAME_SIZE) / 2;
 
 type Props = {
   title?: string;
@@ -96,13 +97,23 @@ export function StoneScanCamera({
   // каждый новый шаг (см. useEffect).
   const [awaitingReady, setAwaitingReady] = useState(true);
 
-  // Animated scan-line bouncing vertically inside frame
+  // Анимация скана — градиент-полоса bouncing вверх-вниз + 6 пульсирующих
+  // точек в случайных позициях для эффекта "AI анализирует поверхность".
   const scanLineY = useRef(new Animated.Value(0)).current;
+  const sparkleAnims = useRef(
+    Array.from({ length: 6 }).map(() => ({
+      x: Math.random() * (FRAME_SIZE - 16),
+      y: Math.random() * (FRAME_SIZE - 16),
+      delay: Math.random() * 1500,
+      opacity: new Animated.Value(0),
+    })),
+  ).current;
+
   useEffect(() => {
-    const loop = Animated.loop(
+    const sweep = Animated.loop(
       Animated.sequence([
         Animated.timing(scanLineY, {
-          toValue: FRAME_SIZE - 8,
+          toValue: FRAME_SIZE - 60,
           duration: 1800,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
@@ -115,9 +126,35 @@ export function StoneScanCamera({
         }),
       ]),
     );
-    loop.start();
-    return () => loop.stop();
-  }, [scanLineY]);
+    sweep.start();
+
+    const sparkleLoops = sparkleAnims.map((s) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(s.delay),
+          Animated.timing(s.opacity, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(s.opacity, {
+            toValue: 0,
+            duration: 800,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.delay(Math.random() * 1200),
+        ]),
+      ),
+    );
+    sparkleLoops.forEach((l) => l.start());
+
+    return () => {
+      sweep.stop();
+      sparkleLoops.forEach((l) => l.stop());
+    };
+  }, [scanLineY, sparkleAnims]);
 
   // Auto-request permission on mount
   useEffect(() => {
@@ -134,7 +171,10 @@ export function StoneScanCamera({
         quality: 0.9,
         skipProcessing: false,
         exif: false,
-      });
+        // Глушим shutter-сound — это сканер, не фотоаппарат. iOS/Android
+        // вешали характерный "щелчок" что путало юзера ("я фотографирую?").
+        shutterSound: false,
+      } as any) as { uri?: string } | undefined;
       if (photo?.uri) onCapture(photo.uri);
     } catch (e) {
       console.warn('takePictureAsync failed', e);
@@ -231,19 +271,27 @@ export function StoneScanCamera({
         onCameraReady={() => setCameraReady(true)}
       />
 
+      {/* Close button — на самом верхнем слое, гарантированно ловит тапы.
+          Раньше был внутри SafeAreaView с box-none → конфликт с masks/zIndex.
+          Теперь absolute-positioned sibling overlay'я. */}
+      <SafeAreaView edges={['top']} style={styles.closeBtnHolder} pointerEvents="box-none">
+        <TouchableOpacity
+          style={styles.closeBtn}
+          onPress={onCancel}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back') || 'Back'}
+          hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
+        >
+          <X size={22} color="#FFFFFF" weight="bold" />
+        </TouchableOpacity>
+      </SafeAreaView>
+
       {/* Overlay layer with scan frame */}
       <View style={styles.overlay} pointerEvents="box-none">
         {/* Top instruction */}
         <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={onCancel}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.back') || 'Back'}
-          >
-            <X size={22} color="#FFFFFF" weight="bold" />
-          </TouchableOpacity>
+          {/* Close moved out — этот блок остался для wrapper'а instructionCard */}
 
           <View style={styles.instructionCard}>
             {progress && progress.total > 1 && (
@@ -279,25 +327,38 @@ export function StoneScanCamera({
         {/* Darkened mask with transparent frame in center.
             Achieved via four positioned overlays (top/bottom/left/right of frame)
             since react-native не умеет inverse clip-path без SVG masks. */}
-        <View style={styles.maskTop} />
-        <View style={styles.maskBottom} />
-        <View style={styles.maskLeft} />
-        <View style={styles.maskRight} />
+        {/* Маски и рамка — pointerEvents='none' чтобы тапы доходили до
+            close-кнопки в topBar (которая рендерится РАНЬШЕ масок в JSX и
+            оказывается под ними по z-order — иначе X на скане не активен). */}
+        <View style={styles.maskTop} pointerEvents="none" />
+        <View style={styles.maskBottom} pointerEvents="none" />
+        <View style={styles.maskLeft} pointerEvents="none" />
+        <View style={styles.maskRight} pointerEvents="none" />
 
-        {/* Frame with corners */}
-        <View style={styles.frame}>
+        <View style={styles.frame} pointerEvents="none">
           <View style={[styles.corner, styles.cornerTL]} />
           <View style={[styles.corner, styles.cornerTR]} />
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
-
-          {/* Scan line */}
+          {/* Elegant scan beam — мягкий glow градиент с тонкой яркой
+              центральной линией. Плавный, не agressive. */}
           <Animated.View
-            style={[
-              styles.scanLine,
-              { transform: [{ translateY: scanLineY }] },
-            ]}
-          />
+            style={[styles.scanBandWrap, { transform: [{ translateY: scanLineY }] }]}
+            pointerEvents="none"
+          >
+            <LinearGradient
+              colors={[
+                'rgba(255,255,255,0)',
+                'rgba(196,181,253,0.2)',
+                'rgba(196,181,253,0.4)',
+                'rgba(196,181,253,0.2)',
+                'rgba(255,255,255,0)',
+              ]}
+              style={styles.scanBand}
+            />
+            <View style={styles.scanLineCore} />
+          </Animated.View>
+
         </View>
 
         {/* Bottom bar: AI overlay (analyzing/failed) > countdown > shutter. */}
@@ -450,15 +511,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     gap: 12,
+    zIndex: 10,
+    elevation: 10,
+  },
+  closeBtnHolder: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    zIndex: 1000,
+    elevation: 1000,
   },
   closeBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
+    marginTop: 8,
   },
   instructionCard: {
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -593,8 +663,37 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
+  scanBandWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  scanLineCore: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#C4B5FD',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 8,
+  },
 
-  // Bottom shutter bar
+  // Bottom shutter bar — zIndex чтобы текст подсказок ("Поднеси: ...",
+  // countdown, Готов-button) рисовался ПОВЕРХ затемняющей маски.
   bottomBar: {
     position: 'absolute',
     left: 0, right: 0, bottom: 0,
@@ -602,6 +701,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingTop: 16,
     gap: 10,
+    zIndex: 10,
+    elevation: 10,
   },
   shutter: {
     width: 82,

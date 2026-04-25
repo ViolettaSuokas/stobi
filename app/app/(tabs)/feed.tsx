@@ -218,16 +218,25 @@ export default function FeedScreen() {
                       accessibilityLabel={`${stone.stoneName ?? 'stone'} — ${stone.city ?? ''}`}
                     >
                       <View style={styles.recentVisual}>
-                        {stone.photoUri ? (
-                          <Image
-                            source={{ uri: stone.photoUri }}
-                            style={styles.recentPhoto}
-                          />
-                        ) : stone.photo ? (
-                          <Image
-                            source={STONE_PHOTOS[stone.photo]}
-                            style={styles.recentPhoto}
-                          />
+                        {/* Свежие камни = засекреченные → реальное фото
+                            размыто (BlurView) + замочек поверх. Игрок видит
+                            что фото есть, но рисунок не разглядеть пока не
+                            раскроет (5💎 на детальной карточке) или не найдёт. */}
+                        {stone.photoUri || stone.photo ? (
+                          <View style={styles.recentLockedWrap}>
+                            <Image
+                              source={
+                                stone.photoUri
+                                  ? { uri: stone.photoUri }
+                                  : STONE_PHOTOS[stone.photo!]
+                              }
+                              style={styles.recentPhoto}
+                              blurRadius={8}
+                            />
+                            <View style={styles.recentLockOverlay}>
+                              <Text style={styles.recentLockEmoji}>🔒</Text>
+                            </View>
+                          </View>
                         ) : (
                           <LinearGradient
                             colors={stone.stoneColors as unknown as [string, string]}
@@ -261,18 +270,15 @@ export default function FeedScreen() {
                         {stone.stoneName}
                       </Text>
                       <View style={styles.recentAuthorRow}>
-                        {(() => {
-                          const s = resolveStyle(stone.userId);
-                          return (
-                            <StoneMascot
-                              size={22}
-                              color={s.color}
-                              shape={s.shape}
-                              variant={s.variant}
-                              showSparkles={false}
-                            />
-                          );
-                        })()}
+                        {stone.userPhotoUrl ? (
+                          <SafeImage
+                            source={{ uri: stone.userPhotoUrl }}
+                            style={{ width: 22, height: 22, borderRadius: 11 }}
+                            fallbackIconSize={10}
+                          />
+                        ) : (
+                          <Text style={{ fontSize: 18 }}>{stone.userAvatar}</Text>
+                        )}
                         <Text style={styles.recentAuthor} numberOfLines={1}>
                           {stone.userName}
                         </Text>
@@ -373,19 +379,9 @@ export default function FeedScreen() {
                         <View style={styles.leaderAvatar}>
                           {entry.userPhotoUrl ? (
                             <SafeImage source={{ uri: entry.userPhotoUrl }} style={styles.leaderPhoto} fallbackIconSize={16} />
-                          ) : (() => {
-                            const s = resolveStyle(entry.userId);
-                            return (
-                              <StoneMascot
-                                size={40}
-                                color={s.color}
-                                shape={s.shape}
-                                variant={s.variant}
-                                decor={s.decor}
-                                showSparkles={false}
-                              />
-                            );
-                          })()}
+                          ) : (
+                            <Text style={{ fontSize: 26 }}>{entry.userAvatar || '🪨'}</Text>
+                          )}
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={styles.leaderNameRow}>
@@ -442,19 +438,17 @@ export default function FeedScreen() {
                     accessibilityLabel={`${item.userName} ${item.type === 'find' ? 'нашёл' : 'спрятал'} ${item.stoneName}`}
                   >
                     <View style={styles.timelineAvatar}>
-                      {(() => {
-                        const s = resolveStyle(item.userId);
-                        return (
-                          <StoneMascot
-                            size={40}
-                            color={s.color}
-                            shape={s.shape}
-                            variant={s.variant}
-                            decor={s.decor}
-                            showSparkles={false}
-                          />
-                        );
-                      })()}
+                      {item.userPhotoUrl ? (
+                        <SafeImage
+                          source={{ uri: item.userPhotoUrl }}
+                          style={styles.timelineUserPhoto}
+                          fallbackIconSize={16}
+                        />
+                      ) : (
+                        <View style={styles.timelineUserEmoji}>
+                          <Text style={{ fontSize: 22 }}>{item.userAvatar}</Text>
+                        </View>
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.timelineText} numberOfLines={2}>
@@ -467,7 +461,10 @@ export default function FeedScreen() {
                         {item.city} · {formatActivityTime(item.createdAt)}
                       </Text>
                     </View>
-                    {(item.photoUri || item.photo) && (
+                    {/* Превью фото камня показываем ТОЛЬКО для find-events.
+                        Hide-events — секретный камень, фото скрыто (как на
+                        карте — нужно либо пройти reveal за 💎, либо найти). */}
+                    {item.type === 'find' && (item.photoUri || item.photo) && (
                       <Image
                         source={
                           item.photoUri
@@ -644,6 +641,22 @@ const styles = StyleSheet.create({
     height: 78,
     borderRadius: 14,
     backgroundColor: Colors.accentLight,
+  },
+  recentLockedWrap: {
+    width: 100,
+    height: 78,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  recentLockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  recentLockEmoji: {
+    fontSize: 22,
   },
   recentEmoji: { fontSize: 28 },
   recentName: {
@@ -838,10 +851,24 @@ const styles = StyleSheet.create({
   timelineAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 13,
+    borderRadius: 18,
     backgroundColor: Colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  timelineUserPhoto: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  timelineUserEmoji: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accentLight,
   },
   timelineText: {
     fontSize: 13,

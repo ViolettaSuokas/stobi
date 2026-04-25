@@ -610,6 +610,18 @@ export const ru: Record<string, string> = {
     'register.age_hint': 'Stobi для тех, кому 13+. Это требование закона.',
     'register.birth_year_invalid': 'Сначала укажи год рождения',
     'register.age_under_13': 'Stobi доступен с 13 лет. Если тебе младше — играй с родителем на его телефоне.',
+
+    // Pending finds — для автора подтвердить чужой скан камня
+    'stone.pending_finds_title': 'Кто-то нашёл твой камень',
+    'stone.pending_finds_sub': 'AI не уверен на 100% — подтверди что это твой камень и {name} получит свои алмазики.',
+    'stone.pending_approve': 'Да',
+    'stone.approve_success_title': 'Готово!',
+    'stone.approve_success_text': '{name} получил свои алмазики за находку.',
+    'stone.pending_reject': 'Нет',
+    'stone.reject_confirm_title': 'Отклонить?',
+    'stone.reject_confirm_text': 'Если это не твой камень — отклоняй. Юзер не получит алмазиков за этот скан.',
+    'stone.tap_to_zoom': 'Нажми чтобы увеличить',
+    'stone.lock_after_found': '🔒 Этот камень нашли уже {count} раз — нельзя менять или удалить, чтобы не сломать историю находок.',
     'register.email_taken_title': 'Email уже зарегистрирован',
     'register.email_taken_text': 'На этот email уже есть аккаунт. Хочешь войти?',
     'login.not_registered_title': 'Аккаунт не найден',

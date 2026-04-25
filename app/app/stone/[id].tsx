@@ -19,8 +19,9 @@ import {
   CheckCircle,
   Footprints,
   Eye,
+  EyeSlash,
   ShareNetwork,
-  Flag,
+  WarningCircle,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -46,6 +47,10 @@ import {
   isAuthorLimitReached,
   reportStoneMissing,
   authorConfirmStone,
+  getPendingFindsForMyStones,
+  approvePendingFind,
+  rejectPendingFind,
+  type PendingFind,
 } from '../../lib/finds';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
@@ -109,6 +114,15 @@ export default function StoneDetailScreen() {
   const [isOwnStone, setIsOwnStone] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [revealLoading, setRevealLoading] = useState(false);
+
+  // Pending finds — для автора подтвердить чужие находки в borderline-similarity.
+  const [pendingFinds, setPendingFinds] = useState<PendingFind[]>([]);
+  const [approving, setApproving] = useState<string | null>(null);
+  // Полноэкранный просмотр фото скана (мелкое preview не разглядеть).
+  const [zoomedPhotoUrl, setZoomedPhotoUrl] = useState<string | null>(null);
+  // Сколько раз камень нашли (verified). Если ≥1 — автор НЕ может менять
+  // имя/фото/удалить (это нарушит историю finder'ов и сломает AI-эталон).
+  const [verifiedFindCount, setVerifiedFindCount] = useState(0);
 
   // AI find scanner state — открывается по тапу "Я нашла этот камень".
   // Раньше просто ImagePicker + GPS<30м, теперь 2-х сторонний scan→embed→
@@ -200,6 +214,22 @@ export default function StoneDetailScreen() {
         if (matchByAuthor || matchByHideEvent) {
           setIsOwnStone(true);
           setRevealed(true);
+          // Если это мой камень — подгружаем pending finds (чужие сканы
+          // ждущие моего одобрения) + counts verified finds (для блока edit/delete).
+          if (stoneId) {
+            getPendingFindsForMyStones(stoneId)
+              .then((rows) => { if (!cancelled) setPendingFinds(rows); })
+              .catch((e) => console.warn('load pending finds', e));
+            (async () => {
+              try {
+                const { supabase: sb } = await import('../../lib/supabase');
+                const { count } = await sb.from('finds')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('stone_id', stoneId);
+                if (!cancelled && count !== null) setVerifiedFindCount(count);
+              } catch {/* ignore */}
+            })();
+          }
         }
       }
 
@@ -263,6 +293,61 @@ export default function StoneDetailScreen() {
     } finally {
       setRevealLoading(false);
     }
+  };
+
+  // Автор подтверждает что pending find — реально его камень. После этого
+  // finder получает свои 💎, find становится verified, viр в журнале.
+  const handleApprovePendingFind = async (proofId: string, finderName: string) => {
+    setApproving(proofId);
+    try {
+      const result = await approvePendingFind(proofId);
+      if (result.ok) {
+        void haptics.success();
+        Alert.alert(
+          t('stone.approve_success_title') || 'Готово!',
+          (t('stone.approve_success_text') || '{name} получил свои 💎 за находку.').replace('{name}', finderName),
+        );
+        // Reload pending list
+        if (stoneId) {
+          const rows = await getPendingFindsForMyStones(stoneId);
+          setPendingFinds(rows);
+        }
+      } else {
+        Alert.alert(t('common.error') || 'Ошибка', result.error ?? 'Не получилось');
+      }
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleRejectPendingFind = (proofId: string) => {
+    Alert.alert(
+      t('stone.reject_confirm_title') || 'Отклонить?',
+      t('stone.reject_confirm_text') ||
+        'Если это не твой камень — отклоняй. Юзер не получит 💎 за этот скан.',
+      [
+        { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+        {
+          text: t('stone.pending_reject') || 'Нет, не мой',
+          style: 'destructive',
+          onPress: async () => {
+            setApproving(proofId);
+            try {
+              const result = await rejectPendingFind(proofId);
+              if (result.ok && stoneId) {
+                void haptics.tap();
+                const rows = await getPendingFindsForMyStones(stoneId);
+                setPendingFinds(rows);
+              } else {
+                Alert.alert(t('common.error') || 'Ошибка', result.error ?? '');
+              }
+            } finally {
+              setApproving(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleEditName = () => {
@@ -726,12 +811,22 @@ export default function StoneDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }}
       >
-        {/* Hero — large photo or gradient blob */}
+        {/* Hero — большое фото или blurred-locked фото для незачищенных. */}
         <View style={styles.heroArea}>
           {revealed && heroPhotoUri ? (
             <SafeImage source={{ uri: heroPhotoUri }} style={styles.heroImage} fallbackIconSize={64} />
           ) : revealed && heroPhoto ? (
             <Image source={STONE_PHOTOS[heroPhoto]} style={styles.heroImage} />
+          ) : !revealed && heroPhotoUri ? (
+            // Незасекреченный камень с реальным фото — показываем blurred
+            // оригинал + замочек поверх. Юзер видит что фото есть, но рисунок
+            // нечитаем пока не raveal'ится / не найдёт.
+            <View style={styles.heroImage}>
+              <Image source={{ uri: heroPhotoUri }} style={styles.heroImage} blurRadius={30} />
+              <View style={styles.heroLockOverlay}>
+                <Text style={styles.heroLockEmoji}>🔒</Text>
+              </View>
+            </View>
           ) : (
             <LinearGradient
               colors={stone.colors as unknown as [string, string]}
@@ -765,7 +860,7 @@ export default function StoneDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('report.title') || 'Пожаловаться'}
               >
-                <Flag size={20} color={Colors.text} weight="bold" />
+                <WarningCircle size={20} color={Colors.text} weight="bold" />
               </TouchableOpacity>
             )}
           </SafeAreaView>
@@ -882,11 +977,100 @@ export default function StoneDetailScreen() {
             </View>
           )}
 
+          {/* Pending finds — для автора подтвердить чужие сканы которые AI
+              не уверен что 100% это тот же камень. */}
+          {isOwnStone && pendingFinds.length > 0 && (
+            <View style={styles.pendingSection}>
+              <Text style={styles.pendingSectionTitle}>
+                {(t('stone.pending_finds_title') || 'Кто-то нашёл твой камень')
+                  + ` (${pendingFinds.length})`}
+              </Text>
+              <Text style={styles.pendingSectionSub}>
+                {t('stone.pending_finds_sub') ||
+                  'AI не уверен на 100% — подтверди что это твой камень и юзер получит 💎.'}
+              </Text>
+              {pendingFinds.map((pf) => (
+                <View key={pf.proofId} style={styles.pendingCard}>
+                  {/* Большое фото с tap-to-zoom — мелкий thumbnail не позволял
+                      разглядеть рисунок и понять свой ли это камень. */}
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => setZoomedPhotoUrl(pf.photoUrl)}
+                  >
+                    <Image source={{ uri: pf.photoUrl }} style={styles.pendingPhotoLarge} />
+                    <Text style={styles.pendingPhotoHint}>
+                      {t('stone.tap_to_zoom') || 'Нажми чтобы увеличить'}
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={styles.pendingHeader}>
+                    <Text style={{ fontSize: 18 }}>{pf.finderAvatar}</Text>
+                    <Text style={styles.pendingName}>{pf.finderUsername}</Text>
+                  </View>
+                  <Text style={styles.pendingMeta}>
+                    {Math.round(pf.similarity * 100)}% похоже · {formatActivityTime(pf.createdAt)}
+                  </Text>
+                  <View style={styles.pendingButtons}>
+                    <TouchableOpacity
+                      style={[styles.pendingRejectBtn, approving === pf.proofId && { opacity: 0.5 }]}
+                      onPress={() => handleRejectPendingFind(pf.proofId)}
+                      disabled={approving === pf.proofId}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.pendingRejectText}>
+                        {t('stone.pending_reject') || 'Нет, не мой'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.pendingApproveBtn, approving === pf.proofId && { opacity: 0.5 }]}
+                      onPress={() => handleApprovePendingFind(pf.proofId, pf.finderUsername)}
+                      disabled={approving === pf.proofId}
+                      activeOpacity={0.85}
+                    >
+                      {approving === pf.proofId ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.pendingApproveText}>
+                          {t('stone.pending_approve') || 'Да, это мой'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Fullscreen photo zoom для pending скана. Tap по фону — закрыть. */}
+          {zoomedPhotoUrl && (
+            <Modal
+              visible
+              transparent
+              animationType="fade"
+              onRequestClose={() => setZoomedPhotoUrl(null)}
+            >
+              <TouchableOpacity
+                style={styles.zoomOverlay}
+                activeOpacity={1}
+                onPress={() => setZoomedPhotoUrl(null)}
+              >
+                <Image source={{ uri: zoomedPhotoUrl }} style={styles.zoomImage} resizeMode="contain" />
+              </TouchableOpacity>
+            </Modal>
+          )}
+
           {/* Artist / creator card */}
           {creator && (
             <View style={styles.creatorCard}>
               <View style={styles.creatorAvatar}>
-                <Text style={{ fontSize: 22 }}>{creator.userAvatar}</Text>
+                {creator.userPhotoUrl ? (
+                  <SafeImage
+                    source={{ uri: creator.userPhotoUrl }}
+                    style={{ width: 40, height: 40, borderRadius: 20 }}
+                    fallbackIconSize={16}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 22 }}>{creator.userAvatar}</Text>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.creatorLabel}>{t('stone.creator')}</Text>
@@ -980,39 +1164,53 @@ export default function StoneDetailScreen() {
       {/* Sticky bottom CTA */}
       <SafeAreaView style={styles.ctaWrap} edges={['bottom']}>
         {isOwnStone ? (
-          <View style={styles.ownActions}>
-            <TouchableOpacity
-              style={styles.ownActionBtn}
-              onPress={handleEditName}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={t('stone.edit_name')}
-            >
-              <PencilSimple size={18} color={Colors.accent} weight="bold" />
-              <Text style={styles.ownActionText}>{t('stone.edit_name')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.ownActionBtn}
-              onPress={handleEditPhoto}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={t('stone.edit_photo')}
-            >
-              <PencilSimple size={18} color={Colors.accent} weight="bold" />
-              <Text style={styles.ownActionText}>{t('stone.edit_photo')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ownActionBtn, { borderColor: '#FCA5A5' }]}
-              onPress={handleDeleteStone}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={t('common.delete')}
-              accessibilityHint={t('stone.delete_hint')}
-            >
-              <Trash size={18} color="#DC2626" weight="bold" />
-              <Text style={[styles.ownActionText, { color: '#DC2626' }]}>{t('common.delete')}</Text>
-            </TouchableOpacity>
-          </View>
+          // Камень кто-то нашёл → блок редактирования / удаления:
+          //   - менять имя сбило бы finder'у запись в его истории
+          //   - менять фото сломало бы AI-эталон → следующие find'ы не сматчат
+          //   - удалять — server trigger всё равно блокирует, тут UX-зеркало
+          verifiedFindCount > 0 ? (
+            <View style={styles.foundLockNotice}>
+              <Text style={styles.foundLockText}>
+                {(t('stone.lock_after_found') ||
+                  '🔒 Этот камень нашли уже {count} раз — нельзя менять или удалить, чтобы не сломать историю find\'ов.'
+                ).replace('{count}', String(verifiedFindCount))}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.ownActions}>
+              <TouchableOpacity
+                style={styles.ownActionBtn}
+                onPress={handleEditName}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('stone.edit_name')}
+              >
+                <PencilSimple size={18} color={Colors.accent} weight="bold" />
+                <Text style={styles.ownActionText}>{t('stone.edit_name')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.ownActionBtn}
+                onPress={handleEditPhoto}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('stone.edit_photo')}
+              >
+                <PencilSimple size={18} color={Colors.accent} weight="bold" />
+                <Text style={styles.ownActionText}>{t('stone.edit_photo')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.ownActionBtn, { borderColor: '#FCA5A5' }]}
+                onPress={handleDeleteStone}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.delete')}
+                accessibilityHint={t('stone.delete_hint')}
+              >
+                <Trash size={18} color="#DC2626" weight="bold" />
+                <Text style={[styles.ownActionText, { color: '#DC2626' }]}>{t('common.delete')}</Text>
+              </TouchableOpacity>
+            </View>
+          )
         ) : alreadyFound ? (
           <View style={styles.foundRow}>
             <View style={[styles.findBtn, styles.findBtnDone, { flex: 1 }]}>
@@ -1038,38 +1236,21 @@ export default function StoneDetailScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.findBtn, { flex: 1 }]}
-              activeOpacity={0.85}
-              onPress={handleFound}
-              disabled={claiming}
-              accessibilityRole="button"
-              accessibilityLabel={t('stone.found_button')}
-              accessibilityState={{ disabled: claiming, busy: claiming }}
-            >
-              {claiming ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.findBtnText}>{t('stone.found_button')}</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.reportMissingBtn}
-              onPress={handleReportMissing}
-              disabled={reportingMissing}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={t('stone.report_btn') || 'Камня здесь нет'}
-              accessibilityHint={t('stone.report_btn_hint') || 'Сообщить что камня на месте нет'}
-            >
-              {reportingMissing ? (
-                <ActivityIndicator color={Colors.text2} />
-              ) : (
-                <Text style={styles.reportMissingBtnText}>🫥</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.findBtn}
+            activeOpacity={0.85}
+            onPress={handleFound}
+            disabled={claiming}
+            accessibilityRole="button"
+            accessibilityLabel={t('stone.found_button')}
+            accessibilityState={{ disabled: claiming, busy: claiming }}
+          >
+            {claiming ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.findBtnText}>{t('stone.found_button')}</Text>
+            )}
+          </TouchableOpacity>
         )}
       </SafeAreaView>
 
@@ -1173,6 +1354,125 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
 
   // AI find: фуллскрин loading пока сервер сравнивает embedding
+  pendingSection: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+  },
+  pendingSectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  pendingSectionSub: {
+    fontSize: 13,
+    color: '#78350F',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  pendingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+  },
+  pendingPhotoLarge: {
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    marginBottom: 6,
+  },
+  pendingPhotoHint: {
+    fontSize: 11,
+    color: Colors.text2,
+    textAlign: 'center',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  pendingButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  pendingRejectBtn: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    alignItems: 'center',
+  },
+  pendingRejectText: {
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomImage: {
+    width: '100%',
+    height: '100%',
+  },
+  foundLockNotice: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  foundLockText: {
+    fontSize: 13,
+    color: Colors.text2,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  pendingPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+  },
+  pendingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  pendingName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  pendingMeta: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginBottom: 8,
+  },
+  pendingApproveBtn: {
+    flex: 1,
+    backgroundColor: Colors.green,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingApproveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   claimingOverlay: {
     flex: 1,
     backgroundColor: 'rgba(18,16,39,0.85)',
@@ -1201,6 +1501,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroFallbackEmoji: { fontSize: 130 },
+  heroLockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  heroLockEmoji: {
+    fontSize: 96,
+  },
   heroButtons: {
     position: 'absolute',
     top: 0,
@@ -1494,6 +1803,11 @@ const styles = StyleSheet.create({
   },
   reportMissingBtnText: {
     fontSize: 22,
+  },
+  reportMissingLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.text2,
   },
 
   // Author revive banner (when юзеры репортнули что камня нет)

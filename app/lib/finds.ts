@@ -275,6 +275,85 @@ export async function markStoneFoundV2(args: {
   }
 }
 
+// ────────────────────────────────────────────
+// Pending finds — для автора одобрить/отклонить
+// ────────────────────────────────────────────
+
+export type PendingFind = {
+  proofId: string;
+  stoneId: string;
+  finderId: string;
+  finderUsername: string;
+  finderAvatar: string;
+  photoUrl: string;
+  similarity: number;
+  createdAt: number;
+};
+
+/** Получить pending finds для камня (или для всех своих камней если stoneId=null). */
+export async function getPendingFindsForMyStones(stoneId?: string | null): Promise<PendingFind[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase.rpc('get_pending_finds_for_my_stones', {
+      p_stone_id: stoneId ?? null,
+    });
+    if (error || !Array.isArray(data)) {
+      if (error) console.warn('get_pending_finds error', error.message);
+      return [];
+    }
+    return (data as Array<{
+      proof_id: string;
+      stone_id: string;
+      finder_id: string;
+      finder_username: string;
+      finder_avatar: string;
+      photo_url: string;
+      similarity: number;
+      created_at: string;
+    }>).map((row) => ({
+      proofId: row.proof_id,
+      stoneId: row.stone_id,
+      finderId: row.finder_id,
+      finderUsername: row.finder_username ?? 'Удалённый юзер',
+      finderAvatar: row.finder_avatar ?? '🪨',
+      photoUrl: row.photo_url,
+      similarity: row.similarity,
+      createdAt: new Date(row.created_at).getTime(),
+    }));
+  } catch (e) {
+    console.warn('getPendingFindsForMyStones exception', e);
+    return [];
+  }
+}
+
+/** Автор одобряет pending find — finder получает 💎, find становится verified. */
+export async function approvePendingFind(proofId: string): Promise<{ ok: boolean; balance?: number; error?: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'supabase_not_configured' };
+  try {
+    const { data, error } = await supabase.rpc('author_approve_pending_find', {
+      p_proof_id: proofId,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, balance: (data as { balance?: number })?.balance };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'unknown' };
+  }
+}
+
+/** Автор отклоняет pending find — статус 'rejected', никаких начислений. */
+export async function rejectPendingFind(proofId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'supabase_not_configured' };
+  try {
+    const { error } = await supabase.rpc('author_reject_pending_find', {
+      p_proof_id: proofId,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'unknown' };
+  }
+}
+
 /** Top-3 nearest stones by cosine similarity — used for "найти где-то ещё". */
 export type StoneSearchHit = {
   stoneId: string;
@@ -288,12 +367,21 @@ export type StoneSearchHit = {
 export async function searchStoneByEmbedding(
   embedding: number[],
   limit = 3,
+  coords?: { lat: number; lng: number } | null,
+  radiusKm = 5,
 ): Promise<StoneSearchHit[]> {
   if (!isSupabaseConfigured()) return [];
   try {
+    // GPS pre-filter: server отсечёт камни дальше radiusKm от текущих
+    // координат → меньше false-positive (визуально похожий камень в другой
+    // стране) + быстрее при scale. Если coords нет — server делает
+    // whole-DB search как раньше (fallback).
     const { data, error } = await supabase.rpc('search_stone_by_embedding', {
       p_embedding: embedding,
       p_limit: limit,
+      p_lat: coords?.lat ?? null,
+      p_lng: coords?.lng ?? null,
+      p_radius_km: radiusKm,
     });
     if (error || !Array.isArray(data)) {
       if (error) console.warn('search_stone_by_embedding error', error.message);
@@ -306,6 +394,7 @@ export async function searchStoneByEmbedding(
       similarity: number;
       author_id: string;
       city: string | null;
+      distance_m: number | null;
     }>).map((row) => ({
       stoneId: row.stone_id,
       name: row.name,
