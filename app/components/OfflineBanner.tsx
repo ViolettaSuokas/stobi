@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WifiSlash } from 'phosphor-react-native';
+import { CloudSlash } from 'phosphor-react-native';
 import { useIsOnline } from '../lib/network';
 import { useI18n } from '../lib/i18n';
 
@@ -44,7 +44,7 @@ export function OfflineBanner() {
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
         >
-          <WifiSlash size={16} color="#FFFFFF" weight="bold" />
+          <CloudSlash size={16} color="#FFFFFF" weight="bold" />
           <Text style={styles.text}>{t('network.offline')}</Text>
         </View>
       </SafeAreaView>
