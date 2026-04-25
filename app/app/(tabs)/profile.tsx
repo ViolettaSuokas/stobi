@@ -606,8 +606,11 @@ export default function ProfileScreen() {
           })}
         </View>
 
-        {mainTab === 'overview' ? (
-          <View style={styles.body}>
+        {/* Обе вкладки рендерим всегда, переключаем через display:'none'.
+            Раньше при переключении overview→customize→overview ReferralCard
+            размонтировался → re-fetch'ил код с пустым state → юзер видел
+            мигание. С display:'none' state живёт через переключения. */}
+        <View style={[styles.body, mainTab !== 'overview' && { display: 'none' }]}>
             {/* Profile photo + name card */}
             <View style={styles.profilePhotoCard}>
               <TouchableOpacity
@@ -911,8 +914,7 @@ export default function ProfileScreen() {
 
           {user?.email && <Text style={styles.emailHint}>{user.email}</Text>}
           </View>
-        ) : (
-          <View style={styles.body}>
+        <View style={[styles.body, mainTab !== 'customize' && { display: 'none' }]}>
             {/* Character name */}
             <TouchableOpacity
               style={styles.characterNameRow}
@@ -1204,7 +1206,6 @@ export default function ProfileScreen() {
             </View>
             )}
           </View>
-        )}
       </ScrollView>
     </View>
   );
