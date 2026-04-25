@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 24, paddingTop: 12, paddingBottom: 40 },
   backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   hero: { alignItems: 'center', marginTop: 20, marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  title: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 6, marginBottom: 24 },
   socialWrap: { gap: 12 },
   socialBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 16, paddingVertical: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },

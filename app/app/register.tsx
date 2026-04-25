@@ -373,12 +373,14 @@ export default function RegisterScreen() {
               <StoneMascot size={180} color="#C4B5FD" variant="happy" showSparkles />
             </View>
 
-            {/* Title */}
-            <Text style={styles.appName}>Stobi</Text>
+            {/* Title — должен явно говорить "это регистрация", не просто
+                "Stobi". Раньше большой "Stobi" + маленький "Зарегистрируйся"
+                внутри формы создавали ощущение что login и register это
+                одно и то же. */}
+            <Text style={styles.appName}>{t('register.title')}</Text>
             <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
 
               <View style={styles.buttonsWrap}>
-                <Text style={styles.signUpLabel}>{t('auth.sign_up')}</Text>
 
                 {/* Год рождения — ВЫШЕ всех методов sign-in (Apple/Google
                     тоже его требуют). Раньше поле стояло внизу формы и
