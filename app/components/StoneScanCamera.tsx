@@ -28,6 +28,7 @@ import {
   Dimensions,
   Animated,
   Easing,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -47,6 +48,16 @@ type Props = {
   ctaLabel?: string;
   /** Для multi-angle потока в hide: "Фото 1 из 2" и подсказка этапа. */
   progress?: { current: number; total: number; stepLabel?: string };
+  /**
+   * Auto-capture: камера автоматически делает снимок через 2.5 сек после того
+   * как preview готов (camera-ready event). Юзер видит short countdown
+   * "3...2...1" в области под рамкой и не должен ничего нажимать.
+   * Default: true (это сканер, а не ручная фото-кнопка).
+   *
+   * Manual fallback shutter скрыт по умолчанию когда auto, но появляется
+   * через 6 секунд если auto-capture не сработал (sanity escape hatch).
+   */
+  autoCapture?: boolean;
 };
 
 export function StoneScanCamera({
@@ -56,11 +67,16 @@ export function StoneScanCamera({
   onCancel,
   ctaLabel,
   progress,
+  autoCapture = true,
 }: Props) {
   const { t } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  // Auto-capture countdown: 3 -> 2 -> 1 -> snap. Started after camera-ready.
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [showFallbackShutter, setShowFallbackShutter] = useState(false);
 
   // Animated scan-line bouncing vertically inside frame
   const scanLineY = useRef(new Animated.Value(0)).current;
@@ -109,6 +125,40 @@ export function StoneScanCamera({
     }
   };
 
+  // Auto-capture: после camera-ready event запускаем countdown 3-2-1, потом snap.
+  // Юзер ничего не нажимает — камера сама фоткает.
+  //
+  // Перезапускается на смену шага (progress.current) — чтобы во flow
+  // "переверни камень" второй снимок тоже стартанул автоматически. Между
+  // шагами даём 1.5с задержку чтобы юзер успел прочитать новую инструкцию
+  // перед countdown.
+  const stepKey = progress?.current ?? 1;
+  useEffect(() => {
+    if (!autoCapture || !cameraReady || capturing) return;
+    const startDelay = stepKey > 1 ? 1500 : 0;
+    setShowFallbackShutter(false);
+    const startTick = setTimeout(() => {
+      setCountdown(3);
+    }, startDelay);
+    const tick2 = setTimeout(() => setCountdown(2), startDelay + 1000);
+    const tick1 = setTimeout(() => setCountdown(1), startDelay + 2000);
+    const snap = setTimeout(() => {
+      setCountdown(null);
+      void handleShutter();
+    }, startDelay + 3000);
+    // Sanity escape hatch: если takePictureAsync не вернулся за 6с, показываем
+    // ручную shutter-кнопку чтобы юзер мог сам снять или отменить.
+    const fallback = setTimeout(() => setShowFallbackShutter(true), startDelay + 6500);
+    return () => {
+      clearTimeout(startTick);
+      clearTimeout(tick2);
+      clearTimeout(tick1);
+      clearTimeout(snap);
+      clearTimeout(fallback);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCapture, cameraReady, stepKey]);
+
   // Permission states
   if (!permission) {
     return <View style={styles.container} />; // loading
@@ -144,6 +194,7 @@ export function StoneScanCamera({
         style={styles.camera}
         facing="back"
         autofocus="on"
+        onCameraReady={() => setCameraReady(true)}
       />
 
       {/* Overlay layer with scan frame */}
@@ -215,22 +266,41 @@ export function StoneScanCamera({
           />
         </View>
 
-        {/* Shutter */}
+        {/* Bottom bar: либо countdown (auto-scan), либо ручная кнопка-затвор. */}
         <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[styles.shutter, capturing && styles.shutterBusy]}
-            onPress={handleShutter}
-            disabled={capturing}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={ctaLabel ?? t('scan.btn_capture') ?? 'Scan'}
-          >
-            <View style={styles.shutterInner}>
-              <CameraIcon size={28} color="#1A1A2E" weight="fill" />
+          {autoCapture && countdown !== null ? (
+            // Countdown ring — юзеру видно что камера сама снимет через N сек.
+            <View style={styles.countdownRing}>
+              <Text style={styles.countdownText}>{countdown}</Text>
             </View>
-          </TouchableOpacity>
+          ) : autoCapture && capturing ? (
+            <View style={styles.countdownRing}>
+              <ActivityIndicator color="#FFFFFF" size="large" />
+            </View>
+          ) : (autoCapture && !showFallbackShutter && cameraReady) ? (
+            // After snap fired but auto's still finishing — neutral disc, no tap.
+            <View style={[styles.countdownRing, { opacity: 0.4 }]} />
+          ) : (
+            // Manual shutter: либо autoCapture отключен, либо escape hatch.
+            <TouchableOpacity
+              style={[styles.shutter, capturing && styles.shutterBusy]}
+              onPress={handleShutter}
+              disabled={capturing}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={ctaLabel ?? t('scan.btn_capture') ?? 'Scan'}
+            >
+              <View style={styles.shutterInner}>
+                <CameraIcon size={28} color="#1A1A2E" weight="fill" />
+              </View>
+            </TouchableOpacity>
+          )}
           <Text style={styles.shutterHint}>
-            {ctaLabel ?? t('scan.btn_capture') ?? 'Сканировать'}
+            {capturing
+              ? (t('scan.processing') || 'Снимаю...')
+              : (autoCapture && countdown !== null)
+                ? (t('scan.hold_steady') || 'Держи камень в рамке')
+                : (ctaLabel ?? t('scan.btn_capture') ?? 'Сканировать')}
           </Text>
         </SafeAreaView>
       </View>
@@ -478,6 +548,27 @@ const styles = StyleSheet.create({
   },
   shutterBusy: {
     opacity: 0.5,
+  },
+  countdownRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 5,
+    borderColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(91,79,240,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  countdownText: {
+    color: '#FFFFFF',
+    fontSize: 44,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   shutterInner: {
     width: 64,

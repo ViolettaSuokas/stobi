@@ -79,9 +79,20 @@ export async function moderateAndEmbedPhoto(
 
   const functionName = kind === 'stone' ? 'process-stone-photo' : 'process-find-photo';
 
-  const { data, error } = await supabase.functions.invoke(functionName, {
+  // Hard timeout 45s. The Edge Function itself caps at 60s but Replicate
+  // poll-loops can stall longer than that on cold-start; without a client-
+  // side cap the spinner just hangs forever and the user has no way to
+  // recover. 45s lets a slow-but-still-progressing call finish, but kills
+  // genuinely stuck ones so the caller can show a retry option.
+  const timeoutMs = 45000;
+  const invokePromise = supabase.functions.invoke(functionName, {
     body: { photo_url: photoUrl },
   });
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('moderation_timeout')), timeoutMs),
+  );
+
+  const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
 
   if (error) {
     throw new Error(`Edge function ${functionName} failed: ${error.message}`);

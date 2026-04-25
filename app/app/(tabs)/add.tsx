@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -68,13 +69,14 @@ export default function AddScreen() {
     embedding?: number[];
     status: 'pending' | 'done' | 'failed';
   };
-  // 2 ракурса painted стороны — достаточно для robust CLIP embedding
-  // с distinctive painted pattern. Front+back не используем: back обычно
-  // plain, диluтировал бы average. Chaos-test (2026-04-22) на реальных
-  // painted stones подтвердил similarity 0.85-0.95 same-stone при 2 углах.
+  // Двухшаговый скан: сначала painted (front) сторона, потом обратная
+  // ("переверни камень"). Auto-capture снимает каждую через 3-2-1 после
+  // того как камера готова. Стороны разные → embedding средний устойчив
+  // к ракурсу, не путает с похожим узором, и юзер не недоумевает зачем
+  // 2 фото подряд (между ними явный шаг "переверни").
   const SCAN_STEPS = [
-    'Обычный вид',
-    'Под углом',
+    'Сторона с рисунком',
+    'Переверни камень — другая сторона',
   ];
   const SCAN_TOTAL = SCAN_STEPS.length;
   const [scanCaptures, setScanCaptures] = useState<ScanCapture[]>([]);
@@ -119,22 +121,9 @@ export default function AddScreen() {
     });
   }, []);
 
-  const handleTakePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('add.camera_needed'), t('add.camera_settings'));
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 1,
-      allowsEditing: true,
-      aspect: [4, 3],
-    });
-    if (!result.canceled && result.assets[0]) {
-      const processed = await processPhoto(result.assets[0].uri);
-      setPhotoUri(processed.uri);
-    }
-  };
+  // handleTakePhoto / handlePickFromGallery / handleSelectPhoto removed —
+  // hide flow is scanner-only. Manual photo / gallery were a leftover from
+  // pre-scanner days and confused users (two photo paths on one screen).
 
   // AI-scanner для hide flow — показываем live-camera со scan-frame.
   // Каждый из 2 ракурсов обрабатывается в фоне параллельно.
@@ -237,35 +226,7 @@ export default function AddScreen() {
   const handleResetScan = () => {
     setScanCaptures([]);
     setPhotoUri(null);
-  };
-
-  const handlePickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('add.photos_needed'), t('add.photos_settings'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      quality: 1,
-      allowsEditing: true,
-      aspect: [4, 3],
-    });
-    if (!result.canceled && result.assets[0]) {
-      const processed = await processPhoto(result.assets[0].uri);
-      setPhotoUri(processed.uri);
-    }
-  };
-
-  const handleSelectPhoto = () => {
-    modal.show({
-      title: t('add.photo_title'),
-      message: t('add.photo_how'),
-      buttons: [
-        { label: t('add.take_photo'), onPress: handleTakePhoto },
-        { label: t('add.from_gallery'), onPress: handlePickFromGallery },
-        { label: t('common.cancel'), style: 'cancel' },
-      ],
-    });
+    setScanning(false);
   };
 
   const handleSave = async () => {
@@ -484,20 +445,28 @@ export default function AddScreen() {
     />
   );
 
-  // Full-screen scan camera overlay (hides all UI underneath).
-  // Multi-angle: 2 снимка подряд. current index + stepLabel передаются
-  // в camera через progress prop — юзер видит "Фото 2 из 3 — Сверху".
-  if (showScanCamera) {
-    const currentStep = Math.min(scanCaptures.length + 1, SCAN_TOTAL);
-    return (
+  // Full-screen scan camera as a Modal — must wrap in Modal (not return
+  // inline) so it overlays the tab bar. Returning StoneScanCamera as the
+  // tab body left the tab navigator's bar covering the shutter button.
+  const currentScanStep = Math.min(scanCaptures.length + 1, SCAN_TOTAL);
+  const scanCameraEl = (
+    <Modal
+      visible={showScanCamera}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={() => {
+        setShowScanCamera(false);
+        setScanCaptures([]);
+      }}
+    >
       <StoneScanCamera
         title={t('scan.title_hide')}
         subtitle={SCAN_STEPS[scanCaptures.length] ?? t('scan.sub_hide')}
-        progress={{
-          current: currentStep,
+        progress={SCAN_TOTAL > 1 ? {
+          current: currentScanStep,
           total: SCAN_TOTAL,
-          stepLabel: `Фото ${currentStep} из ${SCAN_TOTAL}`,
-        }}
+          stepLabel: `Фото ${currentScanStep} из ${SCAN_TOTAL}`,
+        } : undefined}
         onCapture={handleScanCapture}
         onCancel={() => {
           setShowScanCamera(false);
@@ -505,12 +474,13 @@ export default function AddScreen() {
         }}
         ctaLabel={t('scan.btn_capture')}
       />
-    );
-  }
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {safetyGateEl}
+      {scanCameraEl}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -535,101 +505,75 @@ export default function AddScreen() {
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Photo area */}
-          <TouchableOpacity
-            style={styles.photoArea}
-            onPress={handleSelectPhoto}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={photoUri ? (t('add.change_photo') || 'Сменить фото') : (t('add.select_photo') || 'Выбрать фото')}
-          >
-            {photoUri ? (
-              <>
-                <Image source={{ uri: photoUri }} style={styles.photo} />
-                <View style={styles.photoChangeBtn}>
-                  <Camera size={14} color="#FFFFFF" weight="bold" />
-                  <Text style={styles.photoChangeText}>{t('add.change_photo')}</Text>
-                </View>
-              </>
-            ) : (
-              <LinearGradient
-                colors={['#EEF2FF', '#F5F0FF']}
-                style={styles.photoPlaceholder}
-              >
-                <View style={styles.photoIconWrap}>
-                  <Camera size={36} color={Colors.accent} weight="regular" />
-                </View>
-                <Text style={styles.photoText}>{t('add.photo_button')}</Text>
-                <Text style={styles.photoSub}>{t('add.photo_tap')}</Text>
-              </LinearGradient>
-            )}
-          </TouchableOpacity>
-
-          {/* AI Scanner — регистрирует визуальный fingerprint камня.
-              Без него камень не будет найтись другими по фото (только GPS). */}
-          {scanAllDone ? (
-            <View style={styles.scanDoneCard}>
-              <View style={styles.scanDoneBadge}>
-                <CheckCircle size={18} color="#FFFFFF" weight="fill" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scanDoneTitle}>{t('add.scan_done')}</Text>
-                <Text style={styles.scanDoneSub}>
-                  {`${SCAN_TOTAL} ракурса сохранены. ` + (t('add.scan_done_sub') || '')}
-                </Text>
-              </View>
+          {/* Single entry point: AI scanner. The old "Take photo" tile
+              was removed — it duplicated the scanner and confused users
+              who expected scanning to be the only path. Photo preview
+              appears here once the scanner has captured + processed. */}
+          {scanAllDone && photoUri ? (
+            // Scan finished — show captured photo + "rescan" pill.
+            <View style={styles.photoArea}>
+              <Image source={{ uri: photoUri }} style={styles.photo} />
               <TouchableOpacity
-                onPress={handleResetScan}
-                disabled={scanning}
-                style={styles.scanRetakeBtn}
-                activeOpacity={0.7}
+                style={styles.photoChangeBtn}
+                onPress={() => {
+                  handleResetScan();
+                  void handleOpenScanCamera();
+                }}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t('scan.btn_retake') || 'Переснять'}
               >
-                <Text style={styles.scanRetakeText}>
+                <Camera size={14} color="#FFFFFF" weight="bold" />
+                <Text style={styles.photoChangeText}>
                   {t('scan.btn_retake') || 'Переснять'}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : scanCaptures.length > 0 ? (
-            <View style={styles.scanCtaCard}>
-              <View style={styles.scanCtaIcon}>
-                <ActivityIndicator color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scanCtaTitle}>
-                  {t('scan.processing') || 'AI анализирует...'}
+            // AI processing — visible cancel so the user is never stuck.
+            <View style={styles.scanProcessing}>
+              <ActivityIndicator color={Colors.accent} size="large" />
+              <Text style={styles.scanProcessingTitle}>
+                {t('scan.processing') || 'AI анализирует...'}
+              </Text>
+              <Text style={styles.scanProcessingSub}>
+                {t('scan.processing_sub') || 'Это займёт до 45 секунд'}
+              </Text>
+              <TouchableOpacity
+                style={styles.scanCancelBtn}
+                onPress={handleResetScan}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.cancel') || 'Отмена'}
+              >
+                <Text style={styles.scanCancelText}>
+                  {t('common.cancel') || 'Отмена'}
                 </Text>
-                <Text style={styles.scanCtaSub}>
-                  {`Обработано ${scanCaptures.filter((c) => c.status === 'done').length} из ${scanCaptures.length}`}
-                </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           ) : (
+            // Big primary CTA — the only way to attach a stone photo.
             <TouchableOpacity
-              style={styles.scanCtaCard}
+              style={styles.scanPrimary}
               onPress={handleOpenScanCamera}
-              disabled={scanning}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel={t('add.scan_btn') || 'Сканировать камень'}
             >
-              <View style={styles.scanCtaIcon}>
-                {scanning ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Sparkle size={22} color="#FFFFFF" weight="fill" />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scanCtaTitle}>
-                  {scanning
-                    ? (t('scan.processing') || 'AI анализирует...')
-                    : (t('add.scan_btn') || 'Сканировать камень (AI)')}
+              <LinearGradient
+                colors={['#EEF2FF', '#F5F0FF']}
+                style={styles.scanPrimaryInner}
+              >
+                <View style={styles.photoIconWrap}>
+                  <Sparkle size={32} color={Colors.accent} weight="fill" />
+                </View>
+                <Text style={styles.photoText}>
+                  {t('add.scan_btn') || 'Сканировать камень'}
                 </Text>
-                <Text style={styles.scanCtaSub}>
-                  {t('add.scan_btn_sub') || 'AI запомнит рисунок, чтобы потом узнать'}
+                <Text style={styles.photoSub}>
+                  {t('add.scan_btn_sub') || 'Камера сама сделает фото'}
                 </Text>
-              </View>
-              <Camera size={22} color={Colors.accent} weight="bold" />
+              </LinearGradient>
             </TouchableOpacity>
           )}
 
@@ -889,6 +833,63 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.green,
+  },
+
+  // New scanner-only entry. Replaces the old "take photo" tile.
+  scanPrimary: {
+    height: 240,
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 22,
+  },
+  scanPrimaryInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#DDD6FE',
+    borderStyle: 'dashed',
+    borderRadius: 22,
+    paddingHorizontal: 24,
+  },
+
+  // Processing state — shows spinner + cancel button so user is never stuck.
+  scanProcessing: {
+    height: 240,
+    borderRadius: 22,
+    marginBottom: 22,
+    backgroundColor: Colors.accentLight,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  scanProcessingTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.text,
+    marginTop: 12,
+  },
+  scanProcessingSub: {
+    fontSize: 13,
+    color: Colors.text2,
+    textAlign: 'center',
+  },
+  scanCancelBtn: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  scanCancelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
   },
 
   section: { marginBottom: 22 },

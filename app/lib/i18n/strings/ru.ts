@@ -589,14 +589,16 @@ export const ru: Record<string, string> = {
     'find_anywhere.btn_retry': 'Попробовать ещё раз',
 
     // Scan modal — universal (hide + find)
-    'scan.title_find': 'Поднеси камень к камере',
-    'scan.sub_find': 'AI проверит что это тот самый камень',
-    'scan.title_hide': 'Сфотографируй свой камень',
-    'scan.sub_hide': 'AI запомнит его по рисунку, чтобы потом узнать',
-    'scan.btn_capture': 'Сканировать',
-    'scan.btn_retake': 'Переснять',
+    'scan.title_find': 'Наведи камень в рамку',
+    'scan.sub_find': 'AI проверит что это тот самый',
+    'scan.title_hide': 'Наведи камень в рамку',
+    'scan.sub_hide': 'AI запомнит его, чтобы потом узнать',
+    'scan.btn_capture': 'Сканирую',
+    'scan.btn_retake': 'Сканировать заново',
     'scan.processing': 'AI анализирует…',
-    'scan.blur_warning': 'Фото размыто — сфотографируй ещё раз чётко',
+    'scan.processing_sub': 'Это займёт до 45 секунд',
+    'scan.hold_steady': 'Держи камень в рамке',
+    'scan.blur_warning': 'Размыто — наведи чётче',
     'scan.no_permission_title': 'Нужен доступ к камере',
     'scan.no_permission_text': 'Разреши в Настройки → Stobi → Camera',
 
@@ -616,8 +618,8 @@ export const ru: Record<string, string> = {
     'stone.author_confirmed_text': 'Репорты сброшены, камень снова на карте.',
 
     // Add flow — scan button
-    'add.scan_btn': 'Сканировать камень (AI)',
-    'add.scan_btn_sub': 'AI запомнит рисунок, чтобы потом узнать',
+    'add.scan_btn': 'Сканировать камень',
+    'add.scan_btn_sub': 'Камера сама сделает снимок',
     'add.photo_btn': 'Добавить фото',
     'add.scan_done': 'AI готов! Камень запомнен',
     'add.scan_done_sub': 'Теперь тот, кто найдёт — просто сфоткает и AI подтвердит находку.',
