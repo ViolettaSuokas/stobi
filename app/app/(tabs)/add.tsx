@@ -35,7 +35,10 @@ import { addUserStone } from '../../lib/user-stones';
 import { checkHideLocationSafe } from '../../lib/safety';
 import { moderateMessage } from '../../lib/moderation';
 import { SafetyGate, hasAcknowledgedSafety } from '../../components/SafetyGate';
-import { AgeGate, needsAgeGate } from '../../components/AgeGate';
+// AgeGate intentionally not imported — Stobi targets a 4+ App Store rating,
+// so we no longer block hide/find behind a 13+ year picker. Server-side
+// birth_year is now optional (migration 20260422140000 dropped the NOT NULL
+// requirement and the trigger accepts NULL).
 import { StoneHidden } from '../../lib/analytics';
 import { getCurrentUser, type User } from '../../lib/auth';
 import { DEMO_SEED_USER_MAP } from '../../lib/activity';
@@ -78,7 +81,6 @@ export default function AddScreen() {
   const [showScanCamera, setShowScanCamera] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [showSafetyGate, setShowSafetyGate] = useState(false);
-  const [showAgeGate, setShowAgeGate] = useState(false);
 
   // Производные значения для совместимости с существующим create_stone call
   const scanEmbedding = scanCaptures.length > 0
@@ -142,26 +144,6 @@ export default function AddScreen() {
   // near schools, etc). This is critical since painted-rocks users are often
   // children and unsafe hiding patterns = child-safety hazard.
   const handleOpenScanCamera = async () => {
-    // Age gate first — birth_year is NULL for Apple/Google sign-ins and
-    // email users who skipped the form. Without it, create_stone RPC
-    // raises 'birth_year_required'. Gate here so the user gets a proper
-    // prompt instead of a cryptic server error.
-    if (await needsAgeGate()) {
-      setShowAgeGate(true);
-      return;
-    }
-    const acked = await hasAcknowledgedSafety();
-    if (!acked) {
-      setShowSafetyGate(true);
-      return;
-    }
-    setScanCaptures([]);
-    setShowScanCamera(true);
-  };
-
-  const handleAgeGateComplete = async () => {
-    setShowAgeGate(false);
-    // Proceed to the next gate in the chain.
     const acked = await hasAcknowledgedSafety();
     if (!acked) {
       setShowSafetyGate(true);
@@ -491,22 +473,15 @@ export default function AddScreen() {
     );
   }
 
-  // Full-screen SafetyGate + AgeGate — rendered at top of the tree so
-  // they can appear in front of anything else. AgeGate runs first (COPPA
-  // birth_year collection), then SafetyGate (rules acknowledgement).
+  // Full-screen SafetyGate — only gate left in the chain. AgeGate was
+  // removed when we shifted Stobi to a 4+ rating; birth_year is no
+  // longer collected up front.
   const safetyGateEl = (
-    <>
-      <AgeGate
-        visible={showAgeGate}
-        onComplete={handleAgeGateComplete}
-        onClose={() => setShowAgeGate(false)}
-      />
-      <SafetyGate
-        visible={showSafetyGate}
-        onAcknowledge={handleSafetyAcknowledge}
-        onClose={() => setShowSafetyGate(false)}
-      />
-    </>
+    <SafetyGate
+      visible={showSafetyGate}
+      onAcknowledge={handleSafetyAcknowledge}
+      onClose={() => setShowSafetyGate(false)}
+    />
   );
 
   // Full-screen scan camera overlay (hides all UI underneath).
