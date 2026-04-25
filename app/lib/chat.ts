@@ -244,40 +244,67 @@ export async function sendMessage(
 
   if (isSupabaseConfigured()) {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data: row, error } = await supabase
-          .from('messages')
-          .insert({
-            author_id: authUser.id,
-            text: trimmed,
-            photo_url: photo ?? null,
-            reply_to_id: replyToId ?? null,
-            channel,
-          })
-          .select('*, profiles(username, avatar, is_artist, photo_url)')
-          .single();
-
-        if (!error && row) {
-          invalidate(`messages:${channel}`);
-          trackEvent('chat_message');
-          return {
-            id: row.id,
-            authorId: row.author_id,
-            authorName: row.profiles?.username ?? user.username,
-            authorAvatar: row.profiles?.avatar ?? user.avatar,
-            authorPhotoUrl: row.profiles?.photo_url ?? undefined,
-            isArtist: row.profiles?.is_artist ?? false,
-            text: row.text ?? '',
-            createdAt: new Date(row.created_at).getTime(),
-            photo: row.photo_url ?? undefined,
-            replyToId: row.reply_to_id ?? undefined,
-            isEdited: false,
-          };
-        }
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        // Auth session broken / expired. The user thinks they're signed
+        // in (we have local user cache) but Supabase doesn't agree, so
+        // every send would silently fall back to local-only storage and
+        // nobody else sees the message. Surface a real error instead.
+        console.warn('sendMessage: supabase.auth.getUser() returned no user', authError);
+        throw new Error('Сессия истекла. Закрой и открой приложение, или войди заново.');
       }
-    } catch (e) { console.warn(e);
-      // Fall through to local
+      const { data: row, error } = await supabase
+        .from('messages')
+        .insert({
+          author_id: authUser.id,
+          text: trimmed,
+          photo_url: photo ?? null,
+          reply_to_id: replyToId ?? null,
+          channel,
+        })
+        .select('*, profiles(username, avatar, is_artist, photo_url)')
+        .single();
+
+      if (error) {
+        // Real DB error (RLS / moderation / rate limit). Surface it
+        // instead of silently writing to local — silent fallback was
+        // the root cause of the "messages don't sync between devices" bug.
+        console.warn('sendMessage db insert failed', error);
+        // Map known error messages to friendlier text.
+        var msg = error.message || 'unknown';
+        if (msg.includes('moderation_url')) throw new Error('Ссылки в чате запрещены.');
+        if (msg.includes('moderation_phone')) throw new Error('Телефонные номера нельзя.');
+        if (msg.includes('moderation_email')) throw new Error('Email-адреса нельзя.');
+        if (msg.includes('moderation_social')) throw new Error('Никнеймы соцсетей нельзя.');
+        if (msg.includes('moderation_grooming')) throw new Error('Сообщение выглядит небезопасно.');
+        if (msg.includes('moderation_profanity')) throw new Error('Без мата, пожалуйста.');
+        if (msg.includes('rate_limit')) throw new Error('Подожди 3 секунды перед следующим сообщением.');
+        if (msg.includes('hourly_limit')) throw new Error('Лимит 30 сообщений в час исчерпан.');
+        if (msg.includes('message_too_long')) throw new Error('Сообщение слишком длинное (макс 2000).');
+        throw new Error('Не удалось отправить сообщение: ' + msg);
+      }
+      if (row) {
+        invalidate(`messages:${channel}`);
+        trackEvent('chat_message');
+        return {
+          id: row.id,
+          authorId: row.author_id,
+          authorName: row.profiles?.username ?? user.username,
+          authorAvatar: row.profiles?.avatar ?? user.avatar,
+          authorPhotoUrl: row.profiles?.photo_url ?? undefined,
+          isArtist: row.profiles?.is_artist ?? false,
+          text: row.text ?? '',
+          createdAt: new Date(row.created_at).getTime(),
+          photo: row.photo_url ?? undefined,
+          replyToId: row.reply_to_id ?? undefined,
+          isEdited: false,
+        };
+      }
+      // If neither error nor row — defensive fallthrough.
+      throw new Error('Не удалось отправить сообщение (пустой ответ).');
+    } catch (e) {
+      // Re-throw so the caller (chat.tsx handleSend) can show the alert.
+      throw e;
     }
   }
 

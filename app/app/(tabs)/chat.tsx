@@ -635,9 +635,13 @@ export default function ChatScreen() {
               key={ch}
               style={[styles.channelChip, active && styles.channelChipActive]}
               onPress={() => {
+                if (ch === channel) return;
                 Keyboard.dismiss();
                 userPickedChannelRef.current = true;
-                setMessages([]);
+                // Show skeleton during load instead of empty placeholder.
+                // setMessages([]) used to flash 'Пока тут тихо' for a frame
+                // even when the new channel actually had messages.
+                setLoading(true);
                 setChannel(ch);
               }}
               activeOpacity={0.8}
