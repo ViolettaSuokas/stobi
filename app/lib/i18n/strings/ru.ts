@@ -25,6 +25,10 @@ export const ru: Record<string, string> = {
 
     // Common
     'common.search': 'Поиск по карте...',
+    'map.search_city_placeholder': 'Поиск города…',
+    'map.search_go': 'Перейти',
+    'map.search_not_found': 'Город не найден',
+    'map.search_hint': 'Например: Хельсинки, Tampere, Espoo',
     'common.all': 'Все →',
     'common.stones_nearby': 'камней рядом',
     'common.login': 'Войти',
@@ -563,6 +567,12 @@ export const ru: Record<string, string> = {
 
     // Find Anywhere screen
     'find_anywhere.title': 'Нашла камень',
+
+    // Notifications
+    'notifications.title': 'Уведомления',
+    'notifications.empty_title': 'Пока тут тихо',
+    'notifications.empty_text': 'Здесь будут уведомления когда кто-то найдёт твой камень, ответит в чате или подтвердит находку.',
+
     'find_anywhere.intro_title': 'Камень в руках?',
     'find_anywhere.intro_text': 'Если ты нашёл камень — но не помнишь где он на карте, отсканируй его сейчас. Stobi узнает по рисунку и засчитает находку.',
     'find_anywhere.intro_hint1': 'Поднеси камень в кадр и удерживай',

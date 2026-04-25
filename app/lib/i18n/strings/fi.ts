@@ -30,6 +30,10 @@ export const fi: Record<string, string> = {
 
     // Common
     'common.search': 'Etsi kartalta...',
+    'map.search_city_placeholder': 'Etsi kaupunkia…',
+    'map.search_go': 'Siirry',
+    'map.search_not_found': 'Kaupunkia ei löytynyt',
+    'map.search_hint': 'Esim. Helsinki, Tampere, Berliini',
     'common.all': 'Kaikki →',
     'common.stones_nearby': 'kiveä lähellä',
     'common.login': 'Kirjaudu',

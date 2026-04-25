@@ -7,6 +7,9 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -19,6 +22,8 @@ import {
   MapPinArea,
   CheckCircle,
   Sparkle,
+  Bell,
+  X,
 } from 'phosphor-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -27,10 +32,12 @@ import {
   getCurrentLocation,
   getNearbyStones,
   getLocationPermissionStatus,
+  geocodeQuery,
   type LocationInfo,
   type NearbyStone,
 } from '../../lib/location';
 import { getFoundStoneIds } from '../../lib/finds';
+import { getUnreadNotificationsCount } from '../../lib/notifications';
 import { getBlockedUserIds, refreshBlockedUsers } from '../../lib/blocks';
 import { requireAuth } from '../../lib/auth-gate';
 import { getCurrentUser } from '../../lib/auth';
@@ -268,6 +275,12 @@ function buildMapHTML(userLat: number, userLng: number): string {
       map.flyTo(userPos, 14, { duration: 0.8 });
     };
 
+    // Fly to arbitrary coords (city search). Zoom 12 — comfortable
+    // city-level view (показывает район-другой).
+    window.flyToCoords = function(lat, lng, zoom) {
+      map.flyTo([lat, lng], zoom || 12, { duration: 0.9 });
+    };
+
     // Update user marker position (e.g. when GPS fix changes)
     window.updateUserMarker = function(lat, lng) {
       userPos = [lat, lng];
@@ -299,6 +312,12 @@ export default function MapScreen() {
   const [foundIds, setFoundIds] = useState<string[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [trialActive, setTrialActive] = useState(false);
+  const [notifUnread, setNotifUnread] = useState(0);
+  // City search modal state — поиск по городу через geocodeAsync.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
   const { t } = useI18n();
   const modal = useModal();
@@ -355,6 +374,10 @@ export default function MapScreen() {
       refreshBlockedUsers()
         .then((s) => !cancelled && setBlockedIds(s))
         .catch(() => getBlockedUserIds().then((s) => !cancelled && setBlockedIds(s)));
+      // Refresh unread notifications count for the bell badge.
+      getUnreadNotificationsCount()
+        .then((n) => !cancelled && setNotifUnread(n))
+        .catch(() => {});
       (async () => {
         try {
           // Сначала проверяем permission status без OS-prompt.
@@ -423,6 +446,33 @@ export default function MapScreen() {
 
   const recenter = () => {
     webViewRef.current?.injectJavaScript('window.recenterMap(); true;');
+  };
+
+  const submitCitySearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const coords = await geocodeQuery(q);
+      if (!coords) {
+        setSearchError(t('map.search_not_found') || 'Город не найден');
+        setSearchLoading(false);
+        return;
+      }
+      // Fly to city → close modal. Stones перезагрузятся следующим
+      // useFocusEffect (если юзер вернётся на таб) — пока показываем
+      // те же что и были (карта летит, маркеры на старых местах).
+      webViewRef.current?.injectJavaScript(
+        `window.flyToCoords(${coords.lat}, ${coords.lng}, 12); true;`,
+      );
+      setSearchOpen(false);
+      setSearchQuery('');
+      setSearchLoading(false);
+    } catch {
+      setSearchError(t('map.search_not_found') || 'Город не найден');
+      setSearchLoading(false);
+    }
   };
 
   const handleWebViewMessage = async (event: { nativeEvent: { data: string } }) => {
@@ -630,24 +680,49 @@ export default function MapScreen() {
       {/* Top overlay */}
       <SafeAreaView style={styles.topOverlay} edges={['top']} pointerEvents="box-none">
         <View style={styles.searchRow}>
-          <View style={styles.searchBar}>
-            <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
-            <MagnifyingGlass size={16} color={Colors.text2} weight="regular" />
-            <Text style={styles.searchPlaceholder}>{t('common.search')}</Text>
-          </View>
           <TouchableOpacity
-            style={styles.filterBtn}
+            style={styles.searchBar}
             activeOpacity={0.7}
-            onPress={() => setShowFilterMenu(!showFilterMenu)}
+            onPress={() => {
+              setSearchError(null);
+              setSearchOpen(true);
+            }}
             accessibilityRole="button"
-            accessibilityLabel={t('map.filter_' + (filter === 'nearby' ? 'nearby' : filter === 'country' ? 'country' : 'world'))}
-            accessibilityHint={t('map.filter_hint')}
+            accessibilityLabel={t('map.search_city_placeholder') || 'Поиск города'}
           >
             <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
-            {filter === 'nearby' && <MapPinArea size={20} color={Colors.accent} weight="fill" />}
-            {filter === 'country' && <MapPin size={20} color={Colors.accent} weight="fill" />}
-            {filter === 'world' && <Globe size={20} color={Colors.accent} weight="fill" />}
+            <MagnifyingGlass size={16} color={Colors.text2} weight="regular" />
+            <Text style={styles.searchPlaceholder}>
+              {t('map.search_city_placeholder') || 'Поиск города…'}
+            </Text>
           </TouchableOpacity>
+          {/* Bell — notifications. Filter button moved down to right column
+              (рядом с info/recenter), наверху более ценное место для bell'а.
+              Wrap'ер нужен чтобы badge торчал за пределы rounded button'а
+              (который сам по себе overflow:hidden ради клипа BlurView). */}
+          <View style={styles.bellWrap}>
+            <TouchableOpacity
+              style={styles.filterBtn}
+              activeOpacity={0.7}
+              onPress={() => router.push('/notifications' as any)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                notifUnread > 0
+                  ? `${t('notifications.title') || 'Уведомления'}, ${notifUnread} ${t('tab.unread')}`
+                  : t('notifications.title') || 'Уведомления'
+              }
+            >
+              <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+              <Bell size={20} color={Colors.accent} weight="bold" />
+            </TouchableOpacity>
+            {notifUnread > 0 && (
+              <View style={styles.bellBadge} pointerEvents="none">
+                <Text style={styles.bellBadgeText}>
+                  {notifUnread > 99 ? '99+' : notifUnread}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Stats + filter label */}
@@ -740,6 +815,22 @@ export default function MapScreen() {
         <Info size={22} color={Colors.accent} weight="bold" />
       </TouchableOpacity>
 
+      {/* Filter button — переехал с topBar (там теперь bell). Лежит над
+          recenter в правой колонке кнопок. */}
+      <TouchableOpacity
+        style={styles.filterBtnBottom}
+        activeOpacity={0.7}
+        onPress={() => setShowFilterMenu(!showFilterMenu)}
+        accessibilityRole="button"
+        accessibilityLabel={t('map.filter_' + (filter === 'nearby' ? 'nearby' : filter === 'country' ? 'country' : 'world'))}
+        accessibilityHint={t('map.filter_hint')}
+      >
+        <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+        {filter === 'nearby' && <MapPinArea size={22} color={Colors.accent} weight="fill" />}
+        {filter === 'country' && <MapPin size={22} color={Colors.accent} weight="fill" />}
+        {filter === 'world' && <Globe size={22} color={Colors.accent} weight="fill" />}
+      </TouchableOpacity>
+
       {/* Recenter button */}
       <TouchableOpacity
         style={styles.recenterBtn}
@@ -794,6 +885,75 @@ export default function MapScreen() {
           <Text style={styles.cardLink} onPress={() => router.push('/feed')}>{t('common.all')}</Text>
         </View>
       </View>
+
+      {/* City search modal — geocode query → fly map to coords. */}
+      <Modal
+        visible={searchOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setSearchOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.searchModalRoot}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setSearchOpen(false)}
+          />
+          <SafeAreaView style={styles.searchModalSafe} edges={['top']} pointerEvents="box-none">
+            <View style={styles.searchModalCard}>
+              <View style={styles.searchModalRow}>
+                <MagnifyingGlass size={18} color={Colors.text2} weight="regular" />
+                <TextInput
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder={t('map.search_city_placeholder') || 'Поиск города…'}
+                  placeholderTextColor={Colors.text2}
+                  autoFocus
+                  returnKeyType="search"
+                  onSubmitEditing={submitCitySearch}
+                  autoCorrect={false}
+                  autoCapitalize="words"
+                />
+                <TouchableOpacity
+                  onPress={() => setSearchOpen(false)}
+                  style={styles.searchClose}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.cancel') || 'Закрыть'}
+                >
+                  <X size={18} color={Colors.text2} weight="bold" />
+                </TouchableOpacity>
+              </View>
+              {searchError && (
+                <Text style={styles.searchErrorText}>{searchError}</Text>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.searchSubmitBtn,
+                  (!searchQuery.trim() || searchLoading) && styles.searchSubmitBtnDisabled,
+                ]}
+                onPress={submitCitySearch}
+                disabled={!searchQuery.trim() || searchLoading}
+                activeOpacity={0.85}
+              >
+                {searchLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.searchSubmitText}>
+                    {t('map.search_go') || 'Перейти'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <Text style={styles.searchHint}>
+                {t('map.search_hint') || 'Например: Хельсинки, Tampere, Москва'}
+              </Text>
+            </View>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -959,6 +1119,30 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: 'hidden',
   },
+  // Wrap'ер вокруг bell-button чтобы badge мог торчать за пределы.
+  bellWrap: {
+    position: 'relative',
+  },
+  // Bell unread badge — small red dot with count, top-right of bell button.
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  bellBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   statsChipRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1020,8 +1204,10 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   dropdown: {
+    // Якорится снизу справа над filterBtnBottom (right:16, bottom:380).
+    // Раньше top:115 — был под старой top-right кнопкой; теперь её там нет.
     position: 'absolute',
-    top: 115,
+    bottom: 436,
     right: 16,
     width: 240,
     backgroundColor: '#FFFFFF',
@@ -1065,6 +1251,27 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 260,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(228,226,238,0.7)',
+    shadowColor: '#1A1A2E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    zIndex: 10,
+    overflow: 'hidden',
+  },
+  // Filter — переехал с topBar (там теперь Bell). Над recenter.
+  filterBtnBottom: {
+    position: 'absolute',
+    right: 16,
+    bottom: 380,
     width: 48,
     height: 48,
     borderRadius: 16,
@@ -1175,5 +1382,78 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: Colors.accent,
+  },
+
+  // City search modal
+  searchModalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 12, 35, 0.45)',
+  },
+  searchModalSafe: {
+    flex: 1,
+  },
+  searchModalCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowColor: '#1A1A2E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
+    gap: 10,
+  },
+  searchModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Colors.text,
+    padding: 0,
+  },
+  searchClose: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+  },
+  searchSubmitBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchSubmitBtnDisabled: {
+    opacity: 0.5,
+  },
+  searchSubmitText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  searchErrorText: {
+    fontSize: 13,
+    color: '#DC2626',
+    textAlign: 'center',
+  },
+  searchHint: {
+    fontSize: 12,
+    color: Colors.text2,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

@@ -187,6 +187,28 @@ export async function getCurrentLocation(): Promise<LocationInfo | null> {
   }
 }
 
+/**
+ * Forward-geocode a free-form query (city, address, country) → coords.
+ * Returns first result or null if not found / permission missing on iOS.
+ *
+ * iOS использует CoreLocation (CLGeocoder) под капотом — для него нужен
+ * permission на location services (foreground). Если юзер не дал permission,
+ * geocodeAsync молча возвращает []. Поэтому в map.tsx мы сначала зовём
+ * requestForegroundPermission'ом fallback.
+ */
+export async function geocodeQuery(query: string): Promise<Coords | null> {
+  const q = query.trim();
+  if (!q) return null;
+  try {
+    const results = await Location.geocodeAsync(q);
+    if (!results || results.length === 0) return null;
+    const r = results[0];
+    return { lat: r.latitude, lng: r.longitude };
+  } catch {
+    return null;
+  }
+}
+
 export async function reverseGeocode(
   coords: Coords,
 ): Promise<{ city: string | null; region: string | null; country: string | null } | null> {

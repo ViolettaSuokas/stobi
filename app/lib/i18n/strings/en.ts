@@ -20,6 +20,10 @@ export const en: Record<string, string> = {
     'onboarding.skip': 'Skip',
 
     'common.search': 'Search the map...',
+    'map.search_city_placeholder': 'Search city…',
+    'map.search_go': 'Go',
+    'map.search_not_found': 'City not found',
+    'map.search_hint': 'e.g. Helsinki, Tampere, Berlin',
     'common.all': 'All →',
     'common.stones_nearby': 'stones nearby',
     'common.login': 'Log In',
