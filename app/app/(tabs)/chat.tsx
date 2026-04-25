@@ -69,6 +69,10 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // Cooldown after a successful send. Matches server-side rate-limit
+  // window (1.5s) so users see the button stay greyed out instead of
+  // tapping into a silent rejection.
+  const [coolingDown, setCoolingDown] = useState(false);
   const [likes, setLikes] = useState<Record<string, string[]>>({});
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
@@ -256,12 +260,11 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed && !pendingPhoto || sending) return;
 
-    // Rate limit: 1 message per 3 seconds
+    // Client-side cooldown — must match the server-side trigger
+    // (1.5s in messages_rate_limit). Silent: the button is also greyed
+    // out via `sending` state, so showing an alert on top would be noisy.
     const now = Date.now();
-    if (now - lastSendTime.current < 3000) {
-      Alert.alert(t('chat.mod_title'), t('chat.rate_limit'));
-      return;
-    }
+    if (now - lastSendTime.current < 1500) return;
     lastSendTime.current = now;
 
     // Content moderation
@@ -312,21 +315,27 @@ export default function ChatScreen() {
           flatListRef.current?.scrollToEnd({ animated: true });
         }, 100);
       }
-    } catch (e) {
-      // Ошибку юзеру — haptics + modal с возможностью повторить.
+    } catch (e: any) {
       // Восстанавливаем текст/фото/reply чтобы юзер не потерял набранное.
       void haptics.error();
       setText(originalText);
       if (originalPhoto) setPendingPhoto(originalPhoto);
       if (originalReply) setReplyingTo(originalReply);
       console.warn('sendMessage failed', e);
+      // Show the specific error from sendMessage (rate-limit / moderation /
+      // session expired / etc) instead of the generic "check internet" —
+      // that text was misleading every error as a network problem.
+      var errMsg = (e?.message || '').trim();
       Alert.alert(
-        t('chat.send_failed_title'),
-        t('chat.send_failed_text'),
-        [{ text: t('common.ok') }],
+        t('chat.send_failed_title') || 'Не отправлено',
+        errMsg || t('chat.send_failed_text') || 'Попробуй ещё раз.',
+        [{ text: t('common.ok') || 'OK' }],
       );
     } finally {
       setSending(false);
+      // 1.5s visual cooldown — button greys out so user knows to wait.
+      setCoolingDown(true);
+      setTimeout(() => setCoolingDown(false), 1500);
     }
   };
 
@@ -813,13 +822,13 @@ export default function ChatScreen() {
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!text.trim() && !pendingPhoto) && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, ((!text.trim() && !pendingPhoto) || coolingDown) && styles.sendBtnDisabled]}
             onPress={handleSend}
-            disabled={(!text.trim() && !pendingPhoto) || sending}
+            disabled={(!text.trim() && !pendingPhoto) || sending || coolingDown}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={t('chat.send') || 'Отправить'}
-            accessibilityState={{ disabled: (!text.trim() && !pendingPhoto) || sending }}
+            accessibilityState={{ disabled: (!text.trim() && !pendingPhoto) || sending || coolingDown }}
           >
             {sending ? (
               <ActivityIndicator color="#fff" size="small" />
