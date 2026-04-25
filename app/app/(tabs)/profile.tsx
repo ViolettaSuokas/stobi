@@ -906,7 +906,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={[
                   pendingFindsCount > 0 ? styles.pendingCard : styles.pendingCardEmpty,
-                  { marginTop: 12, marginBottom: 0 },
+                  { marginTop: 16, marginBottom: 16 },
                 ]}
                 onPress={() => router.push('/pending-approvals' as any)}
                 activeOpacity={0.85}
