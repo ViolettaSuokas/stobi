@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -98,6 +99,7 @@ export default function ProfileScreen() {
   // profileLoaded стартует false → guest CTA не мигает пока async getCurrentUser
   // не вернёт ответ. Ставится в true только после первого resolve.
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>('overview');
   const [customTab, setCustomTab] = useState<CustomTab>('color');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
@@ -171,6 +173,45 @@ export default function ProfileScreen() {
       return () => { active = false; };
     }, [myStonesTab]),
   );
+
+  // Pull-to-refresh — повторяет тот же запрос что и useFocusEffect.
+  // Юзер может тянуть экран вниз чтобы принудительно обновить данные
+  // (баланс, найдено/спрятано, achievements) без переключения табов.
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [u, state, equipped, trial] = await Promise.all([
+        getCurrentUser(),
+        getState(),
+        getEquippedIds(),
+        getTrialInfo().catch(() => ({ active: false, msRemaining: 0 } as any)),
+      ]);
+      setUser(u);
+      setBalance(state.balance);
+      setOwnedIds(state.ownedItemIds);
+      if (equipped.color) setSelectedColorId(equipped.color);
+      if (equipped.eye) setSelectedEyeId(equipped.eye);
+      if (equipped.shape) setSelectedShapeId(equipped.shape);
+      if (equipped.decor) setSelectedDecorId(equipped.decor);
+      setTrialActive(trial.active);
+      if (trial.active) setTrialRemaining(formatRemaining(trial.msRemaining));
+      if (u) {
+        const seedUserId = DEMO_SEED_USER_MAP[u.email] ?? u.id;
+        const [acts, hides, finds] = await Promise.all([
+          getUserActivities(seedUserId, myStonesTab),
+          getUserActivities(seedUserId, 'hide'),
+          getUserActivities(seedUserId, 'find'),
+        ]);
+        setMyActivities(acts);
+        setHiddenCount(hides.length);
+        setFoundCount(finds.length);
+      }
+    } catch (e) {
+      console.warn('profile refresh error', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [myStonesTab]);
 
   const selectedColor =
     COLOR_ITEMS.find((c) => c.id === selectedColorId)?.color ?? COLOR_ITEMS[0].color!;
@@ -338,6 +379,9 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />
+        }
       >
         {/* Hero — deep purple background with mascot */}
         <View style={styles.hero}>
@@ -1163,7 +1207,9 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, paddingBottom: 90 },
+  // Container.bg = hero color, чтобы pull-to-refresh bounce сверху не
+  // показывал белый кусок выше purple-hero. Body имеет свой bg (см. body).
+  container: { flex: 1, backgroundColor: Colors.bgDeep, paddingBottom: 90 },
 
   // Hero
   hero: {
@@ -1472,24 +1518,27 @@ const styles = StyleSheet.create({
   },
 
   // Body
-  body: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 20 },
+  body: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 20, backgroundColor: Colors.bg },
 
-  statsRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  // Стат-блоки — 3 равные колонки. flexBasis:0 + flexGrow:1 в RN иногда
+  // не работает корректно если внутри Text без flex'а — первый элемент
+  // получал больше места. Явные width:'33%' решают.
+  statsRow: { flexDirection: 'row', alignItems: 'stretch' },
   statCard: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
+    flex: 1,
     minWidth: 0,
     backgroundColor: Colors.surface,
     borderRadius: 14,
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
   },
   statNum: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3 },
+  statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3, textAlign: 'center' },
 
 
   section: { marginTop: 24 },

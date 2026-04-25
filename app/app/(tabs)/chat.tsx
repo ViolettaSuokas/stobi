@@ -93,6 +93,8 @@ export default function ChatScreen() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [canLoadOlder, setCanLoadOlder] = useState(true);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const loadMessages = useCallback(async () => {
     const currentChannel = channel; // snapshot для race protection
     const [msgs, likesData] = await Promise.all([getMessages(currentChannel), getLikes()]);
@@ -104,6 +106,18 @@ export default function ChatScreen() {
     setCanLoadOlder(msgs.length >= 50);
     markChatRead();
   }, [channel]);
+
+  // Pull-to-refresh handler — показывает спиннер пока грузится.
+  // FlatList выше использовал refreshing={false} (hard-coded) → юзер
+  // тянул экран и ничего не видел, не понимал что обновление сработало.
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadMessages();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadMessages]);
 
   // Отдельный эффект на смену channel — грузит messages для нового канала.
   // Раньше это было через useFocusEffect с dep [loadMessages] — но тот
@@ -681,8 +695,8 @@ export default function ChatScreen() {
             windowSize={10}
             maxToRenderPerBatch={15}
             removeClippedSubviews
-            onRefresh={loadMessages}
-            refreshing={false}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
             ListEmptyComponent={
               <EmptyState
                 title={t('chat.empty_title')}
