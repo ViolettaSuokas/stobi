@@ -380,9 +380,13 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={'#FFFFFF'} />
         }
       >
+        {/* Bounce-extender: visually 0px, но фон покрывает зону overscroll'а
+            когда юзер тянет ScrollView вниз — без него виден белый
+            промежуток над hero. */}
+        <View style={styles.bounceExtender} />
         {/* Hero — deep purple background with mascot */}
         <View style={styles.hero}>
           <View style={[styles.heroGlow, styles.heroGlowTL]} />
@@ -585,7 +589,7 @@ export default function ProfileScreen() {
                 <View style={styles.mainTabInner}>
                   <Icon
                     size={18}
-                    color={active ? Colors.accent : Colors.text2}
+                    color={active ? Colors.accent : 'rgba(255,255,255,0.6)'}
                     weight={active ? 'fill' : 'regular'}
                   />
                   <Text
@@ -1207,9 +1211,15 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Container.bg = hero color, чтобы pull-to-refresh bounce сверху не
-  // показывал белый кусок выше purple-hero. Body имеет свой bg (см. body).
-  container: { flex: 1, backgroundColor: Colors.bgDeep, paddingBottom: 90 },
+  container: { flex: 1, backgroundColor: Colors.bg, paddingBottom: 90 },
+  // Расширитель purple цвета над hero — занимает большую отрицательную
+  // marginBottom, поэтому visually занимает 0px, но bg покрывает зону bounce
+  // когда юзер тянет ScrollView вниз. Без него виден белый кусок над hero.
+  bounceExtender: {
+    backgroundColor: Colors.bgDeep,
+    height: 600,
+    marginBottom: -600,
+  },
 
   // Hero
   hero: {
@@ -1510,7 +1520,10 @@ const styles = StyleSheet.create({
   mainTabText: {
     fontSize: 13,
     fontWeight: '700',
-    color: Colors.text2,
+    // Неактивная вкладка на фиолетовом hero — text2 (средне-серый) почти
+    // не читался. Берём полупрозрачный белый — видно но явно тусклее
+    // чем активная (которая Colors.accent на белом фоне).
+    color: 'rgba(255,255,255,0.6)',
   },
   mainTabTextActive: {
     color: Colors.accent,
