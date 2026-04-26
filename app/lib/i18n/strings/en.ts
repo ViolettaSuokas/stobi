@@ -229,7 +229,7 @@ export const en: Record<string, string> = {
     'add.description': 'DESCRIPTION',
     'add.description_placeholder': 'Tell something about this stone...',
     'add.tags': 'TAGS',
-    'add.reward_hint': 'for every hidden stone',
+    'add.reward_hint': '+3 💎 for every hidden stone',
     'add.photo_required': 'Take a photo or choose from gallery.',
     'add.no_gps': 'Could not detect your location. Enable GPS and try again.',
     'add.photo_button': 'Take a photo of the stone',

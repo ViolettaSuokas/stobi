@@ -243,7 +243,7 @@ export const fi: Record<string, string> = {
     'add.description': 'KUVAUS',
     'add.description_placeholder': 'Kerro jotain tästä kivestä...',
     'add.tags': 'TUNNISTEET',
-    'add.reward_hint': 'jokaisesta piilotetusta kivestä',
+    'add.reward_hint': '+3 💎 jokaisesta piilotetusta kivestä',
     'add.photo_required': 'Ota kivestä kuva tai valitse galleriasta.',
     'add.no_gps': 'Sijaintiasi ei pystytty määrittämään. Laita GPS päälle ja yritä uudelleen.',
     'add.photo_button': 'Ota kivestä kuva',

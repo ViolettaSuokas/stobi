@@ -712,10 +712,11 @@ export default function AddScreen() {
             - скан завершён (photoUri есть)
             - name >= 2 символов
             description опциональный — необязателен. */}
-        {/* paddingBottom = inner-tabbar (~70) + safe-area (home indicator).
-            Динамически через useSafeAreaInsets — на iPhone с home
-            indicator получится ~104, без — ~84. */}
-        <View style={[styles.ctaWrap, { paddingBottom: 76 + Math.max(insets.bottom, 14) }]}>
+        {/* tab bar реально ~122px на iPhone с home indicator (paddingTop 8
+            + paddingV 16 + content 64 + safe-area 34) + ещё shadow.
+            Берём 100 + insets.bottom: на iPhone PRO = 134px, без home
+            indicator = ~114px. С запасом чтобы кнопка была явно над меню. */}
+        <View style={[styles.ctaWrap, { paddingBottom: 100 + Math.max(insets.bottom, 14) }]}>
           {(() => {
             const canSave = !!photoUri && name.trim().length >= 2 && !saving;
             return (

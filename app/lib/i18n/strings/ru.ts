@@ -238,7 +238,7 @@ export const ru: Record<string, string> = {
     'add.description': 'ОПИСАНИЕ',
     'add.description_placeholder': 'Расскажи что-нибудь об этом камне...',
     'add.tags': 'ТЕГИ',
-    'add.reward_hint': 'за каждый спрятанный камень',
+    'add.reward_hint': '+3 💎 за каждый спрятанный камень',
     'add.photo_required': 'Сфотографируй камень или выбери из галереи.',
     'add.no_gps': 'Не удалось определить твоё местоположение. Включи GPS и попробуй снова.',
     'add.photo_button': 'Сфотографировать камень',
