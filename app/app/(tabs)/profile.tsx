@@ -761,8 +761,8 @@ export default function ProfileScreen() {
 
             {/* Referral card переехал после "Одобрить находки" (см. ниже) */}
 
-            {/* Stats — Спрятал / Нашёл / Подписчики. Алмазики уже видны
-                сверху-слева, дублировать здесь не нужно (по запросу юзера). */}
+            {/* Stats — 4 бокса: Спрятал / Нашёл / Подписки / Подписчики.
+                Алмазики уже видны сверху-слева hero'я, в stats не дублируем. */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Text style={[styles.statNum, { color: Colors.accent }]} numberOfLines={1}>{String(hiddenCount ?? 0)}</Text>
@@ -772,8 +772,6 @@ export default function ProfileScreen() {
                 <Text style={[styles.statNum, { color: Colors.green }]} numberOfLines={1}>{String(foundCount ?? 0)}</Text>
                 <Text style={styles.statLabel} numberOfLines={1}>{t('profile.found_count')}</Text>
               </View>
-              {/* "Подписки" — кол-во людей на кого Я подписана (following).
-                  По запросу юзера: "те на кого я подписалась". */}
               <TouchableOpacity
                 style={styles.statCard}
                 activeOpacity={0.7}
@@ -783,6 +781,16 @@ export default function ProfileScreen() {
                   {String(followingCount ?? 0)}
                 </Text>
                 <Text style={styles.statLabel} numberOfLines={1}>{t('profile.following_link') || 'Подписки'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statCard}
+                activeOpacity={0.7}
+                onPress={() => user && router.push(`/follows/${user.id}?tab=followers` as any)}
+              >
+                <Text style={[styles.statNum, { color: Colors.text }]} numberOfLines={1}>
+                  {String(followersCount ?? 0)}
+                </Text>
+                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.followers_link') || 'Подписчики'}</Text>
               </TouchableOpacity>
             </View>
 
@@ -1011,21 +1019,8 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          {/* "Подписки" уже в stats-row выше (на кого я подписалась).
-              Здесь — "Подписчики" (кто подписался на меня), как отдельная
-              ссылка с counter'ом. */}
-          {user && (
-            <TouchableOpacity
-              style={styles.followingLink}
-              activeOpacity={0.7}
-              onPress={() => router.push(`/follows/${user.id}?tab=followers` as any)}
-            >
-              <Text style={styles.followingLinkLabel}>
-                {(t('profile.followers_link') || 'Подписчики') + ` · ${followersCount}`}
-              </Text>
-              <CaretRight size={16} color={Colors.text2} weight="bold" />
-            </TouchableOpacity>
-          )}
+          {/* Подписки + Подписчики теперь оба в stats-row выше — отдельные
+              link'и убраны во избежание дубликации. */}
 
           {/* "Как меня видят другие" — открывает мой публичный профиль (read-only). */}
           {user && (

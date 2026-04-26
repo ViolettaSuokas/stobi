@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { CaretLeft, CheckCircle, Heart, MapPin } from 'phosphor-react-native';
+import { CaretLeft, CheckCircle, Heart, MapPin, ChatCircle, UserPlus, UserMinus } from 'phosphor-react-native';
 import { Colors } from '../../constants/Colors';
 import { useI18n } from '../../lib/i18n';
 import {
@@ -114,7 +114,37 @@ export default function UserProfileScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {profile?.username || (t('user_profile.title') || 'Профиль')}
         </Text>
-        <View style={styles.backBtn} />
+        {/* Action icons top-right (Stonehiding-style): сообщение + follow.
+            Скрываем для своего профиля. */}
+        {profile && meId !== profile.id ? (
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <TouchableOpacity
+              style={styles.headerActionBtn}
+              activeOpacity={0.7}
+              onPress={() => router.push(`/dm/${profile.id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={t('user_profile.send_dm') || 'Сообщение'}
+            >
+              <ChatCircle size={22} color={Colors.text} weight="regular" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerActionBtn, followState.following && styles.headerActionBtnActive]}
+              activeOpacity={0.7}
+              onPress={handleToggleFollow}
+              accessibilityRole="button"
+              accessibilityLabel={followState.following
+                ? (t('user_profile.unfollow') || 'Отписаться')
+                : (t('user_profile.follow') || 'Подписаться')}
+              accessibilityState={{ selected: followState.following }}
+            >
+              {followState.following
+                ? <UserMinus size={22} color={Colors.accent} weight="bold" />
+                : <UserPlus size={22} color={Colors.text} weight="regular" />}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.backBtn} />
+        )}
       </View>
 
       {loading ? (
@@ -132,7 +162,7 @@ export default function UserProfileScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.accent} />}
         >
-          {/* Hero — avatar + name + bio */}
+          {/* Hero — avatar + likes badge + name + bio (Stonehiding-style) */}
           <View style={styles.hero}>
             <View style={styles.avatarWrap}>
               {profile.photoUrl ? (
@@ -140,6 +170,13 @@ export default function UserProfileScreen() {
               ) : (
                 <View style={styles.avatarMascot}>
                   <StoneMascot size={68} color={Colors.mascot} variant="happy" />
+                </View>
+              )}
+              {/* Likes badge — heart с counter, как у Tosiaczek в референсе */}
+              {stats.likesReceived > 0 && (
+                <View style={styles.likesBadge}>
+                  <Heart size={11} color="#FFFFFF" weight="fill" />
+                  <Text style={styles.likesBadgeText}>{stats.likesReceived}</Text>
                 </View>
               )}
             </View>
@@ -159,70 +196,45 @@ export default function UserProfileScreen() {
             )}
           </View>
 
-          {/* Stats row — Hidden / Found / Likes / Followers */}
+          {/* Stats row — 4 boxes: Спрятал / Нашёл / Подписки / Подписчики.
+              Likes у avatar'а в badge'е, не в stats. */}
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{stats.hiddenCount}</Text>
-              <Text style={styles.statLabel}>
+              <Text style={styles.statLabel} numberOfLines={1}>
                 {t('user_profile.stat_hidden') || 'Спрятал'}
               </Text>
             </View>
             <View style={styles.statBox}>
               <Text style={[styles.statNum, { color: Colors.green }]}>{stats.foundCount}</Text>
-              <Text style={styles.statLabel}>
+              <Text style={styles.statLabel} numberOfLines={1}>
                 {t('user_profile.stat_found') || 'Нашёл'}
               </Text>
             </View>
-            <View style={styles.statBox}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Heart size={16} color="#DC2626" weight="fill" />
-                <Text style={[styles.statNum, { color: '#DC2626' }]}>{stats.likesReceived}</Text>
-              </View>
-              <Text style={styles.statLabel}>
-                {t('user_profile.stat_likes') || 'Лайков'}
+            <TouchableOpacity
+              style={styles.statBox}
+              onPress={() => router.push(`/follows/${profile.id}?tab=following` as any)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statNum}>{followState.followingCount}</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>
+                {t('user_profile.stat_following') || 'Подписки'}
               </Text>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.statBox}
               onPress={() => router.push(`/follows/${profile.id}?tab=followers` as any)}
               activeOpacity={0.7}
             >
               <Text style={styles.statNum}>{followState.followersCount}</Text>
-              <Text style={styles.statLabel}>
-                {t('user_profile.stat_followers') || 'Подписчиков'}
+              <Text style={styles.statLabel} numberOfLines={1}>
+                {t('user_profile.stat_followers') || 'Подписчики'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Action row: Follow + DM. Не показываем для своего профиля. */}
-          {meId !== profile.id && (
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.followBtn, followState.following && styles.followBtnFollowing]}
-                activeOpacity={0.85}
-                onPress={handleToggleFollow}
-                accessibilityRole="button"
-                accessibilityState={{ selected: followState.following }}
-              >
-                <Text style={[styles.followBtnText, followState.following && styles.followBtnTextFollowing]}>
-                  {followState.following
-                    ? (t('user_profile.unfollow') || '✓ Подписан')
-                    : (t('user_profile.follow') || '+ Подписаться')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.dmBtn}
-                activeOpacity={0.85}
-                onPress={() => router.push(`/dm/${profile.id}` as any)}
-                accessibilityRole="button"
-                accessibilityLabel={t('user_profile.send_dm') || 'Написать сообщение'}
-              >
-                <Text style={styles.dmBtnText}>
-                  💬 {t('user_profile.send_dm_short') || 'Сообщение'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Action row перенесён в шапку справа (иконки чат + follow).
+              Большие кнопки убраны во избежание дубликации. */}
 
           {/* Tabs: Спрятал / Нашёл */}
           <View style={styles.tabs}>
@@ -310,21 +322,46 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', color: Colors.text },
+  headerActionBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  headerActionBtnActive: { backgroundColor: Colors.accentLight },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   notFound: { fontSize: 14, color: Colors.text2 },
 
   hero: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16 },
-  avatarWrap: { width: 88, height: 88, borderRadius: 44, overflow: 'hidden', backgroundColor: Colors.surface, marginBottom: 12 },
-  avatarImg: { width: 88, height: 88 },
-  avatarMascot: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  avatarWrap: { width: 88, height: 88, marginBottom: 12, position: 'relative' },
+  avatarImg: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.surface },
+  avatarMascot: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
+  // Likes badge (heart + counter) под аватаром, как у Tosiaczek в Stonehiding.
+  likesBadge: {
+    position: 'absolute',
+    bottom: -6,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.bg,
+  },
+  likesBadgeText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
   heroName: { fontSize: 20, fontWeight: '900', color: Colors.text, textAlign: 'center' },
   heroBio: { fontSize: 14, color: Colors.text2, textAlign: 'center', marginTop: 6, lineHeight: 20 },
   heroJoined: { fontSize: 12, color: Colors.text2, marginTop: 6 },
 
-  statsRow: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 16, marginBottom: 16 },
-  statBox: { flex: 1, marginHorizontal: 4, backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
-  statNum: { fontSize: 20, fontWeight: '800', color: Colors.accent },
-  statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3, fontWeight: '600' },
+  statsRow: { flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 12, marginBottom: 16 },
+  // 4 бокса в ряд → flex:1, маленькие margin'ы и padding'и.
+  statBox: { flex: 1, marginHorizontal: 3, backgroundColor: Colors.surface, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  statNum: { fontSize: 18, fontWeight: '800', color: Colors.accent },
+  statLabel: { fontSize: 10, color: Colors.text2, marginTop: 3, fontWeight: '600', textAlign: 'center' },
 
   actionsRow: {
     flexDirection: 'row',

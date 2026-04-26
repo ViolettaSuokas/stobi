@@ -173,6 +173,7 @@ export const en: Record<string, string> = {
     'user_profile.empty_hidden': 'No stones hidden yet',
     'user_profile.empty_found': 'No stones found yet',
     'user_profile.stat_followers': 'Followers',
+    'user_profile.stat_following': 'Following',
     'user_profile.follow': '+ Follow',
     'user_profile.unfollow': '✓ Following',
     'user_profile.follow_auth_label': 'follow',
