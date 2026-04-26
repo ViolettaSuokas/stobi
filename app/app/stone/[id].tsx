@@ -1096,43 +1096,39 @@ export default function StoneDetailScreen() {
             </View>
           </View>
 
-          {/* Freshness — last successful find / author confirm.
-              Зелёный если < 7 дней, обычный серый иначе. Не показываем
-              если нет данных (старые seed-камни). */}
-          {stone.lastConfirmedAt && (() => {
-            const ms = Date.parse(stone.lastConfirmedAt);
-            if (!Number.isFinite(ms)) return null;
-            const daysAgo = Math.floor((Date.now() - ms) / (24 * 3600 * 1000));
-            const fresh = daysAgo < 7;
-            const label = daysAgo < 1
-              ? (t('stone.confirmed_today') || 'Подтверждён сегодня')
-              : daysAgo < 7
-                ? (t('stone.confirmed_recent') || `Подтверждён ${daysAgo} ${pluralize(daysAgo, 'день', 'дня', 'дней')} назад`)
-                : (t('stone.confirmed_stale') || `Давно не подтверждался (${daysAgo} дн)`);
-            return (
-              <View style={[styles.freshnessPill, fresh && styles.freshnessPillFresh]}>
-                <View style={[styles.freshnessDot, { backgroundColor: fresh ? Colors.green : Colors.text2 }]} />
-                <Text style={[styles.freshnessText, fresh && { color: Colors.green }]}>{label}</Text>
-              </View>
-            );
-          })()}
-
-          {/* Дата когда камень был опубликован — explicit "Спрятан 26 апр" */}
-          {stone.createdAt && (
-            <Text style={styles.publishedDate}>
-              {(t('stone.published_on') || 'Опубликован') + ' '}
-              {(() => {
-                try {
-                  const d = new Date(stone.createdAt);
-                  return d.toLocaleDateString(
-                    lang === 'fi' ? 'fi-FI' : lang === 'en' ? 'en-US' : 'ru-RU',
-                    { day: '2-digit', month: 'short', year: 'numeric' },
-                  );
-                } catch {
-                  return '';
-                }
-              })()}
-            </Text>
+          {/* Status-пилюля:
+                · Если камень перепрятали (после нахождения снова кто-то
+                  вынес и спрятал в новом месте) → оранжевая "Перепрятан".
+                · Если просто нашли → зелёная "Найден".
+                · Свежий, ещё не находили → ничего.
+              Re-hide flow это task #16 (ещё не реализован), сейчас
+              re-hide flag всегда false → показываем только "Найден". */}
+          {verifiedFindCount > 0 && (
+            <View
+              style={[
+                styles.freshnessPill,
+                (stone as any).isRehidden
+                  ? { backgroundColor: '#FED7AA', borderColor: '#FB923C' }
+                  : styles.freshnessPillFresh,
+              ]}
+            >
+              <View
+                style={[
+                  styles.freshnessDot,
+                  { backgroundColor: (stone as any).isRehidden ? '#EA580C' : Colors.green },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.freshnessText,
+                  { color: (stone as any).isRehidden ? '#9A3412' : Colors.green },
+                ]}
+              >
+                {(stone as any).isRehidden
+                  ? (t('stone.status_rehidden') || 'Перепрятан')
+                  : (t('stone.status_found') || 'Найден')}
+              </Text>
+            </View>
           )}
 
           {/* Author revive banner — shown when stone has pending reports */}
@@ -1668,9 +1664,9 @@ function pluralize(n: number, one: string, few: string, many: string): string {
 }
 
 const styles = StyleSheet.create({
-  // Container.bg = bgDeep (purple) чтобы bounce-overscroll сверху не
-  // показывал белый промежуток выше hero-фото. Body имеет свой Colors.bg.
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
+  // Container.bg обратно Colors.bg — фиолетовый bounce смущал юзера
+  // больше чем белый. iOS modal-presentation сам имеет рамки/корнеры.
+  container: { flex: 1, backgroundColor: Colors.bg },
 
   // AI find: фуллскрин loading пока сервер сравнивает embedding
   pendingSection: {
@@ -2025,13 +2021,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Published date — явная дата публикации камня под freshness-pill
-  publishedDate: {
+  // "Спрятан / Найден" inline-строка под title-meta
+  dateLine: {
     fontSize: 12,
     color: Colors.text2,
     marginTop: 6,
     marginBottom: 14,
   },
+  publishedDate: { display: 'none' },
 
   // Comments thread
   commentInputRow: {
