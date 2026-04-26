@@ -1344,7 +1344,7 @@ export default function StoneDetailScreen() {
 
           {/* Comments section — публичный thread под камнем */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
               {(t('stone.comments') || 'КОММЕНТАРИИ')} {comments.length > 0 ? `· ${comments.length}` : ''}
             </Text>
 
@@ -1949,7 +1949,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text2,
     letterSpacing: 1,
-    marginBottom: 12,
   },
 
   // Journey
