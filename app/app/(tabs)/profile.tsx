@@ -64,7 +64,7 @@ import {
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getPendingFindsForMyStones } from '../../lib/finds';
-import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
+import { gatherAchievementStats, checkAchievements, getAchievements } from '../../lib/achievements';
 import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
@@ -84,13 +84,15 @@ import { processPhoto, uploadPhotoToStorage } from '../../lib/photo';
 import { updateProfilePhoto, updateCharacterName } from '../../lib/auth';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
+// id — должен совпадать с ACHIEVEMENT_DEFS.id из lib/achievements.ts
+// чтобы мы могли посмотреть unlocked-state в карусели на профайле.
 const ACHIEVEMENT_CONFIGS = [
-  { Icon: Sparkle, labelKey: 'achievement.find_first', earned: false, tint: '#A855F7', premium: false },
-  { Icon: Medal, labelKey: 'achievement.find_10', earned: false, tint: '#FACC15', premium: false },
-  { Icon: Compass, labelKey: 'achievement.explorer_3', earned: false, tint: '#16A34A', premium: true },
-  { Icon: Trophy, labelKey: 'achievement.find_50', earned: false, tint: '#EA580C', premium: false },
-  { Icon: PaintBrush, labelKey: 'achievement.hide_5', earned: false, tint: '#DB2777', premium: false },
-  { Icon: Star, labelKey: 'achievement.find_100', earned: false, tint: '#7C3AED', premium: true },
+  { id: 'find-first', Icon: Sparkle, labelKey: 'achievement.find_first', tint: '#A855F7', premium: false },
+  { id: 'find-10', Icon: Medal, labelKey: 'achievement.find_10', tint: '#FACC15', premium: false },
+  { id: 'explorer-3', Icon: Compass, labelKey: 'achievement.explorer_3', tint: '#16A34A', premium: true },
+  { id: 'find-50', Icon: Trophy, labelKey: 'achievement.find_50', tint: '#EA580C', premium: false },
+  { id: 'hide-5', Icon: PaintBrush, labelKey: 'achievement.hide_5', tint: '#DB2777', premium: false },
+  { id: 'find-100', Icon: Star, labelKey: 'achievement.find_100', tint: '#7C3AED', premium: true },
 ];
 
 type MainTab = 'overview' | 'customize';
@@ -103,6 +105,7 @@ export default function ProfileScreen() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingFindsCount, setPendingFindsCount] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
   const [mainTab, setMainTab] = useState<MainTab>('overview');
   const [customTab, setCustomTab] = useState<CustomTab>('color');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
@@ -119,7 +122,13 @@ export default function ProfileScreen() {
   const [trialRemaining, setTrialRemaining] = useState('');
   const { t } = useI18n();
   const modal = useModal();
-  const achievements = ACHIEVEMENT_CONFIGS.map(a => ({ ...a, label: t(a.labelKey) }));
+  // earned читается из реального state (lib/achievements). Карусель на профайле
+  // подсвечивает unlocked vs locked на основании этого.
+  const achievements = ACHIEVEMENT_CONFIGS.map((a) => ({
+    ...a,
+    label: t(a.labelKey),
+    earned: unlockedAchievements.has(a.id),
+  }));
 
   useFocusEffect(
     useCallback(() => {
@@ -179,8 +188,21 @@ export default function ProfileScreen() {
             // ты был оффлайн / на другом табе → totalFinds увеличился →
             // find-1/find-5/etc должен разблокироваться. Achievements
             // дедуплируются по balance_events, повтора награды не будет.
+            // После checkAchievements грузим actual state для подсветки
+            // карусели в overview.
             gatherAchievementStats()
-              .then((s) => checkAchievements(s))
+              .then(async (s) => {
+                await checkAchievements(s);
+                const state = await getAchievements();
+                if (active) {
+                  const ids = new Set(
+                    Object.entries(state)
+                      .filter(([, v]) => v?.unlocked)
+                      .map(([id]) => id),
+                  );
+                  setUnlockedAchievements(ids);
+                }
+              })
               .catch((e) => console.warn('profile: achievement re-check', e));
           }
         } catch (e) {
@@ -225,11 +247,17 @@ export default function ProfileScreen() {
         setFoundCount(finds.length);
         setPendingFindsCount(pending.length);
 
-        // Achievement re-check — pull-to-refresh должен поймать новые
-        // unlock'и если стат-данные изменились с прошлого фокуса.
+        // Achievement re-check + reload state for highlight
         try {
           const stats = await gatherAchievementStats();
           await checkAchievements(stats);
+          const state = await getAchievements();
+          const ids = new Set(
+            Object.entries(state)
+              .filter(([, v]) => v?.unlocked)
+              .map(([id]) => id),
+          );
+          setUnlockedAchievements(ids);
         } catch (e) {
           console.warn('profile refresh: achievement check', e);
         }
@@ -773,13 +801,18 @@ export default function ProfileScreen() {
                         color={a.earned ? a.tint : Colors.text2}
                         weight={a.earned ? 'fill' : 'regular'}
                       />
+                      {a.earned && (
+                        <View style={styles.achievementEarnedBadge}>
+                          <CheckCircle size={14} color="#FFFFFF" weight="fill" />
+                        </View>
+                      )}
                       {a.premium && (
                         <View style={styles.achievementPremiumBadge}>
                           <Star size={10} color="#FFFFFF" weight="fill" />
                         </View>
                       )}
                     </View>
-                    <Text style={styles.achievementLabel}>{a.label}</Text>
+                    <Text style={[styles.achievementLabel, a.earned && styles.achievementLabelEarned]}>{a.label}</Text>
                   </View>
                 );
               })}
@@ -1841,6 +1874,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   achievementIconLocked: { opacity: 0.4, borderStyle: 'dashed' },
+  // Зелёная галка в правом верхнем углу earned-ачивки — мгновенно показывает
+  // что разблокировано, на фоне dashed-серых locked'ов.
+  achievementEarnedBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
   achievementEmoji: { fontSize: 26 },
   achievementPremiumBadge: {
     position: 'absolute',
@@ -1861,6 +1909,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 13,
+  },
+  achievementLabelEarned: {
+    color: Colors.text,
+    fontWeight: '700',
   },
 
   // My stones — find/hide tabs + list
