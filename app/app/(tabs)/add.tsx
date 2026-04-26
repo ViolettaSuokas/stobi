@@ -711,7 +711,7 @@ export default function AddScreen() {
             - скан завершён (photoUri есть)
             - name >= 2 символов
             description опциональный — необязателен. */}
-        <SafeAreaView style={styles.ctaWrap} edges={['bottom']}>
+        <View style={styles.ctaWrap}>
           {(() => {
             const canSave = !!photoUri && name.trim().length >= 2 && !saving;
             return (
@@ -732,7 +732,7 @@ export default function AddScreen() {
               </TouchableOpacity>
             );
           })()}
-        </SafeAreaView>
+        </View>
       </KeyboardAvoidingView>
 
       {celebration && <CelebrationOverlay {...celebration} />}
@@ -1034,11 +1034,14 @@ const styles = StyleSheet.create({
   },
   rewardHintBold: { fontWeight: '800', color: Colors.accent },
 
-  // CTA
+  // CTA — фиксированно внизу экрана. paddingBottom: 90 чтобы не залазила
+  // под floating tab bar (~60px высоты + 14px отступ + safe-area).
+  // Раньше paddingBottom был 8 → кнопка пряталась за tab bar когда
+  // клавиатура убрана, юзер думал что её нет вообще.
   ctaWrap: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 90,
     backgroundColor: Colors.bg,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
