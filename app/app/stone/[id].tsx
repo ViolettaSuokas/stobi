@@ -1135,6 +1135,7 @@ export default function StoneDetailScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.journeyAction}>
                           <Text style={styles.journeyName}>{step.userName}</Text>
+                          {' '}
                           {isFind ? t('stone.found_action') : t('stone.hid_action')}
                         </Text>
                         <Text style={styles.journeyMeta}>
