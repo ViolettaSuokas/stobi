@@ -17,6 +17,8 @@ export type NotificationItem = {
   stoneId: string | null;
   pendingFindId: string | null;
   inviteeId: string | null;
+  conversationId: string | null;
+  senderId: string | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -31,6 +33,8 @@ function rowToNotification(row: any): NotificationItem {
     stoneId: typeof data.stone_id === 'string' ? data.stone_id : null,
     pendingFindId: typeof data.pending_find_id === 'string' ? data.pending_find_id : null,
     inviteeId: typeof data.invitee_id === 'string' ? data.invitee_id : null,
+    conversationId: typeof data.conversation_id === 'string' ? data.conversation_id : null,
+    senderId: typeof data.sender_id === 'string' ? data.sender_id : null,
     createdAt: row.created_at,
     readAt: row.read_at,
   };

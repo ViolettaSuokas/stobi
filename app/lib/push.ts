@@ -117,16 +117,25 @@ export async function registerPushToken(userId: string): Promise<string | null> 
   }
 }
 
+export type PushTapPayload =
+  | { type: 'stone'; stoneId: string }
+  | { type: 'dm'; conversationId: string };
+
 /** Listener для нажатия на notification — редирект в соответствующий экран.
  *  Вызвать один раз в _layout.tsx, возвращает cleanup-функцию. */
 export async function attachResponseListener(
-  onStone: (stoneId: string) => void,
+  onTap: (payload: PushTapPayload) => void,
 ): Promise<() => void> {
   if (!(await ensureLoaded())) return () => {};
   const sub = Notifications.addNotificationResponseReceivedListener((response: any) => {
     const data = response?.notification?.request?.content?.data;
-    if (data?.type === 'stone_found' && typeof data.stone_id === 'string') {
-      onStone(data.stone_id);
+    if (!data) return;
+    if (data.type === 'stone_found' && typeof data.stone_id === 'string') {
+      onTap({ type: 'stone', stoneId: data.stone_id });
+    } else if (data.type === 'pending_find' && typeof data.stone_id === 'string') {
+      onTap({ type: 'stone', stoneId: data.stone_id });
+    } else if (data.type === 'dm' && typeof data.conversation_id === 'string') {
+      onTap({ type: 'dm', conversationId: data.conversation_id });
     }
   });
   return () => sub.remove();

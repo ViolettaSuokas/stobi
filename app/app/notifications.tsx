@@ -97,7 +97,9 @@ export default function NotificationsScreen() {
   }, [load]);
 
   const handleTap = (item: NotificationItem) => {
-    if (item.type === 'pending_find' && item.stoneId) {
+    if (item.type === 'dm' && item.conversationId) {
+      router.push(`/dm/${item.conversationId}` as any);
+    } else if (item.type === 'pending_find' && item.stoneId) {
       router.push(`/stone/${item.stoneId}` as any);
     } else if (item.stoneId) {
       router.push(`/stone/${item.stoneId}` as any);

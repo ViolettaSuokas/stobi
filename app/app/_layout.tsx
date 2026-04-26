@@ -92,11 +92,16 @@ export default function RootLayout() {
         })
       : null;
 
-    // Notification tap → navigate to stone detail + track event
+    // Notification tap → navigate to stone detail / DM thread + track event
     let cleanup: (() => void) | null = null;
-    attachResponseListener((stoneId) => {
-      void NotificationOpened('stone_found', stoneId);
-      router.push(`/stone/${stoneId}` as any);
+    attachResponseListener((payload) => {
+      if (payload.type === 'stone') {
+        void NotificationOpened('stone_found', payload.stoneId);
+        router.push(`/stone/${payload.stoneId}` as any);
+      } else if (payload.type === 'dm') {
+        void NotificationOpened('dm', payload.conversationId);
+        router.push(`/dm/${payload.conversationId}` as any);
+      }
     }).then((fn) => { cleanup = fn; });
 
     // Deep-link handler — stobi://stone/<id> или https://stobi.app/stone/<id>.
