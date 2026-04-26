@@ -1357,8 +1357,9 @@ export default function StoneDetailScreen() {
                 placeholder={t('stone.comment_placeholder') || 'Оставь комментарий…'}
                 placeholderTextColor={Colors.text2}
                 maxLength={500}
-                multiline
                 editable={!commentSending}
+                returnKeyType="send"
+                onSubmitEditing={handleSendComment}
               />
               <TouchableOpacity
                 style={[styles.commentSendBtn, (!commentInput.trim() || commentSending) && styles.commentSendBtnDisabled]}
@@ -1948,6 +1949,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text2,
     letterSpacing: 1,
+    marginBottom: 12,
   },
 
   // Journey
@@ -2026,21 +2028,21 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    minHeight: 44,
+    height: 44,
     backgroundColor: Colors.surface,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 0,
     fontSize: 14,
     color: Colors.text,
-    maxHeight: 100,
+    textAlignVertical: 'center',
   },
-  // Квадрат + такая же высота как у поля. Самолётик внутри.
+  // Квадрат 44×44, такая же высота как у поля.
   commentSendBtn: {
     width: 44,
-    minHeight: 44,
+    height: 44,
     borderRadius: 14,
     backgroundColor: Colors.accent,
     alignItems: 'center',
