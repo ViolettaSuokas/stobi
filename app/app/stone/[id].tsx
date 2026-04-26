@@ -202,6 +202,24 @@ export default function StoneDetailScreen() {
         }
       }
 
+      // Verified-find count — нужен для ВСЕХ камней (не только своих),
+      // чтобы определить show-history-mode для third-party юзеров,
+      // которые тапнули на found stone из ленты. Если count > 0 →
+      // авто-reveal + блокируем "I found this" CTA (нет смысла повторно
+      // находить — камень забран).
+      if (stoneId) {
+        try {
+          const { supabase: sb } = await import('../../lib/supabase');
+          const { count } = await sb.from('finds')
+            .select('id', { count: 'exact', head: true })
+            .eq('stone_id', stoneId);
+          if (!cancelled && count !== null) {
+            setVerifiedFindCount(count);
+            if (count > 0) setRevealed(true);
+          }
+        } catch {/* ignore */}
+      }
+
       // Own stones are always revealed. Three ways to detect ownership:
       //   1. stone.authorId matches current user (most reliable for DB stones)
       //   2. activity feed hide event's userId matches (for demo seed users)
@@ -217,21 +235,12 @@ export default function StoneDetailScreen() {
         if (matchByAuthor || matchByHideEvent) {
           setIsOwnStone(true);
           setRevealed(true);
-          // Если это мой камень — подгружаем pending finds (чужие сканы
-          // ждущие моего одобрения) + counts verified finds (для блока edit/delete).
+          // Pending finds (чужие сканы ждущие моего одобрения).
+          // verifiedFindCount уже загружен выше — для всех юзеров.
           if (stoneId) {
             getPendingFindsForMyStones(stoneId)
               .then((rows) => { if (!cancelled) setPendingFinds(rows); })
               .catch((e) => console.warn('load pending finds', e));
-            (async () => {
-              try {
-                const { supabase: sb } = await import('../../lib/supabase');
-                const { count } = await sb.from('finds')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('stone_id', stoneId);
-                if (!cancelled && count !== null) setVerifiedFindCount(count);
-              } catch {/* ignore */}
-            })();
           }
         }
       }
@@ -1232,6 +1241,18 @@ export default function StoneDetailScreen() {
             >
               <ShareNetwork size={22} color={Colors.accent} weight="bold" />
             </TouchableOpacity>
+          </View>
+        ) : verifiedFindCount > 0 ? (
+          // Камень уже verified-found другим юзером. Показываем history-mode
+          // notice вместо "I found this" — нет смысла повторно находить
+          // (камень физически забрали с локации). Без этого third-party
+          // юзеры из ленты тапали Reveal · 5💎, потом видели полную историю
+          // и кнопку "I found" которая всё равно бы fail'нулась на сервере.
+          <View style={styles.foundLockNotice}>
+            <Text style={styles.foundLockText}>
+              {t('stone.already_found_by_other') ||
+                '✓ Этот камень уже нашли. Можно посмотреть историю — но повторно зачесть нельзя.'}
+            </Text>
           </View>
         ) : isFresh ? (
           <View style={[styles.findBtn, styles.findBtnLocked]}>

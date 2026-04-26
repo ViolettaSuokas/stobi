@@ -168,6 +168,7 @@ export const ru: Record<string, string> = {
     'agegate.pick_year': 'Выбери год рождения',
     'agegate.too_young_title': 'Stobi доступен с 13 лет',
     'agegate.too_young_text': 'Если тебе младше 13 — играй с родителем на его телефоне. Аккаунт удалён, повторно зарегистрироваться можно когда тебе будет 13+.',
+    'stone.already_found_by_other': '✓ Этот камень уже нашли. Можно посмотреть историю — но повторно зачесть нельзя.',
     'profile.overview': 'Общее',
     'profile.customize': 'Кастомизация',
     'profile.hidden_count': 'Спрятано',

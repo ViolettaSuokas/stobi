@@ -159,6 +159,7 @@ export const en: Record<string, string> = {
     'agegate.pick_year': 'Pick your birth year',
     'agegate.too_young_title': 'Stobi is for ages 13+',
     'agegate.too_young_text': 'If you\'re under 13, play with a parent on their phone. The account has been removed; you can sign up again when you turn 13+.',
+    'stone.already_found_by_other': '✓ This stone has already been found. You can view its history — but it can\'t be claimed again.',
     'profile.overview': 'Overview',
     'profile.customize': 'Customize',
     'profile.hidden_count': 'Hidden',

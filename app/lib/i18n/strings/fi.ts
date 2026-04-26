@@ -173,6 +173,7 @@ export const fi: Record<string, string> = {
     'agegate.pick_year': 'Valitse syntymävuosi',
     'agegate.too_young_title': 'Stobi on yli 13-vuotiaille',
     'agegate.too_young_text': 'Jos olet alle 13, pelaa vanhempasi puhelimella. Tili on poistettu; voit rekisteröityä uudelleen kun täytät 13.',
+    'stone.already_found_by_other': '✓ Tämä kivi on jo löydetty. Voit katsoa historian — mutta sitä ei voi enää lunastaa.',
     'profile.overview': 'Yleistä',
     'profile.customize': 'Muokkaus',
     'profile.hidden_count': 'Piilotettu',
