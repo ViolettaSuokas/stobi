@@ -17,48 +17,66 @@ export async function getStoneComments(stoneId: string, limit = 50): Promise<Sto
   if (!isSupabaseConfigured()) return [];
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    const [commentsRes, allLikesRes, myLikesRes] = await Promise.all([
-      supabase
-        .from('stone_comments')
-        .select('id, author_id, body, created_at, profiles!stone_comments_author_id_fkey(username, photo_url)')
-        .eq('stone_id', stoneId)
-        .order('created_at', { ascending: false })
-        .limit(limit),
+
+    // 1. Comments rows (без embed — FK на auth.users, profiles не embed'ится)
+    const { data: commentsData, error: commentsErr } = await supabase
+      .from('stone_comments')
+      .select('id, author_id, body, created_at')
+      .eq('stone_id', stoneId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (commentsErr || !commentsData || commentsData.length === 0) return [];
+
+    const commentIds = commentsData.map((c: any) => c.id);
+    const authorIds = Array.from(new Set(commentsData.map((c: any) => c.author_id).filter(Boolean)));
+
+    // 2. Параллельно: profiles, all likes counter, my likes
+    const [profilesRes, allLikesRes, myLikesRes] = await Promise.all([
+      authorIds.length > 0
+        ? supabase
+            .from('profiles')
+            .select('id, username, photo_url')
+            .in('id', authorIds)
+        : Promise.resolve({ data: [] as any[] }),
       supabase
         .from('comment_likes')
         .select('comment_id')
-        .in('comment_id', []), // populated below via second pass
+        .in('comment_id', commentIds),
       user
         ? supabase
             .from('comment_likes')
             .select('comment_id')
             .eq('user_id', user.id)
+            .in('comment_id', commentIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
-    if (commentsRes.error || !commentsRes.data) return [];
 
-    const commentIds = commentsRes.data.map((c: any) => c.id);
-    // Refetch all likes for these specific comments now that we have ids
-    const { data: allLikes } = commentIds.length > 0
-      ? await supabase.from('comment_likes').select('comment_id').in('comment_id', commentIds)
-      : { data: [] as any[] };
+    const profilesById = new Map<string, { username: string | null; photoUrl: string | null }>();
+    (profilesRes.data ?? []).forEach((p: any) => {
+      profilesById.set(p.id, { username: p.username ?? null, photoUrl: p.photo_url ?? null });
+    });
+
     const totalsByComment = new Map<string, number>();
-    (allLikes ?? []).forEach((row: any) => {
+    (allLikesRes.data ?? []).forEach((row: any) => {
       totalsByComment.set(row.comment_id, (totalsByComment.get(row.comment_id) ?? 0) + 1);
     });
     const myLiked = new Set<string>(((myLikesRes as any).data ?? []).map((r: any) => r.comment_id));
 
-    return commentsRes.data.map((c: any): StoneComment => ({
-      id: c.id,
-      authorId: c.author_id,
-      authorUsername: c.profiles?.username ?? null,
-      authorPhotoUrl: c.profiles?.photo_url ?? null,
-      body: c.body,
-      createdAt: c.created_at,
-      likedByMe: myLiked.has(c.id),
-      likesCount: totalsByComment.get(c.id) ?? 0,
-    }));
-  } catch {
+    return commentsData.map((c: any): StoneComment => {
+      const profile = profilesById.get(c.author_id);
+      return {
+        id: c.id,
+        authorId: c.author_id,
+        authorUsername: profile?.username ?? null,
+        authorPhotoUrl: profile?.photoUrl ?? null,
+        body: c.body,
+        createdAt: c.created_at,
+        likedByMe: myLiked.has(c.id),
+        likesCount: totalsByComment.get(c.id) ?? 0,
+      };
+    });
+  } catch (e) {
+    console.warn('getStoneComments failed', e);
     return [];
   }
 }

@@ -12,6 +12,8 @@ import {
   Modal,
   Share,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -943,10 +945,16 @@ export default function StoneDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         {/* Hero — большое фото или blurred-locked фото для незачищенных. */}
         <View style={styles.heroArea}>
@@ -1642,7 +1650,7 @@ export default function StoneDetailScreen() {
           }}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
