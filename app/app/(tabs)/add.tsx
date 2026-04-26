@@ -549,10 +549,13 @@ export default function AddScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {safetyGateEl}
       {scanCameraEl}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {/* KAV полностью убран — раньше с behavior="padding" iOS поднимал
+          ВЕСЬ layout вверх когда клавиатура открывалась, и кнопка
+          "Спрятать камень" летала к верху клавиатуры. Юзер ожидает что
+          кнопка остаётся на месте, а клавиатура просто перекрывает поле.
+          ScrollView automaticallyAdjustKeyboardInsets ниже — он сам
+          сдвигает контент так чтобы поле ввода было видно над клавой. */}
+      <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -572,6 +575,7 @@ export default function AddScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
         >
           {/* Single entry point: AI scanner. The old "Take photo" tile
               was removed — it duplicated the scanner and confused users
@@ -738,7 +742,7 @@ export default function AddScreen() {
             );
           })()}
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {celebration && <CelebrationOverlay {...celebration} />}
     </SafeAreaView>
