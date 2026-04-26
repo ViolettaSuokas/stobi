@@ -151,6 +151,8 @@ export const en: Record<string, string> = {
     'profile.guest': 'Guest',
     'profile.add_photo': 'Add photo',
     'profile.change_photo': 'Change photo',
+    'profile.photo_permission_title': 'No photo access',
+    'profile.photo_permission_text': 'Open Settings → Stobi → Photos and allow access. Then you can set your avatar.',
     'profile.overview': 'Overview',
     'profile.customize': 'Customize',
     'profile.hidden_count': 'Hidden',

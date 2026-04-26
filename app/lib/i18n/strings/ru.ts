@@ -160,6 +160,8 @@ export const ru: Record<string, string> = {
     'profile.guest': 'Гость',
     'profile.add_photo': 'Добавить фото',
     'profile.change_photo': 'Изменить фото',
+    'profile.photo_permission_title': 'Нет доступа к фото',
+    'profile.photo_permission_text': 'Открой Настройки → Stobi → Фото и разреши доступ. Тогда сможешь поставить аватарку.',
     'profile.overview': 'Общее',
     'profile.customize': 'Кастомизация',
     'profile.hidden_count': 'Спрятано',

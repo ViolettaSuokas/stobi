@@ -165,6 +165,8 @@ export const fi: Record<string, string> = {
     'profile.guest': 'Vieras',
     'profile.add_photo': 'Lisää kuva',
     'profile.change_photo': 'Vaihda kuva',
+    'profile.photo_permission_title': 'Ei pääsyä valokuviin',
+    'profile.photo_permission_text': 'Avaa Asetukset → Stobi → Valokuvat ja salli pääsy. Sitten voit asettaa avatarin.',
     'profile.overview': 'Yleistä',
     'profile.customize': 'Muokkaus',
     'profile.hidden_count': 'Piilotettu',
