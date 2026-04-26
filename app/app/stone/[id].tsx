@@ -1063,16 +1063,9 @@ export default function StoneDetailScreen() {
               <Text style={styles.metaText}>{stone.distance} {t('stone.distance_from')}</Text>
             </View>
             <View style={styles.metaDot} />
-            <View style={styles.metaItem}>
-              {/* "Нашли N раз" — clearer чем "1 находка" (юзер не понимал
-                  что значит цифра). MagnifyingGlass icon показывает что
-                  это про поиск/находки, не views. */}
-              <MagnifyingGlass size={13} color={Colors.text2} weight="regular" />
-              <Text style={styles.metaText}>
-                {(t('stone.found_n_times') || 'Нашли {n} раз').replace('{n}', String(findCount))}
-              </Text>
-            </View>
-            <View style={styles.metaDot} />
+            {/* Find counter ("Нашли N раз") убран по запросу юзера —
+                сейчас всегда 0 или 1, только при re-hide flow (task #16)
+                будет осмысленным. Вернёмся когда сделаем перепрятку. */}
             {/* Like-counter с heart-кнопкой. Tap → toggle. Optimistic UI. */}
             <TouchableOpacity
               onPress={handleToggleLike}
