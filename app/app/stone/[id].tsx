@@ -1114,9 +1114,18 @@ export default function StoneDetailScreen() {
             </Modal>
           )}
 
-          {/* Artist / creator card */}
+          {/* Artist / creator card — tap → public profile (#21).
+              creator.userId — это author_id из stones. */}
           {creator && (
-            <View style={styles.creatorCard}>
+            <TouchableOpacity
+              style={styles.creatorCard}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (creator.userId) router.push(`/user/${creator.userId}` as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t('stone.open_creator_profile') || 'Открыть профиль автора'}
+            >
               <View style={styles.creatorAvatar}>
                 {creator.userPhotoUrl ? (
                   <SafeImage
@@ -1140,7 +1149,7 @@ export default function StoneDetailScreen() {
               <Text style={styles.creatorDate}>
                 {formatActivityTime(creator.createdAt)}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* Approximate location notice */}
