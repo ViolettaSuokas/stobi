@@ -371,12 +371,18 @@ export default function FeedScreen() {
                 <View style={styles.leaderCard}>
                   {leaderboard.map((entry, i) => {
                     return (
-                      <View
+                      <TouchableOpacity
                         key={entry.userId}
                         style={[
                           styles.leaderRow,
                           i < leaderboard.length - 1 && styles.leaderRowBorder,
                         ]}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          if (entry.userId && entry.userId !== 'deleted') {
+                            router.push(`/user/${entry.userId}` as any);
+                          }
+                        }}
                       >
                         <View style={styles.rankBadge}>
                           <Text style={styles.rankBadgeText}>
@@ -409,7 +415,7 @@ export default function FeedScreen() {
                         <Text style={styles.leaderCount}>
                           {entry.count}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -459,7 +465,16 @@ export default function FeedScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.timelineText} numberOfLines={2}>
-                        <Text style={styles.timelineName}>{item.userName}</Text>
+                        <Text
+                          style={[styles.timelineName, { textDecorationLine: 'underline' }]}
+                          onPress={(e) => {
+                            // Stop event propagating to row → otherwise stone opens.
+                            e.stopPropagation?.();
+                            if (item.userId && item.userId !== 'deleted') {
+                              router.push(`/user/${item.userId}` as any);
+                            }
+                          }}
+                        >{item.userName}</Text>
                         {item.type === 'find' ? ' нашёл ' : ' спрятал '}
                         <Text>{item.stoneEmoji} </Text>
                         <Text style={styles.timelineStone}>{item.stoneName}</Text>

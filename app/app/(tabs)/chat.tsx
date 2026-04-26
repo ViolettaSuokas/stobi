@@ -28,7 +28,7 @@ import {
   MapPin,
 } from 'phosphor-react-native';
 import * as haptics from '../../lib/haptics';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../../constants/Colors';
 import {
@@ -545,12 +545,18 @@ export default function ChatScreen() {
             accessibilityHint={t('chat.long_press_menu') || 'Удерживай для меню сообщения'}
           >
             {!isMe && showAuthor && (
-              <View style={styles.authorRow}>
-                <Text style={styles.authorName}>{item.authorName}</Text>
+              <TouchableOpacity
+                style={styles.authorRow}
+                onPress={() => item.authorId && router.push(`/user/${item.authorId}` as any)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.authorName} ${t('common.open_profile') || 'открыть профиль'}`}
+              >
+                <Text style={[styles.authorName, { textDecorationLine: 'underline' }]}>{item.authorName}</Text>
                 {item.isArtist && (
                   <CheckCircle size={12} color={Colors.accent} weight="fill" />
                 )}
-              </View>
+              </TouchableOpacity>
             )}
             {item.photoUri && (
               <Image source={{ uri: item.photoUri }} style={styles.bubblePhoto} />

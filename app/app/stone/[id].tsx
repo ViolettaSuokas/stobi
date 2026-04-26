@@ -1196,7 +1196,14 @@ export default function StoneDetailScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.journeyAction}>
-                          <Text style={styles.journeyName}>{step.userName}</Text>
+                          <Text
+                            style={[styles.journeyName, { textDecorationLine: 'underline' }]}
+                            onPress={() => {
+                              if (step.userId && step.userId !== 'deleted') {
+                                router.push(`/user/${step.userId}` as any);
+                              }
+                            }}
+                          >{step.userName}</Text>
                           {' '}
                           {isFind ? t('stone.found_action') : t('stone.hid_action')}
                         </Text>
