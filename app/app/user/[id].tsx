@@ -111,8 +111,10 @@ export default function UserProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <CaretLeft size={22} color={Colors.text} weight="bold" />
         </TouchableOpacity>
+        {/* Имя юзера большое под аватаром — дублировать в шапке смысла нет.
+            Используем общий заголовок "Профиль". */}
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {profile?.username || (t('user_profile.title') || 'Профиль')}
+          {t('user_profile.title') || 'Профиль'}
         </Text>
         {/* Action icons top-right (Stonehiding-style): сообщение + follow.
             Скрываем для своего профиля. */}
