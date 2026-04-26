@@ -64,6 +64,7 @@ import {
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getPendingFindsForMyStones } from '../../lib/finds';
+import { gatherAchievementStats, checkAchievements } from '../../lib/achievements';
 import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
 import { useI18n } from '../../lib/i18n';
@@ -172,6 +173,15 @@ export default function ProfileScreen() {
             getPendingFindsForMyStones()
               .then((pf) => { if (active) setPendingFindsCount(pf.length); })
               .catch(() => {});
+
+            // Re-check достижений при каждом фокусе профайла. Это ловит
+            // случаи когда чужой автор approve'ил твой pending-find пока
+            // ты был оффлайн / на другом табе → totalFinds увеличился →
+            // find-1/find-5/etc должен разблокироваться. Achievements
+            // дедуплируются по balance_events, повтора награды не будет.
+            gatherAchievementStats()
+              .then((s) => checkAchievements(s))
+              .catch((e) => console.warn('profile: achievement re-check', e));
           }
         } catch (e) {
           console.warn('profile load error', e);
@@ -214,6 +224,15 @@ export default function ProfileScreen() {
         setHiddenCount(hides.length);
         setFoundCount(finds.length);
         setPendingFindsCount(pending.length);
+
+        // Achievement re-check — pull-to-refresh должен поймать новые
+        // unlock'и если стат-данные изменились с прошлого фокуса.
+        try {
+          const stats = await gatherAchievementStats();
+          await checkAchievements(stats);
+        } catch (e) {
+          console.warn('profile refresh: achievement check', e);
+        }
       }
     } catch (e) {
       console.warn('profile refresh error', e);
