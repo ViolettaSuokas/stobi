@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, router } from 'expo-router';
 import * as Linking from 'expo-linking';
+import * as Updates from 'expo-updates';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { I18nProvider } from '../lib/i18n';
 import { ModalProvider } from '../lib/modal';
@@ -17,7 +19,47 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 // Init crash reporter как можно раньше — до первого useState/useEffect.
 initSentry();
 
+/**
+ * Eager update check — запрашиваем новый bundle сразу на старте.
+ * Если есть → качаем + reload. Если нет → пропускаем мгновенно.
+ *
+ * Без этого юзер видит обновление только на 2-м cold start (default
+ * expo-updates flow: bundle качается фоном, применяется на следующий запуск).
+ * С этим: один cold start = свежий код.
+ *
+ * Ограничения:
+ *   - В __DEV__ не работает (Updates disabled в Metro-режиме)
+ *   - 5 сек timeout чтобы не висеть на плохой сети
+ *   - На ошибке сети — fallback на embedded (норма)
+ */
+async function checkForEagerUpdate(): Promise<boolean> {
+  if (__DEV__) return false;
+  try {
+    const check = await Promise.race([
+      Updates.checkForUpdateAsync(),
+      new Promise<{ isAvailable: false }>((resolve) =>
+        setTimeout(() => resolve({ isAvailable: false }), 5000),
+      ),
+    ]);
+    if (!check.isAvailable) return false;
+    await Updates.fetchUpdateAsync();
+    await Updates.reloadAsync();
+    return true; // never reached — reloadAsync replaces JS context
+  } catch (e) {
+    console.warn('eager update check failed', e);
+    return false;
+  }
+}
+
 export default function RootLayout() {
+  const [updateChecking, setUpdateChecking] = useState(true);
+
+  useEffect(() => {
+    // Eager check — если есть новое OTA, скачиваем и рестартим прямо сейчас.
+    // На обычном cold start (нет update) — занимает ~50ms, юзер не замечает.
+    void checkForEagerUpdate().finally(() => setUpdateChecking(false));
+  }, []);
+
   useEffect(() => {
     // Session open event — одна точка входа, трекается всегда.
     void AppOpened();
@@ -92,6 +134,19 @@ export default function RootLayout() {
       authSub?.data.subscription.unsubscribe();
     };
   }, []);
+
+  // Splash-замена пока eager update check работает. Покажется только
+  // если реально качается update (5 сек max), на обычном старте
+  // мелькнёт на ~50ms и сразу пропадёт.
+  if (updateChecking) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FAFAF8', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <ActivityIndicator size="large" color="#5B4FF0" />
+        <Text style={{ fontSize: 13, color: '#9B9BAB' }}>Stobi</Text>
+      </View>
+    );
+  }
+
   return (
     <ErrorBoundary>
     <I18nProvider>
