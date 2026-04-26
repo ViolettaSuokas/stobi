@@ -56,10 +56,9 @@ export default function SettingsScreen() {
   const { lang, setLang, t } = useI18n();
   const modal = useModal();
 
-  // Load notification preferences. Push prefs живёт на сервере
-  // (profiles.notif_push_enabled) — иначе сервер всё равно бы слал push.
-  // Chat-notifs пока остаются в AsyncStorage (chat realtime — клиент-side,
-  // выключение это просто игнорить нотифу при реальтайм-event'е).
+  // Load notification preferences. Push + chat prefs живут на сервере
+  // (profiles.notif_push_enabled / notif_chat_enabled) — иначе сервер
+  // всё равно бы слал пуши.
   useEffect(() => {
     (async () => {
       try {
@@ -68,17 +67,18 @@ export default function SettingsScreen() {
           if (u) {
             const { data } = await supabase
               .from('profiles')
-              .select('notif_push_enabled')
+              .select('notif_push_enabled, notif_chat_enabled')
               .eq('id', u.id)
               .maybeSingle();
             if (data?.notif_push_enabled !== undefined && data?.notif_push_enabled !== null) {
               setPushEnabled(!!data.notif_push_enabled);
             }
+            if (data?.notif_chat_enabled !== undefined && data?.notif_chat_enabled !== null) {
+              setChatNotifs(!!data.notif_chat_enabled);
+            }
           }
         }
       } catch (e) { console.warn('notif prefs load', e); }
-      const chat = await AsyncStorage.getItem(NOTIF_KEYS.chat);
-      if (chat !== null) setChatNotifs(chat === 'true');
     })();
   }, []);
 
@@ -93,7 +93,6 @@ export default function SettingsScreen() {
         .update({ notif_push_enabled: v })
         .eq('id', u.id);
       if (error) {
-        // Откатить optimistic — server не принял.
         console.warn('togglePush server error', error.message);
         setPushEnabled(!v);
       }
@@ -101,9 +100,23 @@ export default function SettingsScreen() {
       console.warn('togglePush exception', e);
     }
   };
-  const toggleChat = (v: boolean) => {
-    setChatNotifs(v);
-    AsyncStorage.setItem(NOTIF_KEYS.chat, String(v));
+  const toggleChat = async (v: boolean) => {
+    setChatNotifs(v); // optimistic
+    try {
+      if (!isSupabaseConfigured()) return;
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) return;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notif_chat_enabled: v })
+        .eq('id', u.id);
+      if (error) {
+        console.warn('toggleChat server error', error.message);
+        setChatNotifs(!v);
+      }
+    } catch (e) {
+      console.warn('toggleChat exception', e);
+    }
   };
 
   const handleLanguage = () => {
