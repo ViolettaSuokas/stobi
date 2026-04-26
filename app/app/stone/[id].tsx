@@ -1668,7 +1668,9 @@ function pluralize(n: number, one: string, few: string, many: string): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
+  // Container.bg = bgDeep (purple) чтобы bounce-overscroll сверху не
+  // показывал белый промежуток выше hero-фото. Body имеет свой Colors.bg.
+  container: { flex: 1, backgroundColor: Colors.bgDeep },
 
   // AI find: фуллскрин loading пока сервер сравнивает embedding
   pendingSection: {
@@ -1851,7 +1853,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  body: { padding: 20 },
+  body: { padding: 20, backgroundColor: Colors.bg },
 
   titleRow: {
     flexDirection: 'row',
