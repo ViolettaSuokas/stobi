@@ -34,7 +34,8 @@ import { Colors } from '../../constants/Colors';
 import { getCurrentLocation } from '../../lib/location';
 import { earnPoints, REWARD_HIDE, ALL_ITEMS } from '../../lib/points';
 import { addUserStone } from '../../lib/user-stones';
-import { checkHideLocationSafe } from '../../lib/safety';
+// import { checkHideLocationSafe } from '../../lib/safety';
+// ↑ disabled — see hide-flow comment ниже у бывшего вызова.
 import { moderateMessage } from '../../lib/moderation';
 import { SafetyGate, hasAcknowledgedSafety } from '../../components/SafetyGate';
 // AgeGate intentionally not imported — Stobi targets a 4+ App Store rating,
@@ -339,19 +340,14 @@ export default function AddScreen() {
         }
       }
 
-      // Child-safety gate: verify hide location is a public place (near POI),
-      // not near a school / not on private residential property. Anti-grooming
-      // pattern. Blocks obvious unsafe hides before we even upload.
-      const safety = await checkHideLocationSafe(coords.lat, coords.lng);
-      if (!safety.safe) {
-        setSaving(false);
-        Alert.alert(
-          t('safety.location_unsafe_title') || 'Это место не подходит',
-          safety.message,
-          [{ text: t('common.understood') || 'Понятно' }],
-        );
-        return;
-      }
+      // Location-safety check был ОТКЛЮЧЁН по запросу пользователя:
+      // SafetyGate уже даёт hard-acknowledgement правил перед первой
+      // пряткой ("где прятать", "где не прятать"). Overpass-based
+      // POI-проверка слишком строгая — блокировала легитимные публичные
+      // места (дворы многоквартирных домов, скверы, площадки) когда
+      // там нет помеченной OSM-точки рядом. False positive ломал UX.
+      // checkHideLocationSafe() оставлен в lib/safety.ts на случай
+      // если Apple-ревьюеры потребуют вернуть как advisory-warning.
 
       // Resolve current user → seed user id mapping (so it shows in МОИ КАМНИ)
       const user = await getCurrentUser();
