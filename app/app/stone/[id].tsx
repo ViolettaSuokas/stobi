@@ -27,6 +27,8 @@ import {
   WarningCircle,
   Heart,
   PaperPlaneRight,
+  ChatCircle,
+  MagnifyingGlass,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -1047,9 +1049,9 @@ export default function StoneDetailScreen() {
           </View>
         ) : (
         <View style={styles.body}>
-          {/* Title + meta */}
+          {/* Title + meta. Stone emoji = декорация автоматическая ('🪨' default
+              при создании). Пользователь не вводил — не показываем. */}
           <View style={styles.titleRow}>
-            <Text style={styles.stoneEmoji}>{stone.emoji}</Text>
             <Text style={styles.stoneName} numberOfLines={2}>
               {stone.name}
             </Text>
@@ -1062,9 +1064,12 @@ export default function StoneDetailScreen() {
             </View>
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
-              <Eye size={13} color={Colors.text2} weight="regular" />
+              {/* "Нашли N раз" — clearer чем "1 находка" (юзер не понимал
+                  что значит цифра). MagnifyingGlass icon показывает что
+                  это про поиск/находки, не views. */}
+              <MagnifyingGlass size={13} color={Colors.text2} weight="regular" />
               <Text style={styles.metaText}>
-                {findCount} {pluralize(findCount, 'находка', 'находки', 'находок')}
+                {(t('stone.found_n_times') || 'Нашли {n} раз').replace('{n}', String(findCount))}
               </Text>
             </View>
             <View style={styles.metaDot} />
@@ -1089,6 +1094,13 @@ export default function StoneDetailScreen() {
                 {likeState.total}
               </Text>
             </TouchableOpacity>
+            <View style={styles.metaDot} />
+            {/* Comments counter — иконка чата + кол-во. Tap не делаем, чтобы
+                не путать с лайк-toggle; листай вниз чтобы оставить коммент. */}
+            <View style={styles.metaItem}>
+              <ChatCircle size={13} color={Colors.text2} weight="regular" />
+              <Text style={styles.metaText}>{comments.length}</Text>
+            </View>
           </View>
 
           {/* Freshness — last successful find / author confirm.
