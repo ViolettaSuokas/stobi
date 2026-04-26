@@ -304,6 +304,51 @@ const PALETTES: ReadonlyArray<readonly [string, string]> = [
  *
  * Also merges in any user-created stones from local storage.
  */
+/**
+ * Загружает один камень по id, независимо от статуса find/hidden.
+ * Нужен для stone-detail экрана: туда заходят даже на уже-найденные
+ * камни (из notification "Твой камень нашли", из истории профайла,
+ * из feed). getNearbyStones фильтрует found-stones — для карты ОК,
+ * для detail-экрана нет.
+ */
+export async function getStoneById(stoneId: string, userCoords?: Coords): Promise<NearbyStone | null> {
+  const { isSupabaseConfigured, supabase } = await import('./supabase');
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data: s, error } = await supabase
+      .from('stones')
+      .select('*')
+      .eq('id', stoneId)
+      .maybeSingle();
+    if (error || !s) return null;
+    const stoneCoords = { lat: (s as any).lat, lng: (s as any).lng };
+    const refCoords = userCoords ?? { lat: 60.1699, lng: 24.9384 };
+    const realMeters = haversineDistance(refCoords, stoneCoords);
+    const shape = getStoneShape(s.id, 1);
+    return {
+      id: s.id,
+      emoji: (s as any).emoji ?? '🪨',
+      name: (s as any).name,
+      distance: formatDistance(realMeters),
+      distanceMeters: realMeters,
+      coords: stoneCoords,
+      visual: coordsToFinlandView(stoneCoords),
+      colors: getCityColor((s as any).city),
+      shape,
+      rotation: 0,
+      isPremium: realMeters > FREE_RADIUS_M,
+      city: (s as any).city ?? null,
+      authorId: (s as any).author_id ?? null,
+      createdAt: (s as any).created_at ?? null,
+      lastConfirmedAt: (s as any).last_confirmed_at ?? null,
+      photoUri: (s as any).photo_url ?? null,
+    };
+  } catch (e) {
+    console.warn('getStoneById failed', e);
+    return null;
+  }
+}
+
 export async function getNearbyStones(
   userCoords: Coords,
   _radiusMeters = 1_000_000,

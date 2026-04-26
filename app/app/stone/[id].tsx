@@ -28,6 +28,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import {
   getNearbyStones,
+  getStoneById,
   getCurrentLocation,
   haversineDistance,
   type NearbyStone,
@@ -172,13 +173,15 @@ export default function StoneDetailScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Load location-aware stone list (real distance via haversine)
+      // Загружаем именно этот камень по id напрямую, не через getNearbyStones.
+      // getNearbyStones глобально фильтрует найденные камни (для карты), но
+      // на detail-экран заходят как раз ради истории найденного: автор
+      // тапает уведомление "твой камень нашли", или открывает из Профайл →
+      // Мои камни → Спрятал/Нашёл. Для них stone-detail должен работать.
       const loc = await getCurrentLocation();
       const fallback = { lat: 60.1699, lng: 24.9384 };
-      const stones = await getNearbyStones(loc?.coords ?? fallback);
+      const found = stoneId ? await getStoneById(stoneId, loc?.coords ?? fallback) : null;
       if (cancelled) return;
-
-      const found = stones.find((s) => s.id === stoneId) ?? null;
       setStone(found);
 
       // Load all activities for this stone, newest first
