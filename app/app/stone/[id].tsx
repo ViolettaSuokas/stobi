@@ -24,6 +24,7 @@ import {
   ShareNetwork,
   WarningCircle,
   Heart,
+  PaperPlaneRight,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -79,7 +80,7 @@ import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { isStoneRevealed, revealStone } from '../../lib/reveals';
 import { getTrialInfo } from '../../lib/premium-trial';
 import { getStoneLikeState, toggleStoneLike, type StoneLikeState } from '../../lib/stone-likes';
-import { getStoneComments, addStoneComment, deleteStoneComment, type StoneComment } from '../../lib/stone-comments';
+import { getStoneComments, addStoneComment, deleteStoneComment, toggleCommentLike, reportContent, type StoneComment } from '../../lib/stone-comments';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 0.95;
@@ -324,6 +325,53 @@ export default function StoneDetailScreen() {
       Alert.alert(t('common.error') || 'Ошибка', msg);
     }
     setCommentSending(false);
+  };
+
+  const handleToggleCommentLike = async (commentId: string) => {
+    if (!(await requireAuth(t('stone.like_auth_label') || 'поставить лайк'))) return;
+    // Optimistic
+    setComments((prev) => prev.map((c) =>
+      c.id === commentId
+        ? { ...c, likedByMe: !c.likedByMe, likesCount: Math.max(0, c.likesCount + (c.likedByMe ? -1 : 1)) }
+        : c,
+    ));
+    void haptics.tap();
+    const result = await toggleCommentLike(commentId);
+    setComments((prev) => prev.map((c) =>
+      c.id === commentId ? { ...c, likedByMe: result.liked, likesCount: result.total } : c,
+    ));
+  };
+
+  const handleCommentMenu = (c: StoneComment) => {
+    const isMine = meId === c.authorId;
+    // Author камня и finder тоже могут удалять (модерация — RLS на сервере
+    // тоже это разрешает, см. migration 20260426180000).
+    const canModerate = isOwnStone || alreadyFound;
+    const buttons: Array<{ text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }> = [];
+    if (isMine || canModerate) {
+      buttons.push({
+        text: t('common.delete') || 'Удалить',
+        style: 'destructive',
+        onPress: () => handleDeleteComment(c.id),
+      });
+    }
+    if (!isMine) {
+      buttons.push({
+        text: t('common.report') || 'Пожаловаться',
+        style: 'destructive',
+        onPress: async () => {
+          const res = await reportContent('comment', c.id, 'inappropriate');
+          Alert.alert(
+            res.ok ? (t('common.thanks') || 'Спасибо') : (t('common.error') || 'Ошибка'),
+            res.ok
+              ? (t('report.thanks_text') || 'Жалоба отправлена, модерация проверит.')
+              : (t('report.failed_text') || 'Не получилось отправить.'),
+          );
+        },
+      });
+    }
+    buttons.push({ text: t('common.cancel') || 'Отмена', style: 'cancel' });
+    Alert.alert(t('common.actions') || 'Действия', undefined, buttons);
   };
 
   const handleDeleteComment = (id: string) => {
@@ -1321,7 +1369,7 @@ export default function StoneDetailScreen() {
                 {commentSending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.commentSendBtnText}>{t('common.send') || 'Отпр.'}</Text>
+                  <PaperPlaneRight size={18} color="#FFFFFF" weight="fill" />
                 )}
               </TouchableOpacity>
             </View>
@@ -1353,25 +1401,46 @@ export default function StoneDetailScreen() {
                         <Text style={styles.commentDate}>{formatActivityTime(Date.parse(c.createdAt))}</Text>
                       </View>
                       <Text style={styles.commentBody}>{c.body}</Text>
-                    </View>
-                    {meId === c.authorId && (
+                      {/* Like row под телом коммента */}
                       <TouchableOpacity
-                        onPress={() => handleDeleteComment(c.id)}
-                        style={{ padding: 6 }}
+                        style={styles.commentLikeRow}
+                        onPress={() => handleToggleCommentLike(c.id)}
+                        activeOpacity={0.7}
                         accessibilityRole="button"
-                        accessibilityLabel={t('common.delete') || 'Удалить'}
+                        accessibilityLabel={c.likedByMe ? (t('stone.unlike') || 'Убрать лайк') : (t('stone.like') || 'Лайк')}
                       >
-                        <Text style={{ fontSize: 16, color: Colors.text2 }}>×</Text>
+                        <Heart
+                          size={13}
+                          color={c.likedByMe ? '#DC2626' : Colors.text2}
+                          weight={c.likedByMe ? 'fill' : 'regular'}
+                        />
+                        {c.likesCount > 0 && (
+                          <Text style={[styles.commentLikeCount, c.likedByMe && { color: '#DC2626', fontWeight: '700' }]}>
+                            {c.likesCount}
+                          </Text>
+                        )}
                       </TouchableOpacity>
-                    )}
+                    </View>
+                    {/* 3-точечное меню (delete если своё, report если чужое) */}
+                    <TouchableOpacity
+                      onPress={() => handleCommentMenu(c)}
+                      style={styles.commentMenuBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('common.actions') || 'Действия'}
+                    >
+                      <Text style={styles.commentMenuDots}>⋯</Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
             )}
           </View>
 
-          {/* Reward hint */}
-          {!alreadyFound && (
+          {/* Reward hint — только если можно ещё найти. Скрыт для:
+              - alreadyFound (уже нашёл сам)
+              - verifiedFindCount > 0 (нашёл другой → нет reward)
+              - isOwnStone (свой камень) */}
+          {!alreadyFound && !isOwnStone && verifiedFindCount === 0 && (
             <View style={styles.rewardHint}>
               <Text style={styles.rewardHintEmoji}>💎</Text>
               <Text style={styles.rewardHintText}>
@@ -1945,17 +2014,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text2,
     marginTop: 6,
+    marginBottom: 14,
   },
 
   // Comments thread
   commentInputRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   commentInput: {
     flex: 1,
+    minHeight: 44,
     backgroundColor: Colors.surface,
     borderRadius: 14,
     borderWidth: 1,
@@ -1966,11 +2037,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     maxHeight: 100,
   },
+  // Квадрат + такая же высота как у поля. Самолётик внутри.
   commentSendBtn: {
-    backgroundColor: Colors.accent,
+    width: 44,
+    minHeight: 44,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1987,14 +2059,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
   commentAuthor: { fontSize: 13, fontWeight: '700', color: Colors.text },
   commentDate: { fontSize: 11, color: Colors.text2 },
   commentBody: { fontSize: 13, color: Colors.text, marginTop: 2, lineHeight: 18 },
+  commentLikeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  commentLikeCount: { fontSize: 11, color: Colors.text2 },
+  commentMenuBtn: { paddingHorizontal: 6, paddingVertical: 4 },
+  commentMenuDots: { fontSize: 18, color: Colors.text2, fontWeight: '700' },
 
   // Reward hint
   rewardHint: {
