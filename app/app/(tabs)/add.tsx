@@ -14,7 +14,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   X,
@@ -53,6 +53,7 @@ import { gatherAchievementStats, checkAchievements, ACHIEVEMENT_DEFS } from '../
 import { updateChallengeProgress } from '../../lib/daily-challenge';
 
 export default function AddScreen() {
+  const insets = useSafeAreaInsets();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -711,7 +712,10 @@ export default function AddScreen() {
             - скан завершён (photoUri есть)
             - name >= 2 символов
             description опциональный — необязателен. */}
-        <View style={styles.ctaWrap}>
+        {/* paddingBottom = inner-tabbar (~70) + safe-area (home indicator).
+            Динамически через useSafeAreaInsets — на iPhone с home
+            indicator получится ~104, без — ~84. */}
+        <View style={[styles.ctaWrap, { paddingBottom: 76 + Math.max(insets.bottom, 14) }]}>
           {(() => {
             const canSave = !!photoUri && name.trim().length >= 2 && !saving;
             return (
@@ -1034,14 +1038,11 @@ const styles = StyleSheet.create({
   },
   rewardHintBold: { fontWeight: '800', color: Colors.accent },
 
-  // CTA — фиксированно внизу экрана. paddingBottom: 90 чтобы не залазила
-  // под floating tab bar (~60px высоты + 14px отступ + safe-area).
-  // Раньше paddingBottom был 8 → кнопка пряталась за tab bar когда
-  // клавиатура убрана, юзер думал что её нет вообще.
+  // CTA — фиксированно внизу. paddingBottom применяется inline через
+  // useSafeAreaInsets (см. JSX) — учитывает home indicator + tab bar.
   ctaWrap: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 90,
     backgroundColor: Colors.bg,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
