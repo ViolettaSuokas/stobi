@@ -174,13 +174,12 @@ export default function UserProfileScreen() {
                   <StoneMascot size={68} color={Colors.mascot} variant="happy" />
                 </View>
               )}
-              {/* Likes badge — heart с counter, как у Tosiaczek в референсе */}
-              {stats.likesReceived > 0 && (
-                <View style={styles.likesBadge}>
-                  <Heart size={11} color="#FFFFFF" weight="fill" />
-                  <Text style={styles.likesBadgeText}>{stats.likesReceived}</Text>
-                </View>
-              )}
+              {/* Likes badge — heart с counter, как у Tosiaczek в Stonehiding.
+                  Всегда видим (даже 0), чтобы юзер понял что лайки есть. */}
+              <View style={styles.likesBadge}>
+                <Heart size={11} color="#FFFFFF" weight="fill" />
+                <Text style={styles.likesBadgeText}>{stats.likesReceived}</Text>
+              </View>
             </View>
             <Text style={styles.heroName} numberOfLines={1}>
               {profile.username || (t('user_profile.no_name') || 'Без имени')}
