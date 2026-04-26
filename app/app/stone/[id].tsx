@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   Share,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -78,6 +79,7 @@ import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { isStoneRevealed, revealStone } from '../../lib/reveals';
 import { getTrialInfo } from '../../lib/premium-trial';
 import { getStoneLikeState, toggleStoneLike, type StoneLikeState } from '../../lib/stone-likes';
+import { getStoneComments, addStoneComment, deleteStoneComment, type StoneComment } from '../../lib/stone-comments';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 0.95;
@@ -127,6 +129,10 @@ export default function StoneDetailScreen() {
   // имя/фото/удалить (это нарушит историю finder'ов и сломает AI-эталон).
   const [verifiedFindCount, setVerifiedFindCount] = useState(0);
   const [likeState, setLikeState] = useState<StoneLikeState>({ liked: false, total: 0 });
+  const [comments, setComments] = useState<StoneComment[]>([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [commentSending, setCommentSending] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
 
   // AI find scanner state — открывается по тапу "Я нашла этот камень".
   // Раньше просто ImagePicker + GPS<30м, теперь 2-х сторонний scan→embed→
@@ -226,6 +232,16 @@ export default function StoneDetailScreen() {
         getStoneLikeState(stoneId)
           .then((s) => { if (!cancelled) setLikeState(s); })
           .catch(() => {});
+
+        // Comments — публичный thread под камнем.
+        getStoneComments(stoneId, 50)
+          .then((rows) => { if (!cancelled) setComments(rows); })
+          .catch(() => {});
+
+        // me для UI (показывать кнопку delete на своих комментах).
+        getCurrentUser()
+          .then((u) => { if (!cancelled) setMeId(u?.id ?? null); })
+          .catch(() => {});
       }
 
       // Own stones are always revealed. Three ways to detect ownership:
@@ -285,9 +301,48 @@ export default function StoneDetailScreen() {
 
 
   const modal = useModal();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const REVEAL_COST = 5;
+
+  const handleSendComment = async () => {
+    if (!stoneId || commentSending) return;
+    const body = commentInput.trim();
+    if (!body) return;
+    if (!(await requireAuth(t('stone.comment_auth_label') || 'оставить комментарий'))) return;
+    setCommentSending(true);
+    const result = await addStoneComment(stoneId, body);
+    if (result.ok) {
+      setCommentInput('');
+      const fresh = await getStoneComments(stoneId, 50);
+      setComments(fresh);
+    } else {
+      const msg =
+        result.reason === 'rate_limit' ? (t('stone.comment_rate_limit') || 'Слишком много комментариев. Попробуй через час.')
+        : result.reason === 'too_long' ? (t('stone.comment_too_long') || 'Слишком длинный комментарий (макс 500 символов).')
+        : (t('stone.comment_send_failed') || 'Не удалось отправить.');
+      Alert.alert(t('common.error') || 'Ошибка', msg);
+    }
+    setCommentSending(false);
+  };
+
+  const handleDeleteComment = (id: string) => {
+    Alert.alert(
+      t('stone.comment_delete_title') || 'Удалить комментарий?',
+      t('stone.comment_delete_text') || 'Это действие нельзя отменить.',
+      [
+        { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+        {
+          text: t('common.delete') || 'Удалить',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteStoneComment(id);
+            setComments((prev) => prev.filter((c) => c.id !== id));
+          },
+        },
+      ],
+    );
+  };
 
   const handleToggleLike = async () => {
     if (!stoneId) return;
@@ -1001,6 +1056,24 @@ export default function StoneDetailScreen() {
             );
           })()}
 
+          {/* Дата когда камень был опубликован — explicit "Спрятан 26 апр" */}
+          {stone.createdAt && (
+            <Text style={styles.publishedDate}>
+              {(t('stone.published_on') || 'Опубликован') + ' '}
+              {(() => {
+                try {
+                  const d = new Date(stone.createdAt);
+                  return d.toLocaleDateString(
+                    lang === 'fi' ? 'fi-FI' : lang === 'en' ? 'en-US' : 'ru-RU',
+                    { day: '2-digit', month: 'short', year: 'numeric' },
+                  );
+                } catch {
+                  return '';
+                }
+              })()}
+            </Text>
+          )}
+
           {/* Author revive banner — shown when stone has pending reports */}
           {isOwnStone && reportCount > 0 && (
             <View style={styles.reportBanner}>
@@ -1217,6 +1290,82 @@ export default function StoneDetailScreen() {
                     </View>
                   );
                 })}
+              </View>
+            )}
+          </View>
+
+          {/* Comments section — публичный thread под камнем */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {(t('stone.comments') || 'КОММЕНТАРИИ')} {comments.length > 0 ? `· ${comments.length}` : ''}
+            </Text>
+
+            {/* Input */}
+            <View style={styles.commentInputRow}>
+              <TextInput
+                style={styles.commentInput}
+                value={commentInput}
+                onChangeText={setCommentInput}
+                placeholder={t('stone.comment_placeholder') || 'Оставь комментарий…'}
+                placeholderTextColor={Colors.text2}
+                maxLength={500}
+                multiline
+                editable={!commentSending}
+              />
+              <TouchableOpacity
+                style={[styles.commentSendBtn, (!commentInput.trim() || commentSending) && styles.commentSendBtnDisabled]}
+                onPress={handleSendComment}
+                disabled={!commentInput.trim() || commentSending}
+                activeOpacity={0.85}
+              >
+                {commentSending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.commentSendBtnText}>{t('common.send') || 'Отпр.'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {comments.length === 0 ? (
+              <Text style={styles.commentsEmpty}>
+                {t('stone.comments_empty') || 'Пока нет комментариев — будь первым 💜'}
+              </Text>
+            ) : (
+              <View>
+                {comments.map((c) => (
+                  <View key={c.id} style={styles.commentRow}>
+                    <TouchableOpacity
+                      style={styles.commentAvatar}
+                      onPress={() => router.push(`/user/${c.authorId}` as any)}
+                      activeOpacity={0.7}
+                    >
+                      {c.authorPhotoUrl ? (
+                        <SafeImage source={{ uri: c.authorPhotoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                      ) : (
+                        <Text style={{ fontSize: 18 }}>🪨</Text>
+                      )}
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity onPress={() => router.push(`/user/${c.authorId}` as any)} activeOpacity={0.7}>
+                          <Text style={styles.commentAuthor}>{c.authorUsername || (t('user_profile.no_name') || 'Без имени')}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.commentDate}>{formatActivityTime(Date.parse(c.createdAt))}</Text>
+                      </View>
+                      <Text style={styles.commentBody}>{c.body}</Text>
+                    </View>
+                    {meId === c.authorId && (
+                      <TouchableOpacity
+                        onPress={() => handleDeleteComment(c.id)}
+                        style={{ padding: 6 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('common.delete') || 'Удалить'}
+                      >
+                        <Text style={{ fontSize: 16, color: Colors.text2 }}>×</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
               </View>
             )}
           </View>
@@ -1790,6 +1939,62 @@ const styles = StyleSheet.create({
     color: Colors.text2,
     textAlign: 'center',
   },
+
+  // Published date — явная дата публикации камня под freshness-pill
+  publishedDate: {
+    fontSize: 12,
+    color: Colors.text2,
+    marginTop: 6,
+  },
+
+  // Comments thread
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginBottom: 12,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    maxHeight: 100,
+  },
+  commentSendBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentSendBtnDisabled: { opacity: 0.4 },
+  commentSendBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  commentsEmpty: {
+    fontSize: 13,
+    color: Colors.text2,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center' },
+  commentAuthor: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  commentDate: { fontSize: 11, color: Colors.text2 },
+  commentBody: { fontSize: 13, color: Colors.text, marginTop: 2, lineHeight: 18 },
 
   // Reward hint
   rewardHint: {
