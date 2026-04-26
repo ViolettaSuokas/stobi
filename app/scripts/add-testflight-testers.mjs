@@ -15,6 +15,7 @@ const P8_PATH = new URL('../credentials/AuthKey_' + KEY_ID + '.p8', import.meta.
 const TESTERS = [
   { email: 'violettasuokas@gmail.com', firstName: 'Violetta', lastName: 'Suokas' },
   { email: 'saoirsekotik@gmail.com',   firstName: 'Saoirse',  lastName: 'Kotik'  },
+  { email: 'suokas88@gmail.com',       firstName: 'Suokas',   lastName: 'Tester' },
 ];
 const GROUP_NAME = 'Launch testers';
 
