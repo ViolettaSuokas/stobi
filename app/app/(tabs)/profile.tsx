@@ -894,73 +894,29 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.myStonesList}>
-                {myActivities.map((item, i) => {
-                  const shape = getStoneShape(item.stoneId, 0.85);
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.myStoneRow,
-                        i < myActivities.length - 1 && styles.myStoneRowBorder,
-                      ]}
-                      onPress={() => router.push(`/stone/${item.stoneId}`)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${item.stoneName} · ${item.city ?? ''}`}
-                    >
-                      <View style={styles.myStoneVisual}>
-                        {item.photoUri ? (
-                          <Image
-                            source={{ uri: item.photoUri }}
-                            style={styles.myStonePhoto}
-                          />
-                        ) : item.photo ? (
-                          <Image
-                            source={STONE_PHOTOS[item.photo]}
-                            style={styles.myStonePhoto}
-                          />
-                        ) : (
-                          <LinearGradient
-                            colors={item.stoneColors as unknown as [string, string]}
-                            start={{ x: 0.2, y: 0.05 }}
-                            end={{ x: 0.85, y: 0.95 }}
-                            style={[
-                              styles.myStoneIcon,
-                              {
-                                width: shape.width,
-                                height: shape.height,
-                                borderTopLeftRadius: shape.borderTopLeftRadius,
-                                borderTopRightRadius: shape.borderTopRightRadius,
-                                borderBottomLeftRadius: shape.borderBottomLeftRadius,
-                                borderBottomRightRadius: shape.borderBottomRightRadius,
-                                transform: [{ rotate: `${shape.rotation}deg` }],
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.myStoneEmoji,
-                                { transform: [{ rotate: `${-shape.rotation}deg` }] },
-                              ]}
-                            >
-                              {item.stoneEmoji}
-                            </Text>
-                          </LinearGradient>
-                        )}
+              // 3-колоночный photo grid как на public-profile (зеркало того
+              // что видят другие). Tap на ячейку → /stone/<id> с историей.
+              <View style={styles.myStonesGrid}>
+                {myActivities.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.myStonesGridCell}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/stone/${item.stoneId}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.stoneName} · ${item.city ?? ''}`}
+                  >
+                    {item.photoUri ? (
+                      <Image source={{ uri: item.photoUri }} style={styles.myStonesGridImg} />
+                    ) : item.photo ? (
+                      <Image source={STONE_PHOTOS[item.photo]} style={styles.myStonesGridImg} />
+                    ) : (
+                      <View style={styles.myStonesGridPlaceholder}>
+                        <Text style={{ fontSize: 32 }}>{item.stoneEmoji || '🪨'}</Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.myStoneName} numberOfLines={1}>
-                          {item.stoneName}
-                        </Text>
-                        <Text style={styles.myStoneMeta}>
-                          {item.city} · {formatActivityTime(item.createdAt)}
-                        </Text>
-                      </View>
-                      <CaretRight size={14} color={Colors.text2} weight="bold" />
-                    </TouchableOpacity>
-                  );
-                })}
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
 
@@ -1992,6 +1948,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     overflow: 'hidden',
   },
+  // 3-колоночный grid фото (как на public profile)
+  myStonesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  myStonesGridCell: {
+    width: '32.4%',
+    aspectRatio: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  myStonesGridImg: { width: '100%', height: '100%' },
+  myStonesGridPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surface2 },
   myStoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
