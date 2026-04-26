@@ -32,6 +32,9 @@ import {
   type PublicStoneItem,
 } from '../../lib/public-profile';
 import { StoneMascot } from '../../components/StoneMascot';
+import { getFollowState, toggleFollow, type FollowState } from '../../lib/follows';
+import { getCurrentUser } from '../../lib/auth';
+import { requireAuth } from '../../lib/auth-gate';
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 4;
@@ -48,21 +51,40 @@ export default function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<'hidden' | 'found'>('hidden');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [followState, setFollowState] = useState<FollowState>({ following: false, followersCount: 0, followingCount: 0 });
+  const [meId, setMeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, hList, fList] = await Promise.all([
+    const [p, s, hList, fList, fState, me] = await Promise.all([
       getPublicProfile(id),
       getPublicProfileStats(id),
       getUserStonesGrid(id, 60),
       getUserFoundStonesGrid(id, 60),
+      getFollowState(id),
+      getCurrentUser(),
     ]);
     setProfile(p);
     setStats(s);
     setHiddenStones(hList);
     setFoundStones(fList);
+    setFollowState(fState);
+    setMeId(me?.id ?? null);
     setLoading(false);
   }, [id]);
+
+  const handleToggleFollow = async () => {
+    if (!id) return;
+    if (!(await requireAuth(t('user_profile.follow_auth_label') || 'подписаться'))) return;
+    // Optimistic update
+    setFollowState((prev) => ({
+      following: !prev.following,
+      followersCount: Math.max(0, prev.followersCount + (prev.following ? -1 : 1)),
+      followingCount: prev.followingCount,
+    }));
+    const result = await toggleFollow(id);
+    setFollowState(result);
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -137,7 +159,7 @@ export default function UserProfileScreen() {
             )}
           </View>
 
-          {/* Stats row */}
+          {/* Stats row — Hidden / Found / Likes / Followers */}
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{stats.hiddenCount}</Text>
@@ -160,20 +182,43 @@ export default function UserProfileScreen() {
                 {t('user_profile.stat_likes') || 'Лайков'}
               </Text>
             </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statNum}>{followState.followersCount}</Text>
+              <Text style={styles.statLabel}>
+                {t('user_profile.stat_followers') || 'Подписчиков'}
+              </Text>
+            </View>
           </View>
 
-          {/* DM button — открывает DM thread с этим юзером */}
-          <TouchableOpacity
-            style={styles.dmBtn}
-            activeOpacity={0.85}
-            onPress={() => router.push(`/dm/${profile.id}` as any)}
-            accessibilityRole="button"
-            accessibilityLabel={t('user_profile.send_dm') || 'Написать сообщение'}
-          >
-            <Text style={styles.dmBtnText}>
-              💬 {t('user_profile.send_dm') || 'Написать сообщение'}
-            </Text>
-          </TouchableOpacity>
+          {/* Action row: Follow + DM. Не показываем для своего профиля. */}
+          {meId !== profile.id && (
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.followBtn, followState.following && styles.followBtnFollowing]}
+                activeOpacity={0.85}
+                onPress={handleToggleFollow}
+                accessibilityRole="button"
+                accessibilityState={{ selected: followState.following }}
+              >
+                <Text style={[styles.followBtnText, followState.following && styles.followBtnTextFollowing]}>
+                  {followState.following
+                    ? (t('user_profile.unfollow') || '✓ Подписан')
+                    : (t('user_profile.follow') || '+ Подписаться')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dmBtn}
+                activeOpacity={0.85}
+                onPress={() => router.push(`/dm/${profile.id}` as any)}
+                accessibilityRole="button"
+                accessibilityLabel={t('user_profile.send_dm') || 'Написать сообщение'}
+              >
+                <Text style={styles.dmBtnText}>
+                  💬 {t('user_profile.send_dm_short') || 'Сообщение'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Tabs: Спрятал / Нашёл */}
           <View style={styles.tabs}>
@@ -277,20 +322,36 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 20, fontWeight: '800', color: Colors.accent },
   statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3, fontWeight: '600' },
 
-  dmBtn: {
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  followBtn: {
+    flex: 1,
     backgroundColor: Colors.accent,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  dmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  followBtnFollowing: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+  },
+  followBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  followBtnTextFollowing: { color: Colors.accent },
+  dmBtn: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  dmBtnText: { fontSize: 14, fontWeight: '800', color: Colors.text },
 
   tabs: {
     flexDirection: 'row',
