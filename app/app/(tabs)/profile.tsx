@@ -756,6 +756,20 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* "Посмотреть как видят меня другие" — сразу под profile-photo-card,
+                чтобы юзер сразу видел что у него есть public-view. */}
+            {user && (
+              <TouchableOpacity
+                style={styles.publicViewLink}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/user/${user.id}` as any)}
+              >
+                <Text style={styles.publicViewText}>
+                  👁 {t('profile.view_as_public') || 'Посмотреть как видят меня другие'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Welcome quest — скрывается когда все 3 задачи выполнены */}
             <WelcomeQuest />
 
@@ -847,6 +861,29 @@ export default function ProfileScreen() {
             </ScrollView>
           </View>
 
+          {/* Referral (compact) + Premium — над grid'ом, чтобы не уходили
+              вниз когда сетка камней разрастается. */}
+          {user && <ReferralCard compact />}
+
+          {!user?.isArtist && (
+            <TouchableOpacity
+              style={styles.premiumCompact}
+              activeOpacity={0.85}
+              onPress={() => router.push('/premium')}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.open_premium')}
+            >
+              <Text style={{ fontSize: 22 }}>💎</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.premiumCompactTitle}>{t('profile.open_premium')}</Text>
+                <Text style={styles.premiumCompactSub} numberOfLines={1}>
+                  {t('profile.premium_sub')}
+                </Text>
+              </View>
+              <CaretRight size={16} color={Colors.accent} weight="bold" />
+            </TouchableOpacity>
+          )}
+
           {/* My stones — find/hide tabs */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('profile.my_stones')}</Text>
@@ -920,102 +957,21 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            {myStonesTab === 'hide' && (
-              <TouchableOpacity
-                style={styles.addStoneBtn}
-                activeOpacity={0.85}
-                onPress={() => router.push('/add')}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.add_stone')}
-              >
-                <Plus size={18} color={Colors.accent} weight="bold" />
-                <Text style={styles.addStoneText}>{t('profile.add_stone')}</Text>
-              </TouchableOpacity>
-            )}
+            {/* "Спрятать новый камень" кнопка убрана — кнопка "+" в tab-bar
+                всегда видна, дублировать здесь смысла нет. */}
 
-            {/* Pending finds — после "Мои камни", потому что это про
-                те же камни (одобрить чужую находку твоего камня). Всегда
-                видно авторизованному юзеру: при pending>0 — жёлтая
-                с counter, при 0 — серая "пока пусто" (чтобы юзер знал
-                где это будет когда находка появится). */}
-            {user && (
-              <TouchableOpacity
-                style={[
-                  pendingFindsCount > 0 ? styles.pendingCard : styles.pendingCardEmpty,
-                  { marginTop: 16, marginBottom: 16 },
-                ]}
-                onPress={() => router.push('/pending-approvals' as any)}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={t('pending.title') || 'Одобрить находки'}
-              >
-                <View style={styles.pendingIconBox}>
-                  <Text style={{ fontSize: 22 }}>{pendingFindsCount > 0 ? '🔔' : '🌱'}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={pendingFindsCount > 0 ? styles.pendingTitle : styles.pendingTitleEmpty}>
-                    {t('pending.title') || 'Одобрить находки'}
-                  </Text>
-                  <Text style={pendingFindsCount > 0 ? styles.pendingSub : styles.pendingSubEmpty}>
-                    {pendingFindsCount === 0
-                      ? (t('pending.empty_inline') || 'Пока никто не ждёт одобрения')
-                      : pendingFindsCount === 1
-                        ? (t('pending.subtitle_one') || '1 находка ждёт твоего подтверждения')
-                        : (t('pending.subtitle_many') || `${pendingFindsCount} находок ждут твоего подтверждения`).replace('{count}', String(pendingFindsCount))}
-                  </Text>
-                </View>
-                {pendingFindsCount > 0 ? (
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingBadgeText}>{pendingFindsCount}</Text>
-                  </View>
-                ) : (
-                  <CaretRight size={16} color={Colors.text2} weight="bold" />
-                )}
-              </TouchableOpacity>
-            )}
+            {/* "Одобрить находки" карточка убрана — Stobi сам уверенно
+                определяет камни по AI-эмбеддингу. Pending-flow остался
+                как fallback для borderline-кейсов в БД (find_proofs),
+                но юзеру в UI не предлагаем — слишком много трения. */}
           </View>
 
           {/* Подписки + Подписчики теперь оба в stats-row выше — отдельные
               link'и убраны во избежание дубликации. */}
 
-          {/* "Как меня видят другие" — открывает мой публичный профиль (read-only). */}
-          {user && (
-            <TouchableOpacity
-              style={styles.publicViewLink}
-              activeOpacity={0.7}
-              onPress={() => router.push(`/user/${user.id}` as any)}
-            >
-              <Text style={styles.publicViewText}>
-                👁 {t('profile.view_as_public') || 'Посмотреть как видят меня другие'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Referral card — переехал сюда из верха overview, по запросу:
-              сначала pending finds (про твои камни), потом приглашение друзей. */}
-          {user && <ReferralCard />}
-
-          {/* Premium — viewable by everyone, CTA inside handles auth */}
-          {!user?.isArtist && (
-            <TouchableOpacity
-              style={styles.artistCard}
-              activeOpacity={0.85}
-              onPress={() => router.push('/premium')}
-              accessibilityRole="button"
-              accessibilityLabel={t('profile.open_premium')}
-            >
-              <View style={styles.artistCardIcon}>
-                <Text style={{ fontSize: 24 }}>💎</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.artistCardTitle}>{t('profile.open_premium')}</Text>
-                <Text style={styles.artistCardSub}>
-                  {t('profile.premium_sub')}
-                </Text>
-              </View>
-              <CaretRight size={18} color={Colors.accent} weight="bold" />
-            </TouchableOpacity>
-          )}
+          {/* publicViewLink переехал под profile-photo-card.
+              Referral compact + Premium compact переехали ВЫШЕ grid'а
+              (см. блок над "My stones"), чтобы не уезжали вниз при росте grid'а. */}
 
           {user?.email && <Text style={styles.emailHint}>{user.email}</Text>}
           </View>
@@ -2098,6 +2054,22 @@ const styles = StyleSheet.create({
     color: Colors.text2,
     marginTop: 10,
   },
+
+  // Premium compact card (над grid'ом).
+  premiumCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.accentLight,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(91,79,240,0.25)',
+  },
+  premiumCompactTitle: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  premiumCompactSub: { fontSize: 12, color: Colors.text2, marginTop: 2 },
 
   // Followers link (single row, opens follows list at tab=followers).
   followingLink: {

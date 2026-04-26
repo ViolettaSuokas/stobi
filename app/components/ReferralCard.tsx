@@ -8,14 +8,13 @@ import { ShareTapped } from '../lib/analytics';
 import * as haptics from '../lib/haptics';
 
 /**
- * Реферальная карточка на профиле. Показывает:
- *   - Твой код (STOBI-XXXXXX)
- *   - Сколько уже пригласил + сколько заработал
- *   - Share-кнопка — открывает native sheet с текстом приглашения
+ * Реферальная карточка на профиле. Compact-режим — одна строка с
+ * gift-иконкой и share-кнопкой, для размещения над feed/grid'ом.
+ * Полная карточка — для профайла подробного.
  *
  * Скрыта если юзер не залогинен.
  */
-export function ReferralCard() {
+export function ReferralCard({ compact = false }: { compact?: boolean } = {}) {
   const { t } = useI18n();
   const [code, setCode] = useState<string | null>(null);
   const [stats, setStats] = useState({ invited: 0, earned: 0 });
@@ -48,6 +47,30 @@ export function ReferralCard() {
       console.warn('referral share failed', e);
     }
   };
+
+  // Compact-режим: одна строка с share-tap всем рядом.
+  if (compact) {
+    return (
+      <TouchableOpacity
+        style={styles.compactCard}
+        onPress={handleShare}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={t('referral.share_cta') || 'Пригласи друга'}
+      >
+        <Gift size={20} color={Colors.accent} weight="fill" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.compactTitle}>
+            {t('referral.title') || 'Пригласи друга'}
+          </Text>
+          <Text style={styles.compactSub} numberOfLines={1}>
+            {t('referral.subtitle')}
+          </Text>
+        </View>
+        <ShareNetwork size={18} color={Colors.accent} weight="bold" />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={styles.card}>
@@ -95,6 +118,20 @@ export function ReferralCard() {
 }
 
 const styles = StyleSheet.create({
+  // Compact — одна строка для размещения над feed/grid'ом.
+  compactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.accentLight,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  compactTitle: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  compactSub: { fontSize: 12, color: Colors.text2, marginTop: 2 },
+
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
