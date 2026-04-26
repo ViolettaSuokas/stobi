@@ -99,6 +99,37 @@ export async function getPublicProfileStats(userId: string): Promise<PublicProfi
  *
  * is_hidden filter — пропускаем soft-hidden stones (если будут).
  */
+/**
+ * Stones FOUND by this user (через finds → stones embed). Newest find first.
+ * isFound всегда true для этого списка.
+ */
+export async function getUserFoundStonesGrid(userId: string, limit: number = 60): Promise<PublicStoneItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('finds')
+      .select('created_at, stones!inner(id, name, emoji, photo_url, city, created_at)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return data.map((f: any): PublicStoneItem => {
+      const s = f.stones;
+      return {
+        id: s.id,
+        name: s.name,
+        emoji: s.emoji ?? null,
+        photoUrl: s.photo_url ?? null,
+        city: s.city ?? null,
+        createdAt: f.created_at ?? s.created_at ?? null,
+        isFound: true,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getUserStonesGrid(userId: string, limit: number = 60): Promise<PublicStoneItem[]> {
   if (!isSupabaseConfigured()) return [];
   try {

@@ -26,6 +26,7 @@ import {
   getPublicProfile,
   getPublicProfileStats,
   getUserStonesGrid,
+  getUserFoundStonesGrid,
   type PublicProfile,
   type PublicProfileStats,
   type PublicStoneItem,
@@ -42,20 +43,24 @@ export default function UserProfileScreen() {
   const { t, lang } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [stats, setStats] = useState<PublicProfileStats>({ hiddenCount: 0, foundCount: 0, likesReceived: 0 });
-  const [stones, setStones] = useState<PublicStoneItem[]>([]);
+  const [hiddenStones, setHiddenStones] = useState<PublicStoneItem[]>([]);
+  const [foundStones, setFoundStones] = useState<PublicStoneItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'hidden' | 'found'>('hidden');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [p, s, list] = await Promise.all([
+    const [p, s, hList, fList] = await Promise.all([
       getPublicProfile(id),
       getPublicProfileStats(id),
       getUserStonesGrid(id, 60),
+      getUserFoundStonesGrid(id, 60),
     ]);
     setProfile(p);
     setStats(s);
-    setStones(list);
+    setHiddenStones(hList);
+    setFoundStones(fList);
     setLoading(false);
   }, [id]);
 
@@ -170,43 +175,72 @@ export default function UserProfileScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Stones grid */}
+          {/* Tabs: Спрятал / Нашёл */}
+          <View style={styles.tabs}>
+            {(['hidden', 'found'] as const).map((tab) => {
+              const active = activeTab === tab;
+              const count = tab === 'hidden' ? hiddenStones.length : foundStones.length;
+              const label = tab === 'hidden'
+                ? (t('user_profile.tab_hidden') || 'Спрятал')
+                : (t('user_profile.tab_found') || 'Нашёл');
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => setActiveTab(tab)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {label} {count > 0 ? `· ${count}` : ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Stones grid for active tab */}
           <View style={styles.gridSection}>
-            <Text style={styles.gridSectionTitle}>
-              {t('user_profile.stones_section') || 'КАМНИ'}
-            </Text>
-            {stones.length === 0 ? (
-              <Text style={styles.gridEmpty}>
-                {t('user_profile.stones_empty') || 'Пока ни одного камня не спрятал'}
-              </Text>
-            ) : (
-              <View style={styles.grid}>
-                {stones.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={styles.cell}
-                    activeOpacity={0.85}
-                    onPress={() => router.push(`/stone/${s.id}` as any)}
-                  >
-                    {s.photoUrl ? (
-                      <Image source={{ uri: s.photoUrl }} style={styles.cellImg} blurRadius={s.isFound ? 0 : 12} />
-                    ) : (
-                      <View style={styles.cellPlaceholder}>
-                        <Text style={{ fontSize: 36 }}>{s.emoji || '🪨'}</Text>
-                      </View>
-                    )}
-                    {/* Иконка "найден" в углу для visited stones, lock для еще-спрятанных */}
-                    <View style={styles.cellOverlay}>
-                      {s.isFound ? (
-                        <CheckCircle size={16} color="#FFFFFF" weight="fill" />
+            {(() => {
+              const list = activeTab === 'hidden' ? hiddenStones : foundStones;
+              if (list.length === 0) {
+                return (
+                  <Text style={styles.gridEmpty}>
+                    {activeTab === 'hidden'
+                      ? (t('user_profile.empty_hidden') || 'Пока ни одного камня не спрятал')
+                      : (t('user_profile.empty_found') || 'Пока ничего не нашёл')}
+                  </Text>
+                );
+              }
+              return (
+                <View style={styles.grid}>
+                  {list.map((s) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      style={styles.cell}
+                      activeOpacity={0.85}
+                      onPress={() => router.push(`/stone/${s.id}` as any)}
+                    >
+                      {s.photoUrl ? (
+                        <Image source={{ uri: s.photoUrl }} style={styles.cellImg} blurRadius={s.isFound ? 0 : 12} />
                       ) : (
-                        <MapPin size={14} color="#FFFFFF" weight="fill" />
+                        <View style={styles.cellPlaceholder}>
+                          <Text style={{ fontSize: 36 }}>{s.emoji || '🪨'}</Text>
+                        </View>
                       )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                      <View style={styles.cellOverlay}>
+                        {s.isFound ? (
+                          <CheckCircle size={16} color="#FFFFFF" weight="fill" />
+                        ) : (
+                          <MapPin size={14} color="#FFFFFF" weight="fill" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })()}
           </View>
         </ScrollView>
       )}
@@ -257,6 +291,28 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   dmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+
+  tabs: {
+    flexDirection: 'row',
+    paddingHorizontal: GRID_PADDING,
+    gap: 8,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  tabText: { fontSize: 13, fontWeight: '700', color: Colors.text2 },
+  tabTextActive: { color: '#FFFFFF', fontWeight: '800' },
 
   gridSection: { paddingHorizontal: GRID_PADDING },
   gridSectionTitle: { fontSize: 12, fontWeight: '700', color: Colors.text2, letterSpacing: 1, marginBottom: 8 },
