@@ -22,6 +22,7 @@ import {
   EyeSlash,
   ShareNetwork,
   WarningCircle,
+  Heart,
 } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -76,6 +77,7 @@ import { gatherAchievementStats, checkAchievements, ACHIEVEMENT_DEFS } from '../
 import { updateChallengeProgress } from '../../lib/daily-challenge';
 import { isStoneRevealed, revealStone } from '../../lib/reveals';
 import { getTrialInfo } from '../../lib/premium-trial';
+import { getStoneLikeState, toggleStoneLike, type StoneLikeState } from '../../lib/stone-likes';
 
 const { width } = Dimensions.get('window');
 const HERO_HEIGHT = width * 0.95;
@@ -124,6 +126,7 @@ export default function StoneDetailScreen() {
   // Сколько раз камень нашли (verified). Если ≥1 — автор НЕ может менять
   // имя/фото/удалить (это нарушит историю finder'ов и сломает AI-эталон).
   const [verifiedFindCount, setVerifiedFindCount] = useState(0);
+  const [likeState, setLikeState] = useState<StoneLikeState>({ liked: false, total: 0 });
 
   // AI find scanner state — открывается по тапу "Я нашла этот камень".
   // Раньше просто ImagePicker + GPS<30м, теперь 2-х сторонний scan→embed→
@@ -218,6 +221,11 @@ export default function StoneDetailScreen() {
             if (count > 0) setRevealed(true);
           }
         } catch {/* ignore */}
+
+        // Likes state — общий counter + мой статус.
+        getStoneLikeState(stoneId)
+          .then((s) => { if (!cancelled) setLikeState(s); })
+          .catch(() => {});
       }
 
       // Own stones are always revealed. Three ways to detect ownership:
@@ -280,6 +288,20 @@ export default function StoneDetailScreen() {
   const { t } = useI18n();
 
   const REVEAL_COST = 5;
+
+  const handleToggleLike = async () => {
+    if (!stoneId) return;
+    if (!(await requireAuth(t('stone.like_auth_label') || 'поставить лайк'))) return;
+    // Optimistic update — UI меняется сразу, server-result через 0.5s
+    // подкрутит counter если разошлись (race с другим лайкающим юзером).
+    setLikeState((prev) => ({
+      liked: !prev.liked,
+      total: Math.max(0, prev.total + (prev.liked ? -1 : 1)),
+    }));
+    void haptics.tap();
+    const result = await toggleStoneLike(stoneId);
+    setLikeState(result);
+  };
 
   const handleReveal = async () => {
     if (!stoneId) return;
@@ -934,6 +956,28 @@ export default function StoneDetailScreen() {
                 {findCount} {pluralize(findCount, 'находка', 'находки', 'находок')}
               </Text>
             </View>
+            <View style={styles.metaDot} />
+            {/* Like-counter с heart-кнопкой. Tap → toggle. Optimistic UI. */}
+            <TouchableOpacity
+              onPress={handleToggleLike}
+              style={styles.metaItem}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={
+                likeState.liked
+                  ? (t('stone.unlike') || 'Убрать лайк')
+                  : (t('stone.like') || 'Поставить лайк')
+              }
+            >
+              <Heart
+                size={14}
+                color={likeState.liked ? '#DC2626' : Colors.text2}
+                weight={likeState.liked ? 'fill' : 'regular'}
+              />
+              <Text style={[styles.metaText, likeState.liked && { color: '#DC2626', fontWeight: '700' }]}>
+                {likeState.total}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Freshness — last successful find / author confirm.
