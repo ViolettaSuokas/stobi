@@ -41,6 +41,61 @@ export async function getFollowState(targetUserId: string): Promise<FollowState>
   }
 }
 
+export type FollowListItem = {
+  userId: string;
+  username: string | null;
+  photoUrl: string | null;
+  isArtist: boolean;
+};
+
+/** Список юзеров на которых подписан target. */
+export async function getFollowingList(userId: string): Promise<FollowListItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('user_follows')
+      .select('followee_id, profiles!user_follows_followee_id_fkey(id, username, photo_url, is_artist)')
+      .eq('follower_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error || !data) return [];
+    return (data as any[])
+      .filter((row) => row.profiles)
+      .map((row) => ({
+        userId: row.profiles.id,
+        username: row.profiles.username ?? null,
+        photoUrl: row.profiles.photo_url ?? null,
+        isArtist: !!row.profiles.is_artist,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/** Список юзеров которые подписаны на target. */
+export async function getFollowersList(userId: string): Promise<FollowListItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from('user_follows')
+      .select('follower_id, profiles!user_follows_follower_id_fkey(id, username, photo_url, is_artist)')
+      .eq('followee_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error || !data) return [];
+    return (data as any[])
+      .filter((row) => row.profiles)
+      .map((row) => ({
+        userId: row.profiles.id,
+        username: row.profiles.username ?? null,
+        photoUrl: row.profiles.photo_url ?? null,
+        isArtist: !!row.profiles.is_artist,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /** Атомарный toggle через RPC. Возвращает свежий state. */
 export async function toggleFollow(targetUserId: string): Promise<FollowState> {
   if (!isSupabaseConfigured()) return { following: false, followersCount: 0, followingCount: 0 };

@@ -182,12 +182,16 @@ export default function UserProfileScreen() {
                 {t('user_profile.stat_likes') || 'Лайков'}
               </Text>
             </View>
-            <View style={styles.statBox}>
+            <TouchableOpacity
+              style={styles.statBox}
+              onPress={() => router.push(`/follows/${profile.id}?tab=followers` as any)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.statNum}>{followState.followersCount}</Text>
               <Text style={styles.statLabel}>
                 {t('user_profile.stat_followers') || 'Подписчиков'}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Action row: Follow + DM. Не показываем для своего профиля. */}

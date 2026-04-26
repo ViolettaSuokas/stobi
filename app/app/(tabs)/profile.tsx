@@ -64,6 +64,7 @@ import {
 } from '../../lib/activity';
 import { STONE_PHOTOS } from '../../lib/stone-photos';
 import { getPendingFindsForMyStones } from '../../lib/finds';
+import { getFollowState } from '../../lib/follows';
 import { gatherAchievementStats, checkAchievements, getAchievements } from '../../lib/achievements';
 import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
@@ -118,6 +119,8 @@ export default function ProfileScreen() {
   const [myActivities, setMyActivities] = useState<Activity[]>([]);
   const [hiddenCount, setHiddenCount] = useState(0);
   const [foundCount, setFoundCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
   const [trialActive, setTrialActive] = useState(false);
   const [trialRemaining, setTrialRemaining] = useState('');
   const { t } = useI18n();
@@ -181,6 +184,16 @@ export default function ProfileScreen() {
             // Pending finds для бейджа "Одобрить находки".
             getPendingFindsForMyStones()
               .then((pf) => { if (active) setPendingFindsCount(pf.length); })
+              .catch(() => {});
+
+            // Follow counts — отдаются getFollowState (следит за target юзером,
+            // но в данном случае target == me, так что обе цифры наши).
+            getFollowState(u.id)
+              .then((s) => {
+                if (!active) return;
+                setFollowingCount(s.followingCount);
+                setFollowersCount(s.followersCount);
+              })
               .catch(() => {});
 
             // Re-check достижений при каждом фокусе профайла. Это ловит
@@ -748,7 +761,8 @@ export default function ProfileScreen() {
 
             {/* Referral card переехал после "Одобрить находки" (см. ниже) */}
 
-            {/* Stats */}
+            {/* Stats — Спрятал / Нашёл / Подписчики. Алмазики уже видны
+                сверху-слева, дублировать здесь не нужно (по запросу юзера). */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Text style={[styles.statNum, { color: Colors.accent }]} numberOfLines={1}>{String(hiddenCount ?? 0)}</Text>
@@ -758,12 +772,18 @@ export default function ProfileScreen() {
                 <Text style={[styles.statNum, { color: Colors.green }]} numberOfLines={1}>{String(foundCount ?? 0)}</Text>
                 <Text style={styles.statLabel} numberOfLines={1}>{t('profile.found_count')}</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statNum, { color: Colors.orange }]} numberOfLines={1}>
-                  {String(balance ?? 0)}
+              {/* "Подписки" — кол-во людей на кого Я подписана (following).
+                  По запросу юзера: "те на кого я подписалась". */}
+              <TouchableOpacity
+                style={styles.statCard}
+                activeOpacity={0.7}
+                onPress={() => user && router.push(`/follows/${user.id}?tab=following` as any)}
+              >
+                <Text style={[styles.statNum, { color: Colors.text }]} numberOfLines={1}>
+                  {String(followingCount ?? 0)}
                 </Text>
-                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.diamonds')}</Text>
-              </View>
+                <Text style={styles.statLabel} numberOfLines={1}>{t('profile.following_link') || 'Подписки'}</Text>
+              </TouchableOpacity>
             </View>
 
           {/* Achievements */}
@@ -990,6 +1010,35 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* "Подписки" уже в stats-row выше (на кого я подписалась).
+              Здесь — "Подписчики" (кто подписался на меня), как отдельная
+              ссылка с counter'ом. */}
+          {user && (
+            <TouchableOpacity
+              style={styles.followingLink}
+              activeOpacity={0.7}
+              onPress={() => router.push(`/follows/${user.id}?tab=followers` as any)}
+            >
+              <Text style={styles.followingLinkLabel}>
+                {(t('profile.followers_link') || 'Подписчики') + ` · ${followersCount}`}
+              </Text>
+              <CaretRight size={16} color={Colors.text2} weight="bold" />
+            </TouchableOpacity>
+          )}
+
+          {/* "Как меня видят другие" — открывает мой публичный профиль (read-only). */}
+          {user && (
+            <TouchableOpacity
+              style={styles.publicViewLink}
+              activeOpacity={0.7}
+              onPress={() => router.push(`/user/${user.id}` as any)}
+            >
+              <Text style={styles.publicViewText}>
+                👁 {t('profile.view_as_public') || 'Посмотреть как видят меня другие'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Referral card — переехал сюда из верха overview, по запросу:
               сначала pending finds (про твои камни), потом приглашение друзей. */}
@@ -2087,4 +2136,30 @@ const styles = StyleSheet.create({
     color: Colors.text2,
     marginTop: 10,
   },
+
+  // Followers link (single row, opens follows list at tab=followers).
+  followingLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  followingLinkLabel: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  publicViewLink: {
+    backgroundColor: Colors.accentLight,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(91,79,240,0.25)',
+  },
+  publicViewText: { fontSize: 14, fontWeight: '700', color: Colors.accent },
 });
