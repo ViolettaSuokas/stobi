@@ -862,8 +862,11 @@ export default function ProfileScreen() {
           </View>
 
           {/* Referral (compact) + Premium — над grid'ом, чтобы не уходили
-              вниз когда сетка камней разрастается. */}
-          {user && <ReferralCard compact />}
+              вниз когда сетка камней разрастается. marginTop для отступа от
+              ачивок выше. */}
+          <View style={{ marginTop: 20 }}>
+            {user && <ReferralCard compact />}
+          </View>
 
           {!user?.isArtist && (
             <TouchableOpacity
