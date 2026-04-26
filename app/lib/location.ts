@@ -315,13 +315,29 @@ export async function getNearbyStones(
   if (isSupabaseConfigured()) {
     try {
       const { supabase } = await import('./supabase');
-      const { data: dbStones } = await supabase
-        .from('stones')
-        .select('*')
-        .or('is_hidden.is.null,is_hidden.eq.false');
+      // Параллельно: все non-hidden камни + список stone_id'ов которые
+      // уже verified-found. Камни с подтверждённой находкой исключаем
+      // у ВСЕХ юзеров (раньше фильтровались только локально через
+      // foundIds = "мои находки", автор продолжал видеть свой камень
+      // на карте после того как его кто-то нашёл).
+      const [stonesRes, findsRes] = await Promise.all([
+        supabase
+          .from('stones')
+          .select('*')
+          .or('is_hidden.is.null,is_hidden.eq.false'),
+        supabase
+          .from('finds')
+          .select('stone_id'),
+      ]);
+      const dbStones = stonesRes.data;
+      const foundStoneIds = new Set<string>(
+        (findsRes.data ?? []).map((f: any) => f.stone_id).filter(Boolean),
+      );
 
       if (dbStones) {
-        return dbStones.map((s: Record<string, any>): NearbyStone => {
+        return dbStones
+          .filter((s: Record<string, any>) => !foundStoneIds.has(s.id))
+          .map((s: Record<string, any>): NearbyStone => {
           const stoneCoords = { lat: s.lat, lng: s.lng };
           const realMeters = haversineDistance(userCoords, stoneCoords);
           const shape = getStoneShape(s.id, 1);
