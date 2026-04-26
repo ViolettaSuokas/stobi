@@ -161,6 +161,29 @@ export default function LoginScreen() {
       });
       if (signInError) throw signInError;
 
+      // Same fix as in Google handler: signInWithIdToken auto-creates a new
+      // user if Apple ID isn't linked yet. Login screen has no age field —
+      // юзер тапнул "Login" но не зарегистрирован → выкидываем обратно с
+      // alert'ом и редиректом на /register чтобы указал возраст (COPPA).
+      // Раньше этот блок был только в Google handler — Apple проскакивал.
+      const isNewUser = !!data.user && Date.now() - new Date(data.user.created_at).getTime() < 10_000;
+      if (isNewUser) {
+        await supabase.auth.signOut();
+        Alert.alert(
+          t('login.not_registered_title') || 'Аккаунт не найден',
+          t('login.not_registered_text') ||
+            'Похоже, ты ещё не регистрировался в Stobi через Apple. Перейди в Регистрацию — там нужно указать возраст.',
+          [
+            {
+              text: t('common.register') || 'Регистрация',
+              onPress: () => router.replace('/register'),
+            },
+            { text: t('common.cancel') || 'Отмена', style: 'cancel' },
+          ],
+        );
+        return;
+      }
+
       if (credential.fullName && data.user) {
         const fullName = [credential.fullName.givenName, credential.fullName.familyName]
           .filter(Boolean)

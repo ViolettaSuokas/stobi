@@ -19,7 +19,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Heart } from 'phosphor-react-native';
+import { Heart } from 'phosphor-react-native';
 import { Colors } from '../constants/Colors';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useI18n } from '../lib/i18n';
@@ -67,7 +67,24 @@ export function AgeGate({ visible, onComplete, onClose }: Props) {
     if (!selected) return;
     const age = currentYear - selected;
     if (age < 13) {
-      setError(t('agegate.too_young') || 'Приложение для 13+. Извини.');
+      // Под-13 — это не ошибка которую можно "понять и исправить".
+      // FTC "no actual knowledge" doctrine + Apple App Store guideline 1.3:
+      // если юзер сам сказал что ему <13, мы ОБЯЗАНЫ заблокировать.
+      // Sign out + alert + редирект на /login. Юзер не может остаться
+      // в app под этим аккаунтом.
+      setError(null);
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+      // Импорт router здесь чтобы избежать circular в Expo Router context
+      const { router } = await import('expo-router');
+      const { Alert } = await import('react-native');
+      Alert.alert(
+        t('agegate.too_young_title') || 'Stobi доступен с 13 лет',
+        t('agegate.too_young_text') ||
+          'Если тебе младше 13 — играй с родителем на его телефоне. Аккаунт удалён, повторно зарегистрироваться можно когда тебе будет 13+.',
+        [{ text: t('common.understood') || 'Понятно', onPress: () => router.replace('/login' as any) }],
+      );
       return;
     }
     setSubmitting(true);
@@ -88,16 +105,17 @@ export function AgeGate({ visible, onComplete, onClose }: Props) {
     }
   };
 
+  // onRequestClose НЕ вызываем onClose — AgeGate mandatory (COPPA),
+  // нельзя скипнуть. Юзер должен выбрать год либо если signOut.
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => {}}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
             {t('agegate.title') || 'Сколько тебе лет?'}
           </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-            <X size={22} color={Colors.text} weight="bold" />
-          </TouchableOpacity>
+          {/* X кнопка убрана — выбор года mandatory. Если юзер не хочет
+              указывать — может залогиниться (signOut кнопка под формой). */}
         </View>
 
         <View style={styles.hero}>
