@@ -74,9 +74,13 @@ export default function FeedbackScreen() {
     return (
       <View style={styles.container}>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-            <CaretLeft size={22} color={Colors.text} weight="bold" />
-          </TouchableOpacity>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+              <CaretLeft size={22} color={Colors.text} weight="bold" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t('feedback.title')}</Text>
+            <View style={styles.backBtn} />
+          </View>
           <View style={styles.successWrap} accessibilityLiveRegion="polite">
             <StoneMascot size={120} color={Colors.green} variant="happy" showSparkles />
             <CheckCircle size={40} color={Colors.green} weight="fill" style={{ marginTop: 16 }} />
@@ -99,10 +103,13 @@ export default function FeedbackScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-          <CaretLeft size={22} color={Colors.text} weight="bold" />
-          <Text style={styles.backText}>{t('common.back')}</Text>
-        </TouchableOpacity>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+            <CaretLeft size={22} color={Colors.text} weight="bold" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('feedback.title')}</Text>
+          <View style={styles.backBtn} />
+        </View>
       </SafeAreaView>
 
       <KeyboardAvoidingView
@@ -115,7 +122,8 @@ export default function FeedbackScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>{t('feedback.title')}</Text>
+          {/* Title теперь в header'е (унифицированный стиль).
+              Здесь только subtitle с описанием. */}
           <Text style={styles.subtitle}>{t('feedback.subtitle')}</Text>
 
           {/* Category picker */}
@@ -201,8 +209,18 @@ export default function FeedbackScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 16 },
-  backText: { fontSize: 15, fontWeight: '600', color: Colors.text },
+  // Унифицированный header — такой же как в diamond-history / notifications.
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', color: Colors.text },
   scroll: { padding: 20, paddingBottom: 48 },
   title: { fontSize: 24, fontWeight: '800', color: Colors.text, marginBottom: 6 },
   subtitle: { fontSize: 14, color: Colors.text2, lineHeight: 20, marginBottom: 24 },

@@ -32,7 +32,7 @@ import { getCurrentUser, logout, deleteAccount, exportMyData, type User } from '
 import { useI18n, LANGUAGE_NAMES, type Lang } from '../lib/i18n';
 import { useModal } from '../lib/modal';
 import { LanguageChanged, LoggedOut, AccountDeleted } from '../lib/analytics';
-import { SafetyGate, resetSafetyAck } from '../components/SafetyGate';
+import { resetSafetyAck } from '../components/SafetyGate';
 import { resetOnboarding } from '../lib/auth';
 
 const NOTIF_KEYS = {
@@ -44,7 +44,8 @@ const NOTIF_KEYS = {
 export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [chatNotifs, setChatNotifs] = useState(true);
-  const [showCommunityRules, setShowCommunityRules] = useState(false);
+  // showCommunityRules state удалён — community-rules теперь
+  // отдельный Stack-modal route (/community-rules).
   const [user, setUser] = useState<User | null>(null);
 
   // Know whether the viewer is signed in — Account section (Download
@@ -357,7 +358,7 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={styles.row}
             activeOpacity={0.7}
-            onPress={() => setShowCommunityRules(true)}
+            onPress={() => router.push('/community-rules' as any)}
             accessibilityRole="button"
             accessibilityLabel={t('settings.community_rules') || 'Правила сообщества'}
           >
@@ -437,17 +438,10 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Community rules overlay — read-only view of SafetyGate. User
-          has already acknowledged once (that's what unlocked first hide);
-          Settings is for re-reading the rules later. Uses the same
-          content so rules stay in a single source of truth. */}
-      <SafetyGate
-        visible={showCommunityRules}
-        readOnly
-        onClose={() => setShowCommunityRules(false)}
-        onAcknowledge={() => setShowCommunityRules(false)}
-      />
+      {/* Community rules read-only view переехал в /community-rules
+          (Stack-modal) для унификации со всеми остальными settings sub-
+          screens. Mandatory-gate (SafetyGate как fullScreen Modal с
+          checkbox'ом) остаётся для первой пряты. */}
     </View>
   );
 }
