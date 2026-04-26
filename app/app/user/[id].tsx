@@ -157,14 +157,16 @@ export default function UserProfileScreen() {
             </View>
           </View>
 
-          {/* DM button (placeholder) — будет работать когда #18 готов */}
+          {/* DM button — открывает DM thread с этим юзером */}
           <TouchableOpacity
-            style={styles.dmBtnDisabled}
-            disabled
-            accessibilityLabel={t('user_profile.dm_coming_soon') || 'Сообщения скоро'}
+            style={styles.dmBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push(`/dm/${profile.id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={t('user_profile.send_dm') || 'Написать сообщение'}
           >
-            <Text style={styles.dmBtnDisabledText}>
-              💬 {t('user_profile.dm_coming_soon') || 'Сообщения скоро'}
+            <Text style={styles.dmBtnText}>
+              💬 {t('user_profile.send_dm') || 'Написать сообщение'}
             </Text>
           </TouchableOpacity>
 
@@ -241,17 +243,20 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 20, fontWeight: '800', color: Colors.accent },
   statLabel: { fontSize: 11, color: Colors.text2, marginTop: 3, fontWeight: '600' },
 
-  dmBtnDisabled: {
+  dmBtn: {
     marginHorizontal: 16,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.accent,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
     marginBottom: 20,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  dmBtnDisabledText: { fontSize: 14, fontWeight: '700', color: Colors.text2 },
+  dmBtnText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 
   gridSection: { paddingHorizontal: GRID_PADDING },
   gridSectionTitle: { fontSize: 12, fontWeight: '700', color: Colors.text2, letterSpacing: 1, marginBottom: 8 },
