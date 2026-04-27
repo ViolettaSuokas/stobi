@@ -8,6 +8,8 @@ import {
   Image,
   RefreshControl,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -125,6 +127,31 @@ export default function ProfileScreen() {
   // показываем статичные приветственные сообщения как заглушку.
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDraft, setChatDraft] = useState('');
+  // Stub-чат до подключения LLM. Сообщения хранятся в state, юзерские
+  // отображаются справа, ответы Stobi — слева. Реальный AI пока не
+  // подключён — отвечаем шаблонной фразой через 600мс.
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'stobi'; text: string }[]>([
+    { role: 'stobi', text: 'Скоро со мной можно будет болтать по-настоящему — про твои камни, маршруты, что нашёл за день.' },
+    { role: 'stobi', text: 'А пока я только учусь. Но если попробуешь написать — я запомню что тебе интересно.' },
+  ]);
+
+  const handleSendChat = useCallback(() => {
+    const text = chatDraft.trim();
+    if (!text) return;
+    setChatMessages((prev) => [...prev, { role: 'user', text }]);
+    setChatDraft('');
+    // Stub-ответ — пока LLM не подключён. Позже здесь будет вызов
+    // AI provider'а с системным промптом про Stobi-собеседника.
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: 'stobi',
+          text: 'Я ещё не научился отвечать как настоящий Stobi 💜 Совсем скоро — обещаю!',
+        },
+      ]);
+    }, 600);
+  }, [chatDraft]);
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
   const [selectedEyeId, setSelectedEyeId] = useState<string>(EYE_ITEMS[0].id);
   const [selectedShapeId, setSelectedShapeId] = useState<string>(SHAPE_ITEMS[0].id);
@@ -1363,45 +1390,51 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            <View style={styles.mascotFullTopBar}>
-              <View style={styles.levelChip}>
-                <Text style={styles.levelChipText}>💎 {balance}</Text>
+            {/* Chip + caret + settings — спрятаны в чат-режиме, юзер хочет
+                чистый чат без шума сверху. */}
+            {!chatOpen && (
+              <View style={styles.mascotFullTopBar}>
+                <View style={styles.levelChip}>
+                  <Text style={styles.levelChipText}>💎 {balance}</Text>
+                </View>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity
+                  onPress={() => setCustomizeOpen((o) => !o)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('profile.customize')}
+                  style={styles.mascotCaretBtnWrap}
+                >
+                  <BlurView intensity={40} tint="light" style={styles.mascotCaretBtn}>
+                    {customizeOpen ? (
+                      <CaretDown size={26} color="#FFFFFF" weight="bold" />
+                    ) : (
+                      <CaretUp size={26} color="#FFFFFF" weight="bold" />
+                    )}
+                  </BlurView>
+                </TouchableOpacity>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity
+                  style={styles.settingsBtn}
+                  onPress={() => router.push('/settings')}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('settings.title')}
+                >
+                  <GearSix size={20} color="#FFFFFF" weight="regular" />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity
-                onPress={() => setCustomizeOpen((o) => !o)}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.customize')}
-                style={styles.mascotCaretBtnWrap}
-              >
-                <BlurView intensity={40} tint="light" style={styles.mascotCaretBtn}>
-                  {customizeOpen ? (
-                    <CaretDown size={26} color="#FFFFFF" weight="bold" />
-                  ) : (
-                    <CaretUp size={26} color="#FFFFFF" weight="bold" />
-                  )}
-                </BlurView>
-              </TouchableOpacity>
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity
-                style={styles.settingsBtn}
-                onPress={() => router.push('/settings')}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t('settings.title')}
-              >
-                <GearSix size={20} color="#FFFFFF" weight="regular" />
-              </TouchableOpacity>
-            </View>
+            )}
           </SafeAreaView>
 
           {chatOpen ? (
-            // ─── CHAT MODE (Tolan-style): маскот ОСТАЁТСЯ большим, слева;
-            //     справа — баблы сообщений, снизу активный input. Маскот
-            //     не уменьшается в маленький avatar — он остаётся живой
-            //     иллюстрацией рядом с чатом.
-            <>
+            // ─── CHAT MODE: маскот сверху, баблы под ним, активный input
+            //     внизу. KeyboardAvoidingView поднимает input над клавой.
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={0}
+            >
               {/* Маскот сверху по центру (над сообщениями), не сбоку. */}
               <View style={styles.chatMascotTop}>
                 <TouchableOpacity
@@ -1432,22 +1465,23 @@ export default function ProfileScreen() {
                 contentContainerStyle={styles.chatMessagesContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Заглушка приветствия — реальный LLM пока не подключён. */}
                 <View style={styles.chatBubbleStobi}>
                   <Text style={styles.chatBubbleText}>
                     Привет, {user?.username || 'друг'}! 💜
                   </Text>
                 </View>
-                <View style={styles.chatBubbleStobi}>
-                  <Text style={styles.chatBubbleText}>
-                    Я {user?.characterName || 'Stobi'}. Скоро мы сможем поговорить по-настоящему — про твои камни, маршруты, что нашёл за день.
-                  </Text>
-                </View>
-                <View style={styles.chatBubbleStobi}>
-                  <Text style={styles.chatBubbleText}>
-                    А пока я только учусь отвечать. Но если попробуешь написать — я запомню что тебе интересно.
-                  </Text>
-                </View>
+                {chatMessages.map((m, i) => (
+                  <View
+                    key={i}
+                    style={m.role === 'user' ? styles.chatBubbleUser : styles.chatBubbleStobi}
+                  >
+                    <Text
+                      style={m.role === 'user' ? styles.chatBubbleUserText : styles.chatBubbleText}
+                    >
+                      {m.text}
+                    </Text>
+                  </View>
+                ))}
               </ScrollView>
 
               <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
@@ -1467,8 +1501,10 @@ export default function ProfileScreen() {
                   {chatDraft.trim().length > 0 ? (
                     <TouchableOpacity
                       style={styles.chatInputSend}
-                      onPress={() => setChatDraft('')}
+                      onPress={handleSendChat}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('common.send') || 'Отправить'}
                     >
                       <PaperPlaneRight size={18} color="#FFFFFF" weight="fill" />
                     </TouchableOpacity>
@@ -1479,7 +1515,7 @@ export default function ProfileScreen() {
                   )}
                 </View>
               </View>
-            </>
+            </KeyboardAvoidingView>
           ) : (
             // ─── DEFAULT MODE: fullscreen маскот + tap-to-open chat ───
             <>
@@ -1800,6 +1836,21 @@ const styles = StyleSheet.create({
   },
   chatBubbleText: {
     color: '#1A1A2E',
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  chatBubbleUser: {
+    alignSelf: 'flex-end',
+    maxWidth: '80%',
+    backgroundColor: Colors.accent,
+    borderRadius: 18,
+    borderTopRightRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  chatBubbleUserText: {
+    color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 19,
   },
