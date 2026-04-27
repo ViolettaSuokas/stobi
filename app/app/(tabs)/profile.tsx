@@ -908,84 +908,11 @@ export default function ProfileScreen() {
             размонтировался → re-fetch'ил код с пустым state → юзер видел
             мигание. С display:'none' state живёт через переключения. */}
         <View style={[styles.body, mainTab !== 'profile' && { display: 'none' }]}>
-            {/* Profile photo + name card */}
-            <View style={styles.profilePhotoCard}>
-              <TouchableOpacity
-                onPress={handleChangePhoto}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel={user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
-              >
-                <View style={styles.profilePhotoCircle}>
-                  {user?.photoUrl ? (
-                    <SafeImage source={{ uri: user.photoUrl }} style={styles.profilePhotoImg} fallbackIconSize={28} />
-                  ) : (
-                    <Camera size={28} color={Colors.text2} weight="regular" />
-                  )}
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                accessibilityRole={user ? 'button' : undefined}
-                accessibilityLabel={user ? t('profile.edit_name') : undefined}
-                onPress={user ? () => {
-                  modal.show({
-                    title: t('profile.edit_name'),
-                    input: { placeholder: t('profile.name_placeholder'), defaultValue: user.username },
-                    buttons: [
-                      { label: t('common.cancel'), style: 'cancel' },
-                      {
-                        label: t('common.save'),
-                        onPress: async (newName) => {
-                          const trimmed = newName?.trim();
-                          if (!trimmed) return;
-                          // Child-safety: username is public, same rules as bio.
-                          const check = moderateMessage(trimmed);
-                          if (!check.ok) {
-                            modal.show({
-                              title: t('profile.name_rejected_title') || 'Нельзя сохранить',
-                              message: t(`profile.name_rejected_${check.reason}`) || t(`chat.mod_${check.reason}`) || 'Это нельзя использовать как имя.',
-                              buttons: [{ label: t('common.ok') || 'OK' }],
-                            });
-                            return;
-                          }
-                          const { supabase, isSupabaseConfigured } = await import('../../lib/supabase');
-                          if (isSupabaseConfigured()) {
-                            await supabase.from('profiles').update({ username: trimmed }).eq('id', user.id);
-                          }
-                          const fresh = await getCurrentUser();
-                          // Merge, keeping optimistic photoUrl if the DB
-                          // hasn't caught up yet (avatar upload / NSFW
-                          // check still in flight). Without this, editing
-                          // name right after setting avatar wipes the
-                          // avatar out of the local UI.
-                          setUser((prev) =>
-                            fresh
-                              ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
-                              : prev,
-                          );
-                        },
-                      },
-                    ],
-                  });
-                } : undefined}
-                activeOpacity={0.7}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.profilePhotoName}>{user?.username ?? t('profile.guest')}</Text>
-                  {user && <PencilSimple size={14} color={Colors.text2} weight="bold" />}
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <Text style={styles.profilePhotoHint}>
-                    {user?.photoUrl ? t('profile.change_photo') : t('profile.add_photo')}
-                  </Text>
-                  <StreakBadge />
-                </View>
-              </TouchableOpacity>
-            </View>
+            {/* profilePhotoCard убрана — авто/имя уже показаны в hero сверху,
+                дублировать ниже не нужно. Streak badge переехал — позже
+                подумаем где. */}
 
-            {/* "Посмотреть как видят меня другие" — сразу под profile-photo-card,
-                чтобы юзер сразу видел что у него есть public-view. */}
+            {/* "Посмотреть как видят меня другие" — public-view link */}
             {user && (
               <TouchableOpacity
                 style={styles.publicViewLink}
