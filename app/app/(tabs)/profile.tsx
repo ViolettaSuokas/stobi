@@ -1397,35 +1397,21 @@ export default function ProfileScreen() {
           </SafeAreaView>
 
           {chatOpen ? (
-            // ─── CHAT MODE: маскот мал и слева сверху, справа имя,
-            //               под ним — чат-сообщения, внизу активный input.
+            // ─── CHAT MODE (Tolan-style): маскот ОСТАЁТСЯ большим, слева;
+            //     справа — баблы сообщений, снизу активный input. Маскот
+            //     не уменьшается в маленький avatar — он остаётся живой
+            //     иллюстрацией рядом с чатом.
             <>
-              <View style={styles.chatHeader}>
-                <TouchableOpacity
-                  onPress={() => setChatOpen(false)}
-                  style={styles.chatBackBtn}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('common.back') || 'Назад'}
-                >
-                  <ArrowLeft size={22} color="#FFFFFF" weight="bold" />
-                </TouchableOpacity>
-                <View style={styles.chatHeaderMascot}>
-                  <MascotScene
-                    key={`chat-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
-                    size={56}
-                    color={selectedColor}
-                    variant={selectedVariant}
-                    shape={selectedShape}
-                    decor={selectedDecor}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.chatHeaderName} numberOfLines={1}>
-                    {user?.characterName || t('profile.character_name_default')}
-                  </Text>
-                  <Text style={styles.chatHeaderStatus}>online</Text>
-                </View>
+              {/* Маскот среднего размера слева, остаётся живой иллюстрацией. */}
+              <View style={styles.chatMascotLeft} pointerEvents="none">
+                <MascotScene
+                  key={`chat-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                  size={200}
+                  color={selectedColor}
+                  variant={selectedVariant}
+                  shape={selectedShape}
+                  decor={selectedDecor}
+                />
               </View>
 
               <ScrollView
@@ -1433,6 +1419,20 @@ export default function ProfileScreen() {
                 contentContainerStyle={styles.chatMessagesContent}
                 showsVerticalScrollIndicator={false}
               >
+                {/* Кнопка вернуться к фуллскрин маскоту. */}
+                <TouchableOpacity
+                  style={styles.chatCloseInline}
+                  onPress={() => setChatOpen(false)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.back') || 'Назад'}
+                >
+                  <ArrowLeft size={18} color="#FFFFFF" weight="bold" />
+                  <Text style={styles.chatCloseText}>
+                    {user?.characterName || t('profile.character_name_default')}
+                  </Text>
+                </TouchableOpacity>
+
                 {/* Заглушка приветствия — реальный LLM пока не подключён. */}
                 <View style={styles.chatBubbleStobi}>
                   <Text style={styles.chatBubbleText}>
@@ -1441,7 +1441,12 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.chatBubbleStobi}>
                   <Text style={styles.chatBubbleText}>
-                    Я Stobi. Скоро со мной можно будет болтать по-настоящему — про камни, маршруты, что нашёл за день. А пока я только учусь отвечать.
+                    Я {user?.characterName || 'Stobi'}. Скоро мы сможем поговорить по-настоящему — про твои камни, маршруты, что нашёл за день.
+                  </Text>
+                </View>
+                <View style={styles.chatBubbleStobi}>
+                  <Text style={styles.chatBubbleText}>
+                    А пока я только учусь отвечать. Но если попробуешь написать — я запомню что тебе интересно.
                   </Text>
                 </View>
               </ScrollView>
@@ -1750,60 +1755,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 0,
   },
-  // Chat mode (mascot уехал влево, справа сообщения)
-  chatHeader: {
+  // Chat mode (Tolan-style: маскот среднего размера слева, баблы справа)
+  chatMascotLeft: {
+    position: 'absolute',
+    left: -10,
+    top: 200, // под top-bar и табами
+    zIndex: 1,
+  },
+  chatCloseInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.10)',
-  },
-  chatBackBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chatHeaderMascot: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    gap: 8,
+    alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    marginBottom: 12,
+    marginLeft: 170, // справа от маскота (200px - небольшое наложение)
   },
-  chatHeaderName: {
+  chatCloseText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  chatHeaderStatus: {
-    color: 'rgba(180,255,200,0.85)',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '700',
   },
   chatMessagesContent: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
     gap: 8,
   },
   chatBubbleStobi: {
-    alignSelf: 'flex-start',
-    maxWidth: '82%',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignSelf: 'flex-end',
+    maxWidth: '60%',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    borderTopLeftRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginBottom: 6,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   chatBubbleText: {
-    color: '#FFFFFF',
+    color: '#1A1A2E',
     fontSize: 14,
     lineHeight: 19,
   },
