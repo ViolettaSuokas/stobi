@@ -1541,27 +1541,18 @@ export default function ProfileScreen() {
                 />
               </View>
 
-              {/* Bottom chat-input bar — tap → открывает чат-режим. */}
-              <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
+              {/* Простая chat-иконка справа внизу — tap открывает чат-режим.
+                  Раньше была полноразмерная имитация input'а — выглядело
+                  будто можно сразу писать, юзер хочет один FAB. */}
+              <View style={[styles.chatFabWrap, { bottom: insets.bottom + 100 }]}>
                 <TouchableOpacity
-                  style={styles.chatInputBar}
+                  style={styles.chatFab}
                   activeOpacity={0.85}
                   onPress={() => setChatOpen(true)}
                   accessibilityRole="button"
                   accessibilityLabel={t('profile.companion_coming_title')}
                 >
-                  <View style={styles.chatInputPlus}>
-                    <Plus size={20} color="rgba(255,255,255,0.7)" weight="bold" />
-                  </View>
-                  <View style={styles.chatInputField}>
-                    <ChatCircle size={18} color="rgba(255,255,255,0.85)" weight="fill" />
-                    <Text style={styles.chatInputPlaceholder} numberOfLines={1}>
-                      {t('profile.companion_coming_desc')}
-                    </Text>
-                  </View>
-                  <View style={styles.chatInputMic}>
-                    <Microphone size={20} color="rgba(255,255,255,0.7)" weight="bold" />
-                  </View>
+                  <ChatCircle size={28} color="#FFFFFF" weight="fill" />
                 </TouchableOpacity>
               </View>
             </>
@@ -1784,6 +1775,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chatFabWrap: {
+    position: 'absolute',
+    right: 18,
+    zIndex: 3,
+  },
+  chatFab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   chatInputSend: {
     width: 38,
