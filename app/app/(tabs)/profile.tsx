@@ -28,6 +28,10 @@ import {
   Palette,
   SmileyWink,
   Shapes,
+  CaretUp,
+  CaretDown,
+  Microphone,
+  ChatCircle,
   type IconProps,
 } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
@@ -96,7 +100,7 @@ const ACHIEVEMENT_CONFIGS = [
   { id: 'find-100', Icon: Star, labelKey: 'achievement.find_100', tint: '#7C3AED', premium: true },
 ];
 
-type MainTab = 'overview' | 'customize';
+type MainTab = 'profile' | 'mascot';
 type CustomTab = 'color' | 'face' | 'shape' | 'decor';
 
 export default function ProfileScreen() {
@@ -107,8 +111,11 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingFindsCount, setPendingFindsCount] = useState(0);
   const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
-  const [mainTab, setMainTab] = useState<MainTab>('overview');
+  const [mainTab, setMainTab] = useState<MainTab>('profile');
   const [customTab, setCustomTab] = useState<CustomTab>('color');
+  // Кастомизация на mascot-табе спрятана за стрелкой сверху —
+  // юзер хочет fullscreen маскот без заваленного снизу UI.
+  const [customizeOpen, setCustomizeOpen] = useState(false);
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
   const [selectedEyeId, setSelectedEyeId] = useState<string>(EYE_ITEMS[0].id);
   const [selectedShapeId, setSelectedShapeId] = useState<string>(SHAPE_ITEMS[0].id);
@@ -443,6 +450,298 @@ export default function ProfileScreen() {
     });
   };
 
+  // Customize-блок (color/face/shape/decor pickers) вынесен в отдельную
+  // функцию — он рендерится в двух местах:
+  // 1) внутри ScrollView (legacy, скрыт через display:none — оставлен только
+  //    как fallback совместимости пока mascot-таб использует overlay)
+  // 2) внутри слайд-апа из mascot-fullscreen overlay (стрелка вверху)
+  // Объявлен здесь чтобы иметь доступ к state/handlers без передачи props.
+  const renderCustomizeBody = () => (
+    <View>
+      {/* Character name */}
+      <TouchableOpacity
+        style={styles.characterNameRow}
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.character_name_title')}
+        onPress={() => {
+          modal.show({
+            title: t('profile.character_name_title'),
+            input: { placeholder: t('profile.character_name_placeholder'), defaultValue: user?.characterName ?? '' },
+            buttons: [
+              { label: t('common.cancel'), style: 'cancel' },
+              {
+                label: t('common.save'),
+                onPress: async (name) => {
+                  if (!name?.trim()) return;
+                  await updateCharacterName(name.trim());
+                  const fresh = await getCurrentUser();
+                  setUser((prev) =>
+                    fresh ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl } : prev,
+                  );
+                },
+              },
+            ],
+          });
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.characterNameLabel}>{t('profile.character_name')}</Text>
+        <Text style={styles.characterNameValue}>
+          {user?.characterName || t('profile.character_name_default')}
+        </Text>
+        <PencilSimple size={14} color={Colors.text2} weight="bold" />
+      </TouchableOpacity>
+
+      {/* Sub-tabs: Color / Face / Shape / Decor */}
+      <View style={styles.customTabs}>
+        {(['color', 'face', 'shape', 'decor'] as const).map((tab) => {
+          const active = customTab === tab;
+          const Icon =
+            tab === 'color' ? Palette :
+            tab === 'face' ? SmileyWink :
+            tab === 'shape' ? Shapes :
+            Sparkle;
+          const label =
+            tab === 'color' ? t('profile.section_color') :
+            tab === 'face' ? t('profile.section_face') :
+            tab === 'shape' ? t('profile.section_shape') :
+            t('profile.section_decor');
+          return (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.customTab, active && styles.customTabActive]}
+              onPress={() => setCustomTab(tab)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={label}
+            >
+              <View style={styles.customTabInner}>
+                <Icon
+                  size={15}
+                  color={active ? '#FFFFFF' : Colors.text2}
+                  weight={active ? 'fill' : 'regular'}
+                />
+                <Text
+                  style={[styles.customTabText, active && styles.customTabTextActive]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.balanceHint}>
+        <Text style={styles.balanceHintText}>
+          💎 {balance} {t('profile.earn_hint')}
+        </Text>
+      </View>
+
+      {customTab === 'color' && (
+        <View style={styles.section}>
+          <View style={styles.colorGrid}>
+            {COLOR_ITEMS.map((item) => {
+              const owned = ownedIds.includes(item.id);
+              const active = item.id === selectedColorId;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.colorSwatch,
+                    active && styles.colorSwatchActive,
+                    !owned && styles.colorSwatchLocked,
+                  ]}
+                  onPress={() => handlePickColor(item)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
+                >
+                  <View
+                    style={[
+                      styles.colorInner,
+                      { backgroundColor: item.color },
+                      !owned && { opacity: 0.5 },
+                    ]}
+                  />
+                  {!owned && (
+                    <View style={styles.colorLockOverlay}>
+                      <Lock size={11} color="#FFFFFF" weight="fill" />
+                    </View>
+                  )}
+                  {!owned && (
+                    <View style={styles.colorPriceBadge}>
+                      <Text style={styles.colorPriceText}>{item.price}💎</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {customTab === 'face' && (
+        <View style={styles.section}>
+          <View style={styles.eyeGrid}>
+            {EYE_ITEMS.map((item) => {
+              const owned = ownedIds.includes(item.id);
+              const active = item.id === selectedEyeId;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.eyeCard,
+                    active && styles.eyeCardActive,
+                    !owned && styles.eyeCardLocked,
+                  ]}
+                  onPress={() => handlePickEye(item)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
+                >
+                  <View style={styles.eyePreview}>
+                    <StoneMascot
+                      size={56}
+                      color={selectedColor}
+                      variant={item.variant ?? 'happy'}
+                      shape={selectedShape}
+                      decor={selectedDecor}
+                      showSparkles={false}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.eyeLabel,
+                      active && { color: Colors.accent },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                  {!owned && (
+                    <View style={styles.eyeLockBadge}>
+                      <Lock size={9} color="#FFFFFF" weight="fill" />
+                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {customTab === 'shape' && (
+        <View style={styles.section}>
+          <View style={styles.eyeGrid}>
+            {SHAPE_ITEMS.map((item) => {
+              const owned = ownedIds.includes(item.id);
+              const active = item.id === selectedShapeId;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.eyeCard,
+                    active && styles.eyeCardActive,
+                    !owned && styles.eyeCardLocked,
+                  ]}
+                  onPress={() => handlePickShape(item)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
+                >
+                  <View style={styles.eyePreview}>
+                    <StoneMascot
+                      size={56}
+                      color={selectedColor}
+                      variant={selectedVariant}
+                      shape={(item.shape as MascotShape) ?? 'pebble'}
+                      decor={selectedDecor}
+                      showSparkles={false}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.eyeLabel,
+                      active && { color: Colors.accent },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                  {!owned && (
+                    <View style={styles.eyeLockBadge}>
+                      <Lock size={9} color="#FFFFFF" weight="fill" />
+                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {customTab === 'decor' && (
+        <View style={styles.section}>
+          <View style={styles.eyeGrid}>
+            {DECOR_ITEMS.map((item) => {
+              const owned = ownedIds.includes(item.id);
+              const active = item.id === selectedDecorId;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.eyeCard,
+                    active && styles.eyeCardActive,
+                    !owned && styles.eyeCardLocked,
+                  ]}
+                  onPress={() => handlePickDecor(item)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
+                >
+                  <View style={styles.eyePreview}>
+                    <StoneMascot
+                      size={64}
+                      color={selectedColor}
+                      variant={selectedVariant}
+                      shape={selectedShape}
+                      decor={(item.decor as MascotDecor) ?? 'none'}
+                      showSparkles={false}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.eyeLabel,
+                      active && { color: Colors.accent },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                  {!owned && (
+                    <View style={styles.eyeLockBadge}>
+                      <Lock size={9} color="#FFFFFF" weight="fill" />
+                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -451,17 +750,59 @@ export default function ProfileScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={'#FFFFFF'} />
         }
+        style={mainTab !== 'profile' && { display: 'none' }}
       >
         {/* Bounce-extender: visually 0px, но фон покрывает зону overscroll'а
             когда юзер тянет ScrollView вниз — без него виден белый
             промежуток над hero. */}
         <View style={styles.bounceExtender} />
+
+        {/* Top tabs (Профайл / Stobi) — самый первый элемент экрана,
+            выше шестерёнки и баланса. Юзер хочет чтобы переключатель
+            был сразу под status-bar'ом, до всего остального контента. */}
+        <SafeAreaView edges={['top']} style={styles.topTabsSafeArea}>
+          <View style={styles.mainTabs}>
+            {(['profile', 'mascot'] as const).map((tab) => {
+              const active = tab === mainTab;
+              const Icon = tab === 'profile' ? ChartBar : SmileyWink;
+              const label = tab === 'profile' ? t('profile.tab_profile') : t('profile.tab_mascot');
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setMainTab(tab)}
+                  style={[styles.mainTab, active && styles.mainTabActive]}
+                  activeOpacity={0.85}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={label}
+                >
+                  <View style={styles.mainTabInner}>
+                    <Icon
+                      size={18}
+                      color={active ? Colors.accent : 'rgba(255,255,255,0.6)'}
+                      weight={active ? 'fill' : 'regular'}
+                    />
+                    <Text
+                      style={[
+                        styles.mainTabText,
+                        active && styles.mainTabTextActive,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </SafeAreaView>
+
         {/* Hero — deep purple background with mascot */}
         <View style={styles.hero}>
           <View style={[styles.heroGlow, styles.heroGlowTL]} />
           <View style={[styles.heroGlow, styles.heroGlowBR]} />
 
-          <SafeAreaView edges={['top']}>
+          <View>
             <View style={styles.heroTopBar}>
               <View style={styles.levelChip}>
                 <Text style={styles.levelChipText}>💎 {balance}</Text>
@@ -484,24 +825,37 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.mascotWrap}>
-              {/* key форсит перерендер только в customize-сабтабе, чтобы preview
-                  обновлялся при смене косметики. На overview key стабилен —
+              {/* key форсит перерендер только в mascot-сабтабе, чтобы preview
+                  обновлялся при смене косметики. На profile key стабилен —
                   иначе MascotScene ремаунтится на каждом возврате в профиль
-                  и таб переключается с задержкой ~300мс. */}
-              <MascotScene
-                key={mainTab === 'customize'
-                  ? `${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`
-                  : 'profile-mascot-stable'}
-                size={180}
-                color={selectedColor}
-                variant={selectedVariant}
-                shape={selectedShape}
-                decor={selectedDecor}
-                userName={user?.username}
-                mascotName={user?.characterName}
-              />
-              {/* Preview indicator — виден если юзер примеряет что не купил */}
-              {(() => {
+                  и таб переключается с задержкой ~300мс.
+                  На profile-табе hero показывает аватар юзера вместо маскота —
+                  юзер хочет иметь чёткое разделение "профайл vs маскот". */}
+              {mainTab === 'mascot' ? (
+                <MascotScene
+                  key={`${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                  size={180}
+                  color={selectedColor}
+                  variant={selectedVariant}
+                  shape={selectedShape}
+                  decor={selectedDecor}
+                  userName={user?.username}
+                  mascotName={user?.characterName}
+                />
+              ) : (
+                <View style={styles.heroAvatarWrap}>
+                  {user?.photoUrl ? (
+                    <SafeImage source={{ uri: user.photoUrl }} style={styles.heroAvatarImg} fallbackIconSize={56} />
+                  ) : (
+                    <View style={styles.heroAvatarPlaceholder}>
+                      <Camera size={48} color="rgba(255,255,255,0.7)" weight="regular" />
+                    </View>
+                  )}
+                </View>
+              )}
+              {/* Preview indicator — виден если юзер примеряет что не купил.
+                  Только на mascot-табе (на profile-табе hero показывает аватар). */}
+              {mainTab === 'mascot' && (() => {
                 const previewItemIds = [
                   selectedColorId, selectedEyeId, selectedShapeId, selectedDecorId,
                 ].filter((id): id is string => !!id && !ownedIds.includes(id));
@@ -637,49 +991,14 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
             )}
-          </SafeAreaView>
-        </View>
-
-        {/* Main tab switcher */}
-        <View style={styles.mainTabs}>
-          {(['overview', 'customize'] as const).map((tab) => {
-            const active = tab === mainTab;
-            const Icon = tab === 'overview' ? ChartBar : Palette;
-            return (
-              <TouchableOpacity
-                key={tab}
-                onPress={() => setMainTab(tab)}
-                style={[styles.mainTab, active && styles.mainTabActive]}
-                activeOpacity={0.85}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={tab === 'overview' ? t('profile.overview') : t('profile.customize')}
-              >
-                <View style={styles.mainTabInner}>
-                  <Icon
-                    size={18}
-                    color={active ? Colors.accent : 'rgba(255,255,255,0.6)'}
-                    weight={active ? 'fill' : 'regular'}
-                  />
-                  <Text
-                    style={[
-                      styles.mainTabText,
-                      active && styles.mainTabTextActive,
-                    ]}
-                  >
-                    {tab === 'overview' ? t('profile.overview') : t('profile.customize')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          </View>
         </View>
 
         {/* Обе вкладки рендерим всегда, переключаем через display:'none'.
-            Раньше при переключении overview→customize→overview ReferralCard
+            Раньше при переключении profile→mascot→profile ReferralCard
             размонтировался → re-fetch'ил код с пустым state → юзер видел
             мигание. С display:'none' state живёт через переключения. */}
-        <View style={[styles.body, mainTab !== 'overview' && { display: 'none' }]}>
+        <View style={[styles.body, mainTab !== 'profile' && { display: 'none' }]}>
             {/* Profile photo + name card */}
             <View style={styles.profilePhotoCard}>
               <TouchableOpacity
@@ -978,78 +1297,52 @@ export default function ProfileScreen() {
 
           {user?.email && <Text style={styles.emailHint}>{user.email}</Text>}
           </View>
-        <View style={[styles.body, mainTab !== 'customize' && { display: 'none' }]}>
-            {/* Character name */}
-            <TouchableOpacity
-              style={styles.characterNameRow}
-              accessibilityRole="button"
-              accessibilityLabel={t('profile.character_name_title')}
-              onPress={() => {
-                modal.show({
-                  title: t('profile.character_name_title'),
-                  input: { placeholder: t('profile.character_name_placeholder'), defaultValue: user?.characterName ?? '' },
-                  buttons: [
-                    { label: t('common.cancel'), style: 'cancel' },
-                    {
-                      label: t('common.save'),
-                      onPress: async (name) => {
-                        if (!name?.trim()) return;
-                        await updateCharacterName(name.trim());
-                        const fresh = await getCurrentUser();
-                        // Preserve in-flight optimistic photoUrl so
-                        // avatar doesn't blink out during rapid edits.
-                        setUser((prev) =>
-                          fresh
-                            ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl }
-                            : prev,
-                        );
-                      },
-                    },
-                  ],
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.characterNameLabel}>{t('profile.character_name')}</Text>
-              <Text style={styles.characterNameValue}>
-                {user?.characterName || t('profile.character_name_default')}
-              </Text>
-              <PencilSimple size={14} color={Colors.text2} weight="bold" />
-            </TouchableOpacity>
+      </ScrollView>
 
-            {/* Sub-tabs: Color / Face / Shape / Decor — горизонтальные pills с Phosphor иконками */}
-            <View style={styles.customTabs}>
-              {(['color', 'face', 'shape', 'decor'] as const).map((tab) => {
-                const active = customTab === tab;
-                const Icon =
-                  tab === 'color' ? Palette :
-                  tab === 'face' ? SmileyWink :
-                  tab === 'shape' ? Shapes :
-                  Sparkle;
-                const label =
-                  tab === 'color' ? t('profile.section_color') :
-                  tab === 'face' ? t('profile.section_face') :
-                  tab === 'shape' ? t('profile.section_shape') :
-                  t('profile.section_decor');
+      {/* ═══════════════════════════════════════════════════════════════
+          Mascot fullscreen overlay — рендерится только когда выбрана
+          вкладка "Маскот". Покрывает весь экран (поверх ScrollView) и
+          выглядит как чат-собеседник:
+            • Сверху: стрелка (caret) — toggle для customize-панели,
+              рядом — балланс и шестерёнка настроек, плюс tab-switcher
+              чтобы вернуться обратно на профайл-таб.
+            • Центр: большой маскот.
+            • Снизу: chat-input bar (placeholder, реальный чат скоро).
+            • Slide-up customize panel — открывается стрелкой.
+          ═══════════════════════════════════════════════════════════ */}
+      {mainTab === 'mascot' && (
+        <View style={styles.mascotFullscreen}>
+          <View style={[styles.heroGlow, styles.heroGlowTL]} />
+          <View style={[styles.heroGlow, styles.heroGlowBR]} />
+
+          <SafeAreaView edges={['top']} style={{ zIndex: 2 }}>
+            {/* Tabs ВЫШЕ алмазиков и шестерёнки — самый первый элемент. */}
+            <View style={styles.mainTabs}>
+              {(['profile', 'mascot'] as const).map((tab) => {
+                const active = tab === mainTab;
+                const Icon = tab === 'profile' ? ChartBar : SmileyWink;
+                const label = tab === 'profile' ? t('profile.tab_profile') : t('profile.tab_mascot');
                 return (
                   <TouchableOpacity
                     key={tab}
-                    style={[styles.customTab, active && styles.customTabActive]}
-                    onPress={() => setCustomTab(tab)}
+                    onPress={() => setMainTab(tab)}
+                    style={[styles.mainTab, active && styles.mainTabActive]}
                     activeOpacity={0.85}
-                    accessibilityRole="button"
+                    accessibilityRole="tab"
                     accessibilityState={{ selected: active }}
                     accessibilityLabel={label}
                   >
-                    <View style={styles.customTabInner}>
+                    <View style={styles.mainTabInner}>
                       <Icon
-                        size={15}
-                        color={active ? '#FFFFFF' : Colors.text2}
+                        size={18}
+                        color={active ? Colors.accent : 'rgba(255,255,255,0.6)'}
                         weight={active ? 'fill' : 'regular'}
                       />
                       <Text
-                        style={[styles.customTabText, active && styles.customTabTextActive]}
-                        numberOfLines={1}
+                        style={[
+                          styles.mainTabText,
+                          active && styles.mainTabTextActive,
+                        ]}
                       >
                         {label}
                       </Text>
@@ -1059,218 +1352,87 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            {/* Balance hint */}
-            <View style={styles.balanceHint}>
-              <Text style={styles.balanceHintText}>
-                💎 {balance} {t('profile.earn_hint')}
-              </Text>
-            </View>
-
-            {/* Color picker — visible only if customTab==='color' */}
-            {customTab === 'color' && (
-            <View style={styles.section}>
-              <View style={styles.colorGrid}>
-                {COLOR_ITEMS.map((item) => {
-                  const owned = ownedIds.includes(item.id);
-                  const active = item.id === selectedColorId;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.colorSwatch,
-                        active && styles.colorSwatchActive,
-                        !owned && styles.colorSwatchLocked,
-                      ]}
-                      onPress={() => handlePickColor(item)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                    >
-                      <View
-                        style={[
-                          styles.colorInner,
-                          { backgroundColor: item.color },
-                          !owned && { opacity: 0.5 },
-                        ]}
-                      />
-                      {!owned && (
-                        <View style={styles.colorLockOverlay}>
-                          <Lock size={11} color="#FFFFFF" weight="fill" />
-                        </View>
-                      )}
-                      {!owned && (
-                        <View style={styles.colorPriceBadge}>
-                          <Text style={styles.colorPriceText}>{item.price}💎</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
+            <View style={styles.mascotFullTopBar}>
+              <View style={styles.levelChip}>
+                <Text style={styles.levelChipText}>💎 {balance}</Text>
               </View>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity
+                style={styles.mascotCaretBtn}
+                onPress={() => setCustomizeOpen((o) => !o)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('profile.customize')}
+              >
+                {customizeOpen ? (
+                  <CaretDown size={22} color="#FFFFFF" weight="bold" />
+                ) : (
+                  <CaretUp size={22} color="#FFFFFF" weight="bold" />
+                )}
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity
+                style={styles.settingsBtn}
+                onPress={() => router.push('/settings')}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('settings.title')}
+              >
+                <GearSix size={20} color="#FFFFFF" weight="regular" />
+              </TouchableOpacity>
             </View>
+          </SafeAreaView>
 
-            )}
-            {/* Eye / expression picker */}
-            {customTab === 'face' && (
-            <View style={styles.section}>
-              <View style={styles.eyeGrid}>
-                {EYE_ITEMS.map((item) => {
-                  const owned = ownedIds.includes(item.id);
-                  const active = item.id === selectedEyeId;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.eyeCard,
-                        active && styles.eyeCardActive,
-                        !owned && styles.eyeCardLocked,
-                      ]}
-                      onPress={() => handlePickEye(item)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                    >
-                      <View style={styles.eyePreview}>
-                        <StoneMascot
-                          size={56}
-                          color={selectedColor}
-                          variant={item.variant ?? 'happy'}
-                          shape={selectedShape}
-                          decor={selectedDecor}
-                          showSparkles={false}
-                        />
-                      </View>
-                      <Text
-                        style={[
-                          styles.eyeLabel,
-                          active && { color: Colors.accent },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.label}
-                      </Text>
-                      {!owned && (
-                        <View style={styles.eyeLockBadge}>
-                          <Lock size={9} color="#FFFFFF" weight="fill" />
-                          <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            )}
-            {/* Shape picker */}
-            {customTab === 'shape' && (
-            <View style={styles.section}>
-              <View style={styles.eyeGrid}>
-                {SHAPE_ITEMS.map((item) => {
-                  const owned = ownedIds.includes(item.id);
-                  const active = item.id === selectedShapeId;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.eyeCard,
-                        active && styles.eyeCardActive,
-                        !owned && styles.eyeCardLocked,
-                      ]}
-                      onPress={() => handlePickShape(item)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                    >
-                      <View style={styles.eyePreview}>
-                        <StoneMascot
-                          size={56}
-                          color={selectedColor}
-                          variant={selectedVariant}
-                          shape={(item.shape as MascotShape) ?? 'pebble'}
-                          decor={selectedDecor}
-                          showSparkles={false}
-                        />
-                      </View>
-                      <Text
-                        style={[
-                          styles.eyeLabel,
-                          active && { color: Colors.accent },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.label}
-                      </Text>
-                      {!owned && (
-                        <View style={styles.eyeLockBadge}>
-                          <Lock size={9} color="#FFFFFF" weight="fill" />
-                          <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            )}
-            {/* Decor picker */}
-            {customTab === 'decor' && (
-            <View style={styles.section}>
-              <View style={styles.eyeGrid}>
-                {DECOR_ITEMS.map((item) => {
-                  const owned = ownedIds.includes(item.id);
-                  const active = item.id === selectedDecorId;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        styles.eyeCard,
-                        active && styles.eyeCardActive,
-                        !owned && styles.eyeCardLocked,
-                      ]}
-                      onPress={() => handlePickDecor(item)}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                    >
-                      <View style={styles.eyePreview}>
-                        <StoneMascot
-                          size={64}
-                          color={selectedColor}
-                          variant={selectedVariant}
-                          shape={selectedShape}
-                          decor={(item.decor as MascotDecor) ?? 'none'}
-                          showSparkles={false}
-                        />
-                      </View>
-                      <Text
-                        style={[
-                          styles.eyeLabel,
-                          active && { color: Colors.accent },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.label}
-                      </Text>
-                      {!owned && (
-                        <View style={styles.eyeLockBadge}>
-                          <Lock size={9} color="#FFFFFF" weight="fill" />
-                          <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-            )}
+          {/* Mascot центр */}
+          <View style={styles.mascotFullCenter} pointerEvents="box-none">
+            <MascotScene
+              key={`fullscreen-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+              size={280}
+              color={selectedColor}
+              variant={selectedVariant}
+              shape={selectedShape}
+              decor={selectedDecor}
+              userName={user?.username}
+              mascotName={user?.characterName}
+            />
+            <Text style={styles.mascotFullName} numberOfLines={1}>
+              {user?.characterName || t('profile.character_name_default')}
+            </Text>
+            <Text style={styles.mascotFullHint}>{t('profile.companion_coming_title')}</Text>
           </View>
-      </ScrollView>
+
+          {/* Bottom chat-input bar (mock — реальный чат скоро) */}
+          <SafeAreaView edges={['bottom']} style={styles.mascotFullBottomArea}>
+            <View style={styles.chatInputBar}>
+              <View style={styles.chatInputPlus}>
+                <Plus size={20} color="rgba(255,255,255,0.5)" weight="bold" />
+              </View>
+              <View style={styles.chatInputField}>
+                <ChatCircle size={16} color="rgba(255,255,255,0.5)" weight="regular" />
+                <Text style={styles.chatInputPlaceholder} numberOfLines={1}>
+                  {t('profile.companion_coming_desc')}
+                </Text>
+              </View>
+              <View style={styles.chatInputMic}>
+                <Microphone size={20} color="rgba(255,255,255,0.5)" weight="bold" />
+              </View>
+            </View>
+          </SafeAreaView>
+
+          {/* Slide-up customize panel — открывается из стрелки сверху */}
+          {customizeOpen && (
+            <View style={styles.customizePanel}>
+              <View style={styles.customizePanelHandle} />
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+              >
+                {renderCustomizeBody()}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -1347,6 +1509,194 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
+  },
+  // Hero avatar (показывается на profile-табе вместо маскота — юзер
+  // хочет видеть себя на профайле, маскот живёт в своей вкладке).
+  heroAvatarWrap: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  heroAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ─── Mascot fullscreen overlay ───────────────────────────────────────
+  // Покрывает весь экран на mascot-табе. Sits ABOVE the ScrollView via
+  // absolute positioning. Tab-bar внизу остаётся видимым (paddingBottom:90).
+  mascotFullscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 90, // не перекрываем нижний tab-bar
+    backgroundColor: Colors.bgDeep,
+    overflow: 'hidden',
+  },
+  mascotFullTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    gap: 8,
+  },
+  mascotCaretBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mascotFullCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  mascotFullName: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  mascotFullHint: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  mascotFullBottomArea: {
+    paddingHorizontal: 12,
+    paddingBottom: 4,
+  },
+  chatInputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  chatInputPlus: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatInputField: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    height: 44,
+  },
+  chatInputPlaceholder: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    flex: 1,
+  },
+  chatInputMic: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Slide-up customize panel
+  customizePanel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
+    backgroundColor: Colors.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  customizePanelHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+
+  // Companion-coming card (mascot-таб, самый верх)
+  companionCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.accent + '33',
+  },
+  companionIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  companionIconBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companionBadge: {
+    backgroundColor: Colors.accent + '22',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  companionBadgeText: {
+    color: Colors.accent,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  companionTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  companionDesc: {
+    color: Colors.text2,
+    fontSize: 13,
+    lineHeight: 18,
   },
   previewBadge: {
     position: 'absolute',
@@ -1550,32 +1900,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Main tabs — folder-tab style (active tab "merges" with the content below)
+  // SafeArea wrapper для tabs на самом верху (над hero и над всем остальным).
+  // Тёмный indigo bg, чтобы tabs визуально сливались с фоном hero.
+  topTabsSafeArea: {
+    backgroundColor: Colors.bgDeep,
+  },
+  // Main tabs — sit at the very top of the screen ABOVE the hero/diamonds.
+  // Pill-стиль с лёгкой тонкой линией снизу для разделения от hero.
   mainTabs: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 14,
-    gap: 4,
-    borderBottomWidth: 1.5,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+    gap: 6,
   },
   mainTab: {
     flex: 1,
-    paddingVertical: 13,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    borderRightWidth: 1.5,
-    borderColor: 'transparent',
-    marginBottom: -1.5, // overlap the row's bottom line so active tab "cuts" it
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   mainTabActive: {
-    backgroundColor: Colors.bg, // matches page bg → hides the row line behind it
-    borderColor: Colors.border,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   mainTabInner: {
     flexDirection: 'row',
