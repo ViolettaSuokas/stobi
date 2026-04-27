@@ -502,44 +502,43 @@ export default function ProfileScreen() {
   //    как fallback совместимости пока mascot-таб использует overlay)
   // 2) внутри слайд-апа из mascot-fullscreen overlay (стрелка вверху)
   // Объявлен здесь чтобы иметь доступ к state/handlers без передачи props.
+  // Компактная кастомизация на mascot-табе: тонкая горизонтальная
+  // строка с табами + horizontal scroll квадратиков. Прозрачный фон,
+  // на deep-purple видны только сами элементы. Имя персонажа НЕ
+  // редактируется отсюда — юзер хочет чистый вид.
+  const renderCompactCustomizePill = (
+    item: CosmeticItem,
+    active: boolean,
+    owned: boolean,
+    onPress: () => void,
+    inner: React.ReactNode,
+  ) => (
+    <TouchableOpacity
+      key={item.id}
+      style={[
+        styles.compactPill,
+        active && styles.compactPillActive,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
+    >
+      {inner}
+      {!owned && (
+        <View style={styles.compactPillLock}>
+          <Lock size={10} color="#FFFFFF" weight="fill" />
+          <Text style={styles.compactPillPrice}>{item.price}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
   const renderCustomizeBody = () => (
     <View>
-      {/* Character name */}
-      <TouchableOpacity
-        style={styles.characterNameRow}
-        accessibilityRole="button"
-        accessibilityLabel={t('profile.character_name_title')}
-        onPress={() => {
-          modal.show({
-            title: t('profile.character_name_title'),
-            input: { placeholder: t('profile.character_name_placeholder'), defaultValue: user?.characterName ?? '' },
-            buttons: [
-              { label: t('common.cancel'), style: 'cancel' },
-              {
-                label: t('common.save'),
-                onPress: async (name) => {
-                  if (!name?.trim()) return;
-                  await updateCharacterName(name.trim());
-                  const fresh = await getCurrentUser();
-                  setUser((prev) =>
-                    fresh ? { ...fresh, photoUrl: fresh.photoUrl ?? prev?.photoUrl } : prev,
-                  );
-                },
-              },
-            ],
-          });
-        }}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.characterNameLabel}>{t('profile.character_name')}</Text>
-        <Text style={styles.characterNameValue}>
-          {user?.characterName || t('profile.character_name_default')}
-        </Text>
-        <PencilSimple size={14} color={Colors.text2} weight="bold" />
-      </TouchableOpacity>
-
-      {/* Sub-tabs: Color / Face / Shape / Decor */}
-      <View style={styles.customTabs}>
+      {/* Tabs: ЦВЕТ / ЛИЦО / ФОРМА / ДЕКОР — pill стиль на purple bg */}
+      <View style={styles.compactTabs}>
         {(['color', 'face', 'shape', 'decor'] as const).map((tab) => {
           const active = customTab === tab;
           const Icon =
@@ -555,236 +554,100 @@ export default function ProfileScreen() {
           return (
             <TouchableOpacity
               key={tab}
-              style={[styles.customTab, active && styles.customTabActive]}
+              style={[styles.compactTab, active && styles.compactTabActive]}
               onPress={() => setCustomTab(tab)}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
             >
-              <View style={styles.customTabInner}>
-                <Icon
-                  size={15}
-                  color={active ? '#FFFFFF' : Colors.text2}
-                  weight={active ? 'fill' : 'regular'}
-                />
-                <Text
-                  style={[styles.customTabText, active && styles.customTabTextActive]}
-                  numberOfLines={1}
-                >
-                  {label}
-                </Text>
-              </View>
+              <Icon
+                size={14}
+                color={active ? Colors.accent : 'rgba(255,255,255,0.85)'}
+                weight={active ? 'fill' : 'regular'}
+              />
+              <Text
+                style={[
+                  styles.compactTabText,
+                  active && styles.compactTabTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.balanceHint}>
-        <Text style={styles.balanceHintText}>
-          💎 {balance} {t('profile.earn_hint')}
-        </Text>
-      </View>
-
-      {customTab === 'color' && (
-        <View style={styles.section}>
-          <View style={styles.colorGrid}>
-            {COLOR_ITEMS.map((item) => {
-              const owned = ownedIds.includes(item.id);
-              const active = item.id === selectedColorId;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.colorSwatch,
-                    active && styles.colorSwatchActive,
-                    !owned && styles.colorSwatchLocked,
-                  ]}
-                  onPress={() => handlePickColor(item)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                >
-                  <View
-                    style={[
-                      styles.colorInner,
-                      { backgroundColor: item.color },
-                      !owned && { opacity: 0.5 },
-                    ]}
-                  />
-                  {!owned && (
-                    <View style={styles.colorLockOverlay}>
-                      <Lock size={11} color="#FFFFFF" weight="fill" />
-                    </View>
-                  )}
-                  {!owned && (
-                    <View style={styles.colorPriceBadge}>
-                      <Text style={styles.colorPriceText}>{item.price}💎</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {customTab === 'face' && (
-        <View style={styles.section}>
-          <View style={styles.eyeGrid}>
-            {EYE_ITEMS.map((item) => {
-              const owned = ownedIds.includes(item.id);
-              const active = item.id === selectedEyeId;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.eyeCard,
-                    active && styles.eyeCardActive,
-                    !owned && styles.eyeCardLocked,
-                  ]}
-                  onPress={() => handlePickEye(item)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                >
-                  <View style={styles.eyePreview}>
-                    <StoneMascot
-                      size={56}
-                      color={selectedColor}
-                      variant={item.variant ?? 'happy'}
-                      shape={selectedShape}
-                      decor={selectedDecor}
-                      showSparkles={false}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.eyeLabel,
-                      active && { color: Colors.accent },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                  {!owned && (
-                    <View style={styles.eyeLockBadge}>
-                      <Lock size={9} color="#FFFFFF" weight="fill" />
-                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {customTab === 'shape' && (
-        <View style={styles.section}>
-          <View style={styles.eyeGrid}>
-            {SHAPE_ITEMS.map((item) => {
-              const owned = ownedIds.includes(item.id);
-              const active = item.id === selectedShapeId;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.eyeCard,
-                    active && styles.eyeCardActive,
-                    !owned && styles.eyeCardLocked,
-                  ]}
-                  onPress={() => handlePickShape(item)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                >
-                  <View style={styles.eyePreview}>
-                    <StoneMascot
-                      size={56}
-                      color={selectedColor}
-                      variant={selectedVariant}
-                      shape={(item.shape as MascotShape) ?? 'pebble'}
-                      decor={selectedDecor}
-                      showSparkles={false}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.eyeLabel,
-                      active && { color: Colors.accent },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                  {!owned && (
-                    <View style={styles.eyeLockBadge}>
-                      <Lock size={9} color="#FFFFFF" weight="fill" />
-                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {customTab === 'decor' && (
-        <View style={styles.section}>
-          <View style={styles.eyeGrid}>
-            {DECOR_ITEMS.map((item) => {
-              const owned = ownedIds.includes(item.id);
-              const active = item.id === selectedDecorId;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.eyeCard,
-                    active && styles.eyeCardActive,
-                    !owned && styles.eyeCardLocked,
-                  ]}
-                  onPress={() => handlePickDecor(item)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={owned ? item.label : `${item.label} — ${item.price} 💎`}
-                >
-                  <View style={styles.eyePreview}>
-                    <StoneMascot
-                      size={64}
-                      color={selectedColor}
-                      variant={selectedVariant}
-                      shape={selectedShape}
-                      decor={(item.decor as MascotDecor) ?? 'none'}
-                      showSparkles={false}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.eyeLabel,
-                      active && { color: Colors.accent },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                  {!owned && (
-                    <View style={styles.eyeLockBadge}>
-                      <Lock size={9} color="#FFFFFF" weight="fill" />
-                      <Text style={styles.eyeLockText}>{item.price}💎</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
+      {/* Horizontal scroll квадратиков для активной категории */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.compactRow}
+      >
+        {customTab === 'color' &&
+          COLOR_ITEMS.map((item) =>
+            renderCompactCustomizePill(
+              item,
+              item.id === selectedColorId,
+              ownedIds.includes(item.id),
+              () => handlePickColor(item),
+              <View style={[styles.compactColorInner, { backgroundColor: item.color }]} />,
+            ),
+          )}
+        {customTab === 'face' &&
+          EYE_ITEMS.map((item) =>
+            renderCompactCustomizePill(
+              item,
+              item.id === selectedEyeId,
+              ownedIds.includes(item.id),
+              () => handlePickEye(item),
+              <StoneMascot
+                size={48}
+                color={selectedColor}
+                variant={item.variant ?? 'happy'}
+                shape={selectedShape}
+                decor={selectedDecor}
+                showSparkles={false}
+              />,
+            ),
+          )}
+        {customTab === 'shape' &&
+          SHAPE_ITEMS.map((item) =>
+            renderCompactCustomizePill(
+              item,
+              item.id === selectedShapeId,
+              ownedIds.includes(item.id),
+              () => handlePickShape(item),
+              <StoneMascot
+                size={48}
+                color={selectedColor}
+                variant={selectedVariant}
+                shape={(item.shape as MascotShape) ?? 'pebble'}
+                decor={selectedDecor}
+                showSparkles={false}
+              />,
+            ),
+          )}
+        {customTab === 'decor' &&
+          DECOR_ITEMS.map((item) =>
+            renderCompactCustomizePill(
+              item,
+              item.id === selectedDecorId,
+              ownedIds.includes(item.id),
+              () => handlePickDecor(item),
+              <StoneMascot
+                size={52}
+                color={selectedColor}
+                variant={selectedVariant}
+                shape={selectedShape}
+                decor={(item.decor as MascotDecor) ?? 'none'}
+                showSparkles={false}
+              />,
+            ),
+          )}
+      </ScrollView>
     </View>
   );
 
@@ -1525,10 +1388,16 @@ export default function ProfileScreen() {
           ) : (
             // ─── DEFAULT MODE: fullscreen маскот + tap-to-open chat ───
             <>
-              <View style={styles.mascotFullCenter} pointerEvents="box-none">
+              <View
+                style={[
+                  styles.mascotFullCenter,
+                  customizeOpen && styles.mascotFullCenterShifted,
+                ]}
+                pointerEvents="box-none"
+              >
                 <MascotScene
                   key={`fullscreen-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
-                  size={280}
+                  size={customizeOpen ? 200 : 280}
                   color={selectedColor}
                   variant={selectedVariant}
                   shape={selectedShape}
@@ -1555,17 +1424,10 @@ export default function ProfileScreen() {
             </>
           )}
 
-          {/* Slide-up customize panel — открывается из стрелки сверху */}
-          {customizeOpen && (
-            <View style={styles.customizePanel}>
-              <View style={styles.customizePanelHandle} />
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-              >
-                {renderCustomizeBody()}
-              </ScrollView>
-            </View>
+          {/* Inline customize — раскрывается прямо под кареткой сверху,
+              прозрачный фон, юзер видит маскот сквозь него. */}
+          {customizeOpen && !chatOpen && (
+            <View style={styles.compactCustomizeWrap}>{renderCustomizeBody()}</View>
           )}
         </View>
       )}
@@ -1717,6 +1579,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+  },
+  // Когда customize открыт — маскот опускается ниже и уменьшается,
+  // чтобы освободить верхнюю часть экрана для пилюль кастомизации.
+  mascotFullCenterShifted: {
+    justifyContent: 'flex-end',
+    paddingBottom: 200,
+  },
+  // Компактная inline-кастомизация (выезжает под кареткой)
+  compactCustomizeWrap: {
+    position: 'absolute',
+    top: 130, // под top-bar'ом (tabs + chip+caret+settings)
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    zIndex: 4,
+  },
+  compactTabs: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 8,
+    flexWrap: 'wrap',
+  },
+  compactTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  compactTabActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  compactTabText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  compactTabTextActive: {
+    color: Colors.accent,
+    fontWeight: '800',
+  },
+  compactRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  compactPill: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  compactPillActive: {
+    borderColor: '#FFFFFF',
+    borderWidth: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.20)',
+  },
+  compactColorInner: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+  },
+  compactPillLock: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  compactPillPrice: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   mascotFullName: {
     color: '#FFFFFF',
