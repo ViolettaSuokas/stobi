@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -32,6 +33,8 @@ import {
   CaretDown,
   Microphone,
   ChatCircle,
+  PaperPlaneRight,
+  ArrowLeft,
   type IconProps,
 } from 'phosphor-react-native';
 import type { ComponentType } from 'react';
@@ -117,6 +120,11 @@ export default function ProfileScreen() {
   // Кастомизация на mascot-табе спрятана за стрелкой сверху —
   // юзер хочет fullscreen маскот без заваленного снизу UI.
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  // Chat-режим: tap на иконку → маскот уменьшается влево вверху,
+  // справа/внизу появляется чат. Реальный LLM пока не подключён —
+  // показываем статичные приветственные сообщения как заглушку.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatDraft, setChatDraft] = useState('');
   const [selectedColorId, setSelectedColorId] = useState<string>(COLOR_ITEMS[0].id);
   const [selectedEyeId, setSelectedEyeId] = useState<string>(EYE_ITEMS[0].id);
   const [selectedShapeId, setSelectedShapeId] = useState<string>(SHAPE_ITEMS[0].id);
@@ -1388,41 +1396,127 @@ export default function ProfileScreen() {
             </View>
           </SafeAreaView>
 
-          {/* Mascot центр (без подписей под маскотом — юзер хочет
-              чистый мокот без текста, как в референсе). */}
-          <View style={styles.mascotFullCenter} pointerEvents="box-none">
-            <MascotScene
-              key={`fullscreen-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
-              size={280}
-              color={selectedColor}
-              variant={selectedVariant}
-              shape={selectedShape}
-              decor={selectedDecor}
-              userName={user?.username}
-              mascotName={user?.characterName}
-            />
-          </View>
+          {chatOpen ? (
+            // ─── CHAT MODE: маскот мал и слева сверху, справа имя,
+            //               под ним — чат-сообщения, внизу активный input.
+            <>
+              <View style={styles.chatHeader}>
+                <TouchableOpacity
+                  onPress={() => setChatOpen(false)}
+                  style={styles.chatBackBtn}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.back') || 'Назад'}
+                >
+                  <ArrowLeft size={22} color="#FFFFFF" weight="bold" />
+                </TouchableOpacity>
+                <View style={styles.chatHeaderMascot}>
+                  <MascotScene
+                    key={`chat-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                    size={56}
+                    color={selectedColor}
+                    variant={selectedVariant}
+                    shape={selectedShape}
+                    decor={selectedDecor}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.chatHeaderName} numberOfLines={1}>
+                    {user?.characterName || t('profile.character_name_default')}
+                  </Text>
+                  <Text style={styles.chatHeaderStatus}>online</Text>
+                </View>
+              </View>
 
-          {/* Bottom chat-input bar (mock — реальный чат скоро).
-              paddingBottom = высота floating tab-bar (~78) + iOS home
-              indicator (insets.bottom) + чуть зазора, чтобы чат сидел
-              над tab-bar и не перекрывался. */}
-          <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
-            <View style={styles.chatInputBar}>
-              <View style={styles.chatInputPlus}>
-                <Plus size={20} color="rgba(255,255,255,0.5)" weight="bold" />
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.chatMessagesContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Заглушка приветствия — реальный LLM пока не подключён. */}
+                <View style={styles.chatBubbleStobi}>
+                  <Text style={styles.chatBubbleText}>
+                    Привет, {user?.username || 'друг'}! 💜
+                  </Text>
+                </View>
+                <View style={styles.chatBubbleStobi}>
+                  <Text style={styles.chatBubbleText}>
+                    Я Stobi. Скоро со мной можно будет болтать по-настоящему — про камни, маршруты, что нашёл за день. А пока я только учусь отвечать.
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
+                <View style={styles.chatInputBar}>
+                  <View style={styles.chatInputPlus}>
+                    <Plus size={20} color="rgba(255,255,255,0.7)" weight="bold" />
+                  </View>
+                  <View style={[styles.chatInputField, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
+                    <TextInput
+                      style={styles.chatInputText}
+                      value={chatDraft}
+                      onChangeText={setChatDraft}
+                      placeholder={t('dm.input_placeholder') || 'Сообщение…'}
+                      placeholderTextColor="rgba(255,255,255,0.55)"
+                    />
+                  </View>
+                  {chatDraft.trim().length > 0 ? (
+                    <TouchableOpacity
+                      style={styles.chatInputSend}
+                      onPress={() => setChatDraft('')}
+                      activeOpacity={0.8}
+                    >
+                      <PaperPlaneRight size={18} color="#FFFFFF" weight="fill" />
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.chatInputMic}>
+                      <Microphone size={20} color="rgba(255,255,255,0.7)" weight="bold" />
+                    </View>
+                  )}
+                </View>
               </View>
-              <View style={styles.chatInputField}>
-                <ChatCircle size={16} color="rgba(255,255,255,0.5)" weight="regular" />
-                <Text style={styles.chatInputPlaceholder} numberOfLines={1}>
-                  {t('profile.companion_coming_desc')}
-                </Text>
+            </>
+          ) : (
+            // ─── DEFAULT MODE: fullscreen маскот + tap-to-open chat ───
+            <>
+              <View style={styles.mascotFullCenter} pointerEvents="box-none">
+                <MascotScene
+                  key={`fullscreen-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                  size={280}
+                  color={selectedColor}
+                  variant={selectedVariant}
+                  shape={selectedShape}
+                  decor={selectedDecor}
+                  userName={user?.username}
+                  mascotName={user?.characterName}
+                />
               </View>
-              <View style={styles.chatInputMic}>
-                <Microphone size={20} color="rgba(255,255,255,0.5)" weight="bold" />
+
+              {/* Bottom chat-input bar — tap → открывает чат-режим. */}
+              <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
+                <TouchableOpacity
+                  style={styles.chatInputBar}
+                  activeOpacity={0.85}
+                  onPress={() => setChatOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('profile.companion_coming_title')}
+                >
+                  <View style={styles.chatInputPlus}>
+                    <Plus size={20} color="rgba(255,255,255,0.7)" weight="bold" />
+                  </View>
+                  <View style={styles.chatInputField}>
+                    <ChatCircle size={18} color="rgba(255,255,255,0.85)" weight="fill" />
+                    <Text style={styles.chatInputPlaceholder} numberOfLines={1}>
+                      {t('profile.companion_coming_desc')}
+                    </Text>
+                  </View>
+                  <View style={styles.chatInputMic}>
+                    <Microphone size={20} color="rgba(255,255,255,0.7)" weight="bold" />
+                  </View>
+                </TouchableOpacity>
               </View>
-            </View>
-          </View>
+            </>
+          )}
 
           {/* Slide-up customize panel — открывается из стрелки сверху */}
           {customizeOpen && (
@@ -1641,6 +1735,77 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chatInputSend: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatInputText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  // Chat mode (mascot уехал влево, справа сообщения)
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.10)',
+  },
+  chatBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatHeaderMascot: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  chatHeaderName: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  chatHeaderStatus: {
+    color: 'rgba(180,255,200,0.85)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  chatMessagesContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  chatBubbleStobi: {
+    alignSelf: 'flex-start',
+    maxWidth: '82%',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 18,
+    borderTopLeftRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 6,
+  },
+  chatBubbleText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 19,
   },
   // Slide-up customize panel
   customizePanel: {
