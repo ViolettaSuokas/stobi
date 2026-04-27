@@ -17,6 +17,7 @@ import { Colors } from '../../constants/Colors';
 import { getUnreadCount } from '../../lib/chat';
 import { useI18n } from '../../lib/i18n';
 import * as haptics from '../../lib/haptics';
+import { useTabBarVisible } from '../../lib/tab-bar-visibility';
 
 type TabConfig = {
   labelKey: string;
@@ -34,12 +35,16 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [chatBadge, setChatBadge] = useState(0);
   const { t } = useI18n();
+  // Скрытие при разговоре со Stobi и других fullscreen-сценариях.
+  const visible = useTabBarVisible();
 
   useFocusEffect(
     useCallback(() => {
       getUnreadCount().then(setChatBadge);
     }, []),
   );
+
+  if (!visible) return null;
 
   return (
     <View

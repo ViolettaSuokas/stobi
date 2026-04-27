@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -77,6 +77,7 @@ import { getFollowState } from '../../lib/follows';
 import { gatherAchievementStats, checkAchievements, getAchievements } from '../../lib/achievements';
 import { getStoneShape } from '../../lib/location';
 import { requireAuth } from '../../lib/auth-gate';
+import { setTabBarVisible } from '../../lib/tab-bar-visibility';
 import { useI18n } from '../../lib/i18n';
 import { useModal } from '../../lib/modal';
 import { moderateMessage } from '../../lib/moderation';
@@ -134,6 +135,14 @@ export default function ProfileScreen() {
     { role: 'stobi', text: 'Скоро со мной можно будет болтать по-настоящему — про твои камни, маршруты, что нашёл за день.' },
     { role: 'stobi', text: 'А пока я только учусь. Но если попробуешь написать — я запомню что тебе интересно.' },
   ]);
+
+  // Скрываем нижний tab-bar пока юзер в чате со Stobi — fullscreen
+  // conversation как в reference (Tolan/Replika). На unmount/закрытие
+  // чата возвращаем bar обратно.
+  useEffect(() => {
+    setTabBarVisible(!chatOpen);
+    return () => setTabBarVisible(true);
+  }, [chatOpen]);
 
   const handleSendChat = useCallback(() => {
     const text = chatDraft.trim();
@@ -1484,7 +1493,7 @@ export default function ProfileScreen() {
                 ))}
               </ScrollView>
 
-              <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
+              <View style={[styles.mascotFullBottomArea, { paddingBottom: Math.max(insets.bottom, 12) }]}>
                 <View style={styles.chatInputBar}>
                   <View style={styles.chatInputPlus}>
                     <Plus size={20} color="rgba(255,255,255,0.7)" weight="bold" />
