@@ -1388,7 +1388,8 @@ export default function ProfileScreen() {
             </View>
           </SafeAreaView>
 
-          {/* Mascot центр */}
+          {/* Mascot центр (без подписей под маскотом — юзер хочет
+              чистый мокот без текста, как в референсе). */}
           <View style={styles.mascotFullCenter} pointerEvents="box-none">
             <MascotScene
               key={`fullscreen-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
@@ -1400,10 +1401,6 @@ export default function ProfileScreen() {
               userName={user?.username}
               mascotName={user?.characterName}
             />
-            <Text style={styles.mascotFullName} numberOfLines={1}>
-              {user?.characterName || t('profile.character_name_default')}
-            </Text>
-            <Text style={styles.mascotFullHint}>{t('profile.companion_coming_title')}</Text>
           </View>
 
           {/* Bottom chat-input bar (mock — реальный чат скоро).
