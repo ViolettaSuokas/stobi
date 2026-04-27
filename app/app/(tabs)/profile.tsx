@@ -1402,27 +1402,11 @@ export default function ProfileScreen() {
             //     не уменьшается в маленький avatar — он остаётся живой
             //     иллюстрацией рядом с чатом.
             <>
-              {/* Маскот среднего размера слева, остаётся живой иллюстрацией. */}
-              <View style={styles.chatMascotLeft} pointerEvents="none">
-                <MascotScene
-                  key={`chat-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
-                  size={200}
-                  color={selectedColor}
-                  variant={selectedVariant}
-                  shape={selectedShape}
-                  decor={selectedDecor}
-                />
-              </View>
-
-              <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={styles.chatMessagesContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* Кнопка вернуться к фуллскрин маскоту. */}
+              {/* Маскот сверху по центру (над сообщениями), не сбоку. */}
+              <View style={styles.chatMascotTop}>
                 <TouchableOpacity
-                  style={styles.chatCloseInline}
                   onPress={() => setChatOpen(false)}
+                  style={styles.chatCloseInline}
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel={t('common.back') || 'Назад'}
@@ -1432,7 +1416,22 @@ export default function ProfileScreen() {
                     {user?.characterName || t('profile.character_name_default')}
                   </Text>
                 </TouchableOpacity>
+                <MascotScene
+                  key={`chat-${selectedColorId}-${selectedEyeId}-${selectedShapeId}-${selectedDecorId}`}
+                  size={180}
+                  color={selectedColor}
+                  variant={selectedVariant}
+                  shape={selectedShape}
+                  decor={selectedDecor}
+                  hideSpeech
+                />
+              </View>
 
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.chatMessagesContent}
+                showsVerticalScrollIndicator={false}
+              >
                 {/* Заглушка приветствия — реальный LLM пока не подключён. */}
                 <View style={styles.chatBubbleStobi}>
                   <Text style={styles.chatBubbleText}>
@@ -1756,11 +1755,10 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   // Chat mode (Tolan-style: маскот среднего размера слева, баблы справа)
-  chatMascotLeft: {
-    position: 'absolute',
-    left: -10,
-    top: 200, // под top-bar и табами
-    zIndex: 1,
+  chatMascotTop: {
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   chatCloseInline: {
     flexDirection: 'row',
@@ -1771,8 +1769,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
-    marginBottom: 12,
-    marginLeft: 170, // справа от маскота (200px - небольшое наложение)
+    marginLeft: 16,
+    marginBottom: 6,
   },
   chatCloseText: {
     color: '#FFFFFF',
@@ -1786,10 +1784,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chatBubbleStobi: {
-    alignSelf: 'flex-end',
-    maxWidth: '60%',
+    alignSelf: 'flex-start',
+    maxWidth: '85%',
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
+    borderTopLeftRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 4,
