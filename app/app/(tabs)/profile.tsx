@@ -1261,10 +1261,13 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            {/* Только каретка кастомизации сверху — шестерёнка переехала
-                в Профайл, алмазики переехали вниз слева. */}
+            {/* Алмазики слева + каретка по центру (settings ушли в Профайл). */}
             {!chatOpen && (
               <View style={styles.mascotFullTopBar}>
+                <View style={styles.levelChip}>
+                  <Text style={styles.levelChipText}>💎 {balance}</Text>
+                </View>
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity
                   onPress={() => setCustomizeOpen((o) => !o)}
                   activeOpacity={0.8}
@@ -1278,6 +1281,10 @@ export default function ProfileScreen() {
                     <CaretUp size={22} color="#FFFFFF" weight="bold" />
                   )}
                 </TouchableOpacity>
+                {/* spacer справа чтобы каретка визуально была по центру
+                    несмотря на chip слева. */}
+                <View style={{ flex: 1 }} />
+                <View style={styles.topBarSpacer} />
               </View>
             )}
 
@@ -1398,17 +1405,6 @@ export default function ProfileScreen() {
                   mascotName={user?.characterName}
                 />
               </View>
-
-              {/* Алмазики внизу слева, над tab-bar'ом — tap → история. */}
-              <TouchableOpacity
-                style={[styles.diamondChipBL, { bottom: insets.bottom + 100 }]}
-                activeOpacity={0.85}
-                onPress={() => router.push('/diamond-history' as any)}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.diamonds')}
-              >
-                <Text style={styles.diamondChipBLText}>💎 {balance}</Text>
-              </TouchableOpacity>
 
               {/* Простая chat-иконка справа внизу — tap открывает чат-режим. */}
               <View style={[styles.chatFabWrap, { bottom: insets.bottom + 100 }]}>
@@ -1547,28 +1543,14 @@ const styles = StyleSheet.create({
   mascotFullTopBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center', // одинокая каретка по центру
     paddingHorizontal: 16,
     paddingTop: 6,
     gap: 8,
   },
-  // Алмазики bottom-left на Stobi-табе (settings ушли в Профайл).
-  diamondChipBL: {
-    position: 'absolute',
-    left: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    zIndex: 3,
-  },
-  diamondChipBLText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    lineHeight: 18,
+  // Невидимая зона справа той же ширины что levelChip — чтобы каретка
+  // визуально оказалась по центру даже когда settings убраны.
+  topBarSpacer: {
+    width: 70,
   },
   // Каретка кастомизации — тот же frosted-стиль что у settingsBtn:
   // полупрозрачный белый поверх deep-purple даёт эффект "замороженного
