@@ -1717,7 +1717,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
   mascotFullCenter: {
-    flex: 1,
+    // Абсолютное центрирование маскота относительно ВСЕГО экрана
+    // (а не остаточного flex-пространства под top-bar'ом). Без этого
+    // маскот сидел в "remaining flex" и казался смещённым вверх.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
