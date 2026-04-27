@@ -8,7 +8,7 @@ import {
   Image,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CheckCircle,
   CaretRight,
@@ -82,6 +82,7 @@ import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { StreakBadge } from '../../components/StreakBadge';
 import { ReferralCard } from '../../components/ReferralCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
 import * as haptics from '../../lib/haptics';
@@ -132,6 +133,8 @@ export default function ProfileScreen() {
   const [trialRemaining, setTrialRemaining] = useState('');
   const { t } = useI18n();
   const modal = useModal();
+  // Insets для расчёта отступа чата над floating tab-bar (mascot-таб).
+  const insets = useSafeAreaInsets();
   // earned читается из реального state (lib/achievements). Карусель на профайле
   // подсвечивает unlocked vs locked на основании этого.
   const achievements = ACHIEVEMENT_CONFIGS.map((a) => ({
@@ -1358,17 +1361,19 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }} />
               <TouchableOpacity
-                style={styles.mascotCaretBtn}
                 onPress={() => setCustomizeOpen((o) => !o)}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={t('profile.customize')}
+                style={styles.mascotCaretBtnWrap}
               >
-                {customizeOpen ? (
-                  <CaretDown size={22} color="#FFFFFF" weight="bold" />
-                ) : (
-                  <CaretUp size={22} color="#FFFFFF" weight="bold" />
-                )}
+                <BlurView intensity={40} tint="light" style={styles.mascotCaretBtn}>
+                  {customizeOpen ? (
+                    <CaretDown size={26} color="#FFFFFF" weight="bold" />
+                  ) : (
+                    <CaretUp size={26} color="#FFFFFF" weight="bold" />
+                  )}
+                </BlurView>
               </TouchableOpacity>
               <View style={{ flex: 1 }} />
               <TouchableOpacity
@@ -1401,8 +1406,11 @@ export default function ProfileScreen() {
             <Text style={styles.mascotFullHint}>{t('profile.companion_coming_title')}</Text>
           </View>
 
-          {/* Bottom chat-input bar (mock — реальный чат скоро) */}
-          <SafeAreaView edges={['bottom']} style={styles.mascotFullBottomArea}>
+          {/* Bottom chat-input bar (mock — реальный чат скоро).
+              paddingBottom = высота floating tab-bar (~78) + iOS home
+              indicator (insets.bottom) + чуть зазора, чтобы чат сидел
+              над tab-bar и не перекрывался. */}
+          <View style={[styles.mascotFullBottomArea, { paddingBottom: insets.bottom + 86 }]}>
             <View style={styles.chatInputBar}>
               <View style={styles.chatInputPlus}>
                 <Plus size={20} color="rgba(255,255,255,0.5)" weight="bold" />
@@ -1417,7 +1425,7 @@ export default function ProfileScreen() {
                 <Microphone size={20} color="rgba(255,255,255,0.5)" weight="bold" />
               </View>
             </View>
-          </SafeAreaView>
+          </View>
 
           {/* Slide-up customize panel — открывается из стрелки сверху */}
           {customizeOpen && (
@@ -1534,14 +1542,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // ─── Mascot fullscreen overlay ───────────────────────────────────────
-  // Покрывает весь экран на mascot-табе. Sits ABOVE the ScrollView via
-  // absolute positioning. Tab-bar внизу остаётся видимым (paddingBottom:90).
+  // Покрывает ВЕСЬ экран на mascot-табе, включая зону под нижним
+  // floating tab-bar. Tab-bar — translucent pill сверху purple-фона,
+  // так что фиолетовый просвечивает по краям → один цельный фон.
+  // Без bottom: 0 был виден кремовый strip Colors.bg между chat-input
+  // и tab-bar.
   mascotFullscreen: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 90, // не перекрываем нижний tab-bar
+    bottom: 0,
     backgroundColor: Colors.bgDeep,
     overflow: 'hidden',
   },
@@ -1552,18 +1563,27 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     gap: 8,
   },
+  // Glass-effect circle для стрелки кастомизации.
+  // Wrap содержит shadow + clipping, BlurView внутри даёт frosted-эффект.
+  mascotCaretBtnWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
   mascotCaretBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   mascotFullCenter: {
     flex: 1,
