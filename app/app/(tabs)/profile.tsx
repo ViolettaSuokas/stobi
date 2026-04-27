@@ -88,7 +88,6 @@ import { WelcomeQuest } from '../../components/WelcomeQuest';
 import { StreakBadge } from '../../components/StreakBadge';
 import { ReferralCard } from '../../components/ReferralCard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { getTrialInfo, formatRemaining } from '../../lib/premium-trial';
 import * as ImagePicker from 'expo-image-picker';
 import * as haptics from '../../lib/haptics';
@@ -1412,15 +1411,13 @@ export default function ProfileScreen() {
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel={t('profile.customize')}
-                  style={styles.mascotCaretBtnWrap}
+                  style={styles.mascotCaretBtn}
                 >
-                  <BlurView intensity={40} tint="light" style={styles.mascotCaretBtn}>
-                    {customizeOpen ? (
-                      <CaretDown size={26} color="#FFFFFF" weight="bold" />
-                    ) : (
-                      <CaretUp size={26} color="#FFFFFF" weight="bold" />
-                    )}
-                  </BlurView>
+                  {customizeOpen ? (
+                    <CaretDown size={22} color="#FFFFFF" weight="bold" />
+                  ) : (
+                    <CaretUp size={22} color="#FFFFFF" weight="bold" />
+                  )}
                 </TouchableOpacity>
                 <View style={{ flex: 1 }} />
                 <TouchableOpacity
@@ -1694,27 +1691,19 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     gap: 8,
   },
-  // Glass-effect circle для стрелки кастомизации.
-  // Wrap содержит shadow + clipping, BlurView внутри даёт frosted-эффект.
-  mascotCaretBtnWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.45)',
-  },
+  // Каретка кастомизации — тот же frosted-стиль что у settingsBtn:
+  // полупрозрачный белый поверх deep-purple даёт эффект "замороженного
+  // стекла" без BlurView. Square (rounded) чтобы гармонировать с
+  // settings справа.
   mascotCaretBtn: {
-    width: '100%',
-    height: '100%',
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   mascotFullCenter: {
     // Абсолютное центрирование маскота относительно ВСЕГО экрана
