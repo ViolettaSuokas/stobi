@@ -1583,11 +1583,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
-  // Когда customize открыт — маскот опускается ниже и уменьшается,
-  // чтобы освободить верхнюю часть экрана для пилюль кастомизации.
+  // Когда customize открыт — маскот уменьшается и чуть опускается,
+  // но не слишком далеко вниз (юзер хочет чтобы он сидел в нижней
+  // половине экрана, чуть выше FAB).
   mascotFullCenterShifted: {
     justifyContent: 'flex-end',
-    paddingBottom: 200,
+    paddingBottom: 130,
   },
   // Компактная inline-кастомизация (живёт сразу под топ-баром).
   compactCustomizeWrap: {
