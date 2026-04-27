@@ -1102,7 +1102,14 @@ export default function ProfileScreen() {
                     accessibilityLabel={`${item.stoneName} · ${item.city ?? ''}`}
                   >
                     {item.photoUri ? (
-                      <Image source={{ uri: item.photoUri }} style={styles.myStonesGridImg} />
+                      // SafeImage сама ловит onError → показывает fallback
+                      // (эмодзи), без неё URL'ы с истёкшим signed-токеном
+                      // оставались белыми квадратами.
+                      <SafeImage
+                        source={{ uri: item.photoUri }}
+                        style={styles.myStonesGridImg}
+                        fallbackIconSize={32}
+                      />
                     ) : item.photo ? (
                       <Image source={STONE_PHOTOS[item.photo]} style={styles.myStonesGridImg} />
                     ) : (

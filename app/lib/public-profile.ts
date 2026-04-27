@@ -106,11 +106,14 @@ export async function getPublicProfileStats(userId: string): Promise<PublicProfi
 export async function getUserFoundStonesGrid(userId: string, limit: number = 60): Promise<PublicStoneItem[]> {
   if (!isSupabaseConfigured()) return [];
   try {
+    // finds-таблица использует found_at, не created_at — без этого
+    // запрос падал и список finds на public-profile был пустой даже
+    // когда счётчик "Нашёл" показывал > 0.
     const { data, error } = await supabase
       .from('finds')
-      .select('created_at, stones!inner(id, name, emoji, photo_url, city, created_at)')
+      .select('found_at, stones!inner(id, name, emoji, photo_url, city, created_at)')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('found_at', { ascending: false })
       .limit(limit);
     if (error || !data) return [];
     return data.map((f: any): PublicStoneItem => {
@@ -121,7 +124,7 @@ export async function getUserFoundStonesGrid(userId: string, limit: number = 60)
         emoji: s.emoji ?? null,
         photoUrl: s.photo_url ?? null,
         city: s.city ?? null,
-        createdAt: f.created_at ?? s.created_at ?? null,
+        createdAt: f.found_at ?? s.created_at ?? null,
         isFound: true,
       };
     });
