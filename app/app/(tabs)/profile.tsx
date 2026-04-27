@@ -1294,6 +1294,12 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Inline customize — рендерим внутри SafeAreaView сразу под
+                топ-баром, чтобы пилюли не наезжали на стрелку. */}
+            {customizeOpen && !chatOpen && (
+              <View style={styles.compactCustomizeWrap}>{renderCustomizeBody()}</View>
+            )}
           </SafeAreaView>
 
           {chatOpen ? (
@@ -1424,11 +1430,8 @@ export default function ProfileScreen() {
             </>
           )}
 
-          {/* Inline customize — раскрывается прямо под кареткой сверху,
-              прозрачный фон, юзер видит маскот сквозь него. */}
-          {customizeOpen && !chatOpen && (
-            <View style={styles.compactCustomizeWrap}>{renderCustomizeBody()}</View>
-          )}
+          {/* Inline customize рендерится внутри SafeAreaView выше — здесь
+              ничего, чтобы не дублировать. */}
         </View>
       )}
     </View>
@@ -1586,14 +1589,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingBottom: 200,
   },
-  // Компактная inline-кастомизация (выезжает под кареткой)
+  // Компактная inline-кастомизация (живёт сразу под топ-баром).
   compactCustomizeWrap: {
-    position: 'absolute',
-    top: 130, // под top-bar'ом (tabs + chip+caret+settings)
-    left: 0,
-    right: 0,
     paddingHorizontal: 12,
-    zIndex: 4,
+    paddingTop: 4,
   },
   compactTabs: {
     flexDirection: 'row',
